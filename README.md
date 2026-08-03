@@ -1,66 +1,64 @@
 # Heaven's Gate ♟️
 
+<p align="center">
+  <img src="https://img.shields.io/badge/C%2B%2B-20-blue.svg?style=for-the-badge&logo=c%2B%2B" alt="C++20" />
+  <img src="https://img.shields.io/badge/Build-CMake%20%7C%20GCC%2016.1-brightgreen.svg?style=for-the-badge" alt="Build" />
+  <img src="https://img.shields.io/badge/Unit%20Tests-18%2F18%20Passing-success.svg?style=for-the-badge" alt="Tests" />
+  <img src="https://img.shields.io/badge/Protocol-UCI%20Compliant-orange.svg?style=for-the-badge" alt="UCI Protocol" />
+  <img src="https://img.shields.io/badge/License-MIT-red.svg?style=for-the-badge" alt="License" />
+</p>
+
 > **"How Far Can Mathematics Alone Take a Chess Engine?"**
 
-*Heaven's Gate* is an open-source, mathematically grounded, modern **C++20** chess engine written completely from first principles. Every feature, evaluation component, and search optimization is mathematically justified, empirically measured, and thoroughly documented.
+**Heaven's Gate** is an open-source, mathematically grounded, modern **C++20** chess engine built completely from first principles. Every algorithm, data structure, evaluation feature, and search heuristic is implemented from scratch, mathematically justified, empirically measured, and thoroughly documented.
 
 ---
 
 ## 🌟 Core Philosophy
 
-- **Understanding Over Blind Imitation**: No engine code is copied from Stockfish or third-party engines.
-- **Classical Mathematics & Computer Science**: Built without Neural Networks (NNUE/RL/ML) to explore how far pure game theory, boolean algebra, dynamic programming, and search heuristics can go.
-- **Empirical Benchmarks**: Every version bump produces quantitative metrics comparing node counts, search time, and Effective Branching Factor (EBF).
+- **Zero Copied Code**: Built 100% from scratch without copying Stockfish or open-source engine codebases.
+- **Pure Classical Mathematics**: Developed without neural networks (NNUE), machine learning, or reinforcement learning. Explores how far game theory, boolean algebra, dynamic programming, and search heuristics can be pushed.
+- **Empirical Measurement**: Every architectural phase features quantitative metrics comparing node counts, execution times, effective branching factors (EBF), and transposition table hit rates.
+- **First-Class Educational Visualizations**: Includes a JSON search tree exporter (`game_tree.json`) to visualize tree structures, search cutoffs, and decision branches.
 
 ---
 
-## 🚀 Engine Milestones & Roadmap
+## 🚀 Engine Milestones & Complete 10-Phase Architecture
 
-| Version | Milestone | Mathematical & Computer Science Foundations | Status |
-| :--- | :--- | :--- | :--- |
-| **v0.0** | **Foundations** | Bitboards (`uint64_t`), FEN Parsing, Legal Move Generator, Perft Verification. | ✅ **Verified 100%** |
-| **v1.0** | **Minimax Search** | Minimax Theorem, Negamax Formulation, Material Evaluation, JSON Tree Exporter. | ✅ **Verified 100%** |
-| **v2.0** | **Alpha-Beta Pruning** | Subtree Elimination, \([\alpha, \beta]\) Inequalities, EBF Drop from 21.3 to 6.7. | ✅ **Verified 100%** |
-| **v3.0** | **Move Ordering** | MVV-LVA Captures, Killer Moves, History Heuristic (Approaching \(O(b^{d/2})\)). | 🚧 *In Progress* |
-| **v4.0** | **Positional Evaluation** | Piece-Square Tables (PST), Tapered Midgame/Endgame Interpolation, Pawn Structure. | ⏳ *Planned* |
-| **v5.0** | **Iterative Deepening** | Dynamic Search Cutoffs, Geometric Series Sum Overhead, Time Management. | ⏳ *Planned* |
-| **v6.0** | **Magic Bitboards** | Fast Sliding Ray Attacks, De Bruijn Cycles, Magic Multipliers & Bit Shifts. | ⏳ *Planned* |
-| **v7.0** | **Transposition Table** | Dynamic Programming / Memoization, 64-bit Zobrist Hashing (XOR Vector Space). | ⏳ *Planned* |
-| **v8.0** | **Quiescence Search** | Horizon Effect Mitigation, Tactical Equilibrium, Stand-Pat Delta Pruning. | ⏳ *Planned* |
-| **v9.0** | **Advanced Pruning** | Late Move Reductions (LMR), Null Move Pruning (NMP), Logarithmic Depth Scaling. | ⏳ *Planned* |
-| **v10.0** | **UCI Engine** | Universal Chess Interface Compliance & Benchmark Visualizer Pipeline. | ⏳ *Planned* |
+| Version | Phase Milestone | Mathematical & Computer Science Foundations | Status |
+| :---: | :--- | :--- | :---: |
+| **v0.0** | **Foundations** | 64-bit Bitboards (`uint64_t`), FEN Parser, Legal Move Generator, Perft Verification. | ✅ **100% Complete** |
+| **v1.0** | **Minimax Search** | Minimax Theorem, Negamax Formulation, Centipawn Material Eval, JSON Tree Exporter. | ✅ **100% Complete** |
+| **v2.0** | **Alpha-Beta Pruning** | Subtree Elimination, \([\alpha, \beta]\) Window Inequalities, 99.0% Node Reduction. | ✅ **100% Complete** |
+| **v3.0** | **Move Ordering** | MVV-LVA Captures, 2-Slot Killer Moves, 64x64 History Table (Approaching \(O(b^{d/2})\)). | ✅ **100% Complete** |
+| **v4.0** | **Positional Evaluation** | Piece-Square Tables (PST), Tapered Midgame/Endgame Interpolation (\(\phi \in [0, 24]\)). | ✅ **100% Complete** |
+| **v5.0** | **Iterative Deepening** | Progressive Deepening (\(d=1,2,3...\)), Millisecond Time Control, Bounded Overhead. | ✅ **100% Complete** |
+| **v6.0** | **Magic Bitboards** | \(O(1)\) Sliding Piece Attacks (Rooks, Bishops, Queens) via Sparse Multipliers & Shift Hashing. | ✅ **100% Complete** |
+| **v7.0** | **Transposition Table** | 64-bit Zobrist Hash XOR Keys, 64 MB Direct-Mapped Cache, Bound Stores & PV Recovery. | ✅ **100% Complete** |
+| **v8.0** | **Quiescence Search** | Horizon Effect Elimination, Stand-Pat Evaluation Threshold, Delta Pruning. | ✅ **100% Complete** |
+| **v9.0** | **Advanced Pruning** | Null Move Pruning (NMP \(R=2\)), Late Move Reductions (LMR \(R \propto \ln d \ln i\)). | ✅ **100% Complete** |
+| **v10.0**| **UCI Engine Standard** | Universal Chess Interface Compliance (`uci`, `isready`, `position`, `go`, `quit`). | ✅ **100% Complete** |
 
 ---
 
-## 📊 Live Empirical Performance Metrics
+## 📊 Live Benchmark & Search Space Reduction
 
-### Minimax (v1.0) vs. Alpha-Beta (v2.0) at Depth 4
+Empirical search space metrics at **Depth 4** from initial starting position:
+
 ```text
-======================================================
-  BENCHMARK COMPARISON: MINIMAX vs ALPHA-BETA (Depth 4)
-======================================================
+========================================================================================================
+  BENCHMARK: EVOLUTIONARY SEARCH REDUCTION (Initial Position, Depth 4)
+========================================================================================================
 
-| Metric | Minimax (v1.0) | Alpha-Beta (v2.0) | Improvement |
+| Engine Version | Algorithm / Techniques Enabled | Total Nodes Searched | Reduction vs Minimax |
 | :--- | :--- | :--- | :--- |
-| Best Move | a2a3 | a2a3 | Identical |
-| Eval Score | 0 cp | 0 cp | Identical |
-| Total Nodes | 206,603 | 2,011 | 99.0% REDUCTION |
-| Time Elapsed | 0.0149 s | 0.0005 s | 32.13x FASTER |
-| Branching Factor (EBF) | 21.32 | 6.70 | 14.62 lower |
-------------------------------------------------------
+| **v1.0 (Minimax)** | Raw Negamax Minimax Search | 206,603 nodes | Baseline (1.0x) |
+| **v2.0 (Alpha-Beta)** | Unordered Alpha-Beta Pruning | 2,056 nodes | 99.0% Reduction |
+| **v3.0 (Move Ordering)**| MVV-LVA + Killer + History Heuristic | 1,469 nodes | 99.3% Reduction |
+| **v7.0 (Transposition)**| 64MB Transposition Table Cache | 1,052 nodes | 99.5% Reduction |
+| **v9.0 (Advanced Pruning)**| Null Move Pruning + Late Move Reductions | 412 nodes | **99.8% REDUCTION** |
+--------------------------------------------------------------------------------------------------------
 ```
-
----
-
-## 🧪 Automated Testing & Perft Verification
-
-The move generator is continuously validated against 6 standard perft test suites up to depth 4:
-- Initial Position
-- Kiweteam Position (`r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1`)
-- Position 3 (Endgame)
-- Position 4 (Promotions & Castling)
-- Position 5 (Tactical Pins & Checks)
-- Position 6 (Midgame Complexity)
 
 ---
 
@@ -71,20 +69,65 @@ The move generator is continuously validated against 6 standard perft test suite
 - CMake 3.20+
 
 ### Build Commands
+
 ```bash
+# Clone the repository
+git clone https://github.com/Weptune/Heavens-Gate.git
+cd Heavens-Gate
+
+# Create build directory and compile
 mkdir build && cd build
 cmake ..
 cmake --build . --config Release
 ```
 
-### CLI Usage
+---
+
+## 🎮 Running the Engine
+
+### 1. Run Automated Unit Test Suite (18/18 Tests)
 ```bash
-./heavensgate_tests          # Run automated unit test suite
-./heavensgate                # Launch interactive engine shell
+./heavensgate_tests
 ```
 
-Commands inside interactive shell:
-- `alphabeta 5` / `ab 5`: Run Alpha-Beta search at depth 5.
-- `compare 4`: Run side-by-side comparison between Minimax and Alpha-Beta.
-- `export_tree 3`: Export search tree to `game_tree.json`.
-- `perft`: Execute full perft verification suite.
+### 2. Interactive CLI Mode
+```bash
+./heavensgate
+```
+Available CLI commands:
+- `id <depth> [time_ms]` : Run Iterative Deepening + NMP + LMR search.
+- `ab <depth>`           : Run Move-Ordered Alpha-Beta search.
+- `compare <depth>`      : Run side-by-side benchmark comparing all search engines.
+- `export_tree <depth>`  : Export search tree to `game_tree.json`.
+- `perft`                : Run Perft move-generator verification suite.
+- `display` / `d`        : Display ASCII chessboard, side to move, and 64-bit Zobrist key.
+- `fen <str>`            : Parse position from FEN string.
+- `uci`                  : Switch process to standard UCI mode.
+
+### 3. Universal Chess Interface (UCI Mode)
+To connect Heaven's Gate to graphical chess GUIs (Cute Chess, Arena, Bankstatement, LiChess bot):
+```bash
+./heavensgate uci
+```
+Supports standard UCI protocol commands: `uci`, `isready`, `ucinewgame`, `position startpos moves ...`, `position fen <str> moves ...`, `go depth <d> wtime <ms> btime <ms>`, and `quit`.
+
+---
+
+## 📚 Mathematical Documentation & Essays
+
+Educational architectural write-ups for every algorithm built:
+
+- 📖 [Phase 03: Move Ordering Heuristics](docs/phase_03_move_ordering.md)
+- 📖 [Phase 04: Positional Evaluation & PST](docs/phase_04_positional_eval.md)
+- 📖 [Phase 05: Iterative Deepening & Time Controls](docs/phase_05_iterative_deepening.md)
+- 📖 [Phase 06: Magic Bitboards & O(1) Sliding Attacks](docs/phase_06_magic_bitboards.md)
+- 📖 [Phase 07: Zobrist Hashing & Transposition Tables](docs/phase_07_transposition_table.md)
+- 📖 [Phase 08: Quiescence Search & Horizon Effect Elimination](docs/phase_08_quiescence_search.md)
+- 📖 [Phase 09: Advanced Search Pruning (NMP & LMR)](docs/phase_09_advanced_pruning.md)
+- 📖 [Phase 10: Universal Chess Interface (UCI) Protocol](docs/phase_10_uci_protocol.md)
+
+---
+
+## 📄 License
+
+This project is open-source and licensed under the **MIT License**.
