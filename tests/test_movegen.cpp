@@ -10,7 +10,7 @@ namespace heavensgate::test {
 static bool test_startpos_movecount() {
     MoveGenerator::init();
     Board board;
-    FEN::parse(StartposFEN, board);
+    FEN::parse(FEN::StartPOS, board);
 
     MoveList moves;
     MoveGenerator::generate_legal_moves(board, moves);
@@ -28,32 +28,36 @@ static bool test_in_check_detection() {
     return MoveGenerator::in_check(board, Color::White);
 }
 
-static bool test_magic_bitboard_correctness() {
-    MoveGenerator::init();
-    std::mt19937_64 rng(42);
+static bool test_magic_bitboard_consistency() {
+    Magic::init();
+    Board board;
+    board.reset();
 
-    for (int sq = 0; sq < 64; ++sq) {
-        Square s = static_cast<Square>(sq);
-        for (int iter = 0; iter < 100; ++iter) {
-            Bitboard occ = rng();
+    Square sq = Square::d4;
+    Bitboard occ = board.occupied();
 
-            // Verify Magic Rook attacks equal reference calculation
-            Bitboard magic_rook = MagicBitboards::rook_attacks(s, occ);
-            Bitboard magic_bishop = MagicBitboards::bishop_attacks(s, occ);
+    Bitboard b_attacks = Magic::get_bishop_attacks(sq, occ);
+    Bitboard r_attacks = Magic::get_rook_attacks(sq, occ);
 
-            if (magic_rook == EmptyBB && magic_bishop == EmptyBB && sq != 0) {
-                // Sanity check
-            }
-        }
-    }
-    return true;
+    return (b_attacks != EmptyBB) && (r_attacks != EmptyBB);
 }
 
-static bool dummy_movegen_init = []() {
-    register_test("MoveGen: Startpos legal move count (20)", test_startpos_movecount);
-    register_test("MoveGen: In-Check detection logic", test_in_check_detection);
-    register_test("MoveGen: Magic Bitboards O(1) correctness vs reference", test_magic_bitboard_correctness);
-    return true;
-}();
-
 } // namespace heavensgate::test
+
+namespace heavensgate {
+
+void test_movegen() {
+    std::cout << "[RUN] Movegen: Startpos legal move count (20 moves) ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_startpos_movecount(), "Startpos legal move count must be exactly 20!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Movegen: Check detection ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_in_check_detection(), "Check detection failed!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Movegen: Magic Bitboard sliding attacks ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_magic_bitboard_consistency(), "Magic bitboard attacks failed!");
+    std::cout << "PASSED" << std::endl;
+}
+
+} // namespace heavensgate

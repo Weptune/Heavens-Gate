@@ -53,6 +53,11 @@ public:
     static Bitboard queen_attacks(Square sq, Bitboard occupied) noexcept {
         return rook_attacks(sq, occupied) | bishop_attacks(sq, occupied);
     }
+
+    static Bitboard get_bishop_attacks(Square sq, Bitboard occupied) noexcept { return bishop_attacks(sq, occupied); }
+    static Bitboard get_rook_attacks(Square sq, Bitboard occupied) noexcept { return rook_attacks(sq, occupied); }
 };
+
+using Magic = MagicBitboards;
 
 } // namespace heavensgate

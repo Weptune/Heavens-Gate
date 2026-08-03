@@ -2,9 +2,18 @@
 *.exe
 *.o
 *.obj
+build/
 heavensgate
 heavensgate.exe
 heavensgate_tests.exe
+train_tensor_net.exe
+
+# Model weight files
+*.tnw
+*.qtnw
+
+# Dev tools
+tools/w64devkit/
 
 # Local data & tournament outputs
 tournament_results.pgn

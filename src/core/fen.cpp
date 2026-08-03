@@ -1,4 +1,5 @@
 #include "fen.hpp"
+#include "../board/board.hpp"
 #include <sstream>
 #include <cctype>
 #include <vector>

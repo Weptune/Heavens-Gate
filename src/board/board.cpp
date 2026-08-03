@@ -1,7 +1,7 @@
 #include "board.hpp"
+#include "../core/fen.hpp"
 #include "../core/zobrist.hpp"
-#include <sstream>
-#include <iostream>
+#include <algorithm>
 
 namespace heavensgate {
 
@@ -10,187 +10,216 @@ Board::Board() {
 }
 
 void Board::clear() {
-    piece_bb_.fill(EmptyBB);
-    color_bb_.fill(EmptyBB);
-    mailbox_.fill(Piece::None);
+    square_pieces_.fill(Piece::None);
+    piece_bitboards_.fill(EmptyBB);
+    color_bitboards_.fill(EmptyBB);
+
+    king_squares_[0] = Square::None;
+    king_squares_[1] = Square::None;
 
     side_to_move_ = Color::White;
     castling_rights_ = CastlingNone;
-    en_passant_sq_ = Square::None;
+    ep_square_ = Square::None;
+
     halfmove_clock_ = 0;
     fullmove_number_ = 1;
     zobrist_key_ = 0ULL;
+
     history_.clear();
+    pos_history_.clear();
+    accumulator_ = Accumulator{};
 }
 
-void Board::recalculate_zobrist_key() noexcept {
+void Board::reset() {
+    load_fen(std::string(FEN::StartPOS));
+}
+
+void Board::load_fen(const std::string& fen_str) {
+    clear();
+    FEN::parse(fen_str, *this);
+    pos_history_.push_back(zobrist_key_);
+    accumulator_.computed[0] = false;
+    accumulator_.computed[1] = false;
+}
+
+void Board::recalculate_zobrist_key() {
     zobrist_key_ = Zobrist::compute_hash(*this);
 }
 
-bool Board::is_repetition() const noexcept {
-    if (history_.empty()) return false;
-    int count = 0;
-    int search_limit = std::min(static_cast<int>(history_.size()), static_cast<int>(halfmove_clock_));
-    int size = static_cast<int>(history_.size());
+void Board::set_piece(Square sq, Piece p) {
+    if (p == Piece::None) return;
 
-    for (int i = 1; i <= search_limit; ++i) {
-        if (history_[size - i].zobrist_key == zobrist_key_) {
+    square_pieces_[static_cast<size_t>(sq)] = p;
+
+    size_t p_idx = static_cast<size_t>(p);
+    piece_bitboards_[p_idx] |= square_bb(sq);
+
+    Color c = color_of(p);
+    size_t c_idx = static_cast<size_t>(c);
+    color_bitboards_[c_idx] |= square_bb(sq);
+
+    PieceType pt = piece_type_of(p);
+    if (pt == PieceType::King) {
+        king_squares_[c_idx] = sq;
+    }
+}
+
+void Board::remove_piece(Square sq) {
+    Piece p = square_pieces_[static_cast<size_t>(sq)];
+    if (p == Piece::None) return;
+
+    square_pieces_[static_cast<size_t>(sq)] = Piece::None;
+
+    size_t p_idx = static_cast<size_t>(p);
+    piece_bitboards_[p_idx] &= ~square_bb(sq);
+
+    Color c = color_of(p);
+    size_t c_idx = static_cast<size_t>(c);
+    color_bitboards_[c_idx] &= ~square_bb(sq);
+
+    PieceType pt = piece_type_of(p);
+    if (pt == PieceType::King) {
+        king_squares_[c_idx] = Square::None;
+    }
+}
+
+bool Board::has_non_pawn_material(Color c) const {
+    Bitboard knights = pieces(make_piece(c, PieceType::Knight));
+    Bitboard bishops = pieces(make_piece(c, PieceType::Bishop));
+    Bitboard rooks   = pieces(make_piece(c, PieceType::Rook));
+    Bitboard queens  = pieces(make_piece(c, PieceType::Queen));
+
+    return (knights | bishops | rooks | queens) != EmptyBB;
+}
+
+bool Board::is_repetition() const {
+    int count = 0;
+    for (int i = static_cast<int>(pos_history_.size()) - 1; i >= 0; --i) {
+        if (pos_history_[static_cast<size_t>(i)] == zobrist_key_) {
             count++;
-            if (count >= 1) return true;
+            if (count >= 2) return true;
         }
     }
     return false;
 }
 
-bool Board::is_insufficient_material() const noexcept {
-    // If pawns, rooks, or queens exist, material is sufficient for checkmate
-    if (pieces(PieceType::Pawn) || pieces(PieceType::Rook) || pieces(PieceType::Queen)) {
-        return false;
-    }
+bool Board::is_insufficient_material() const {
+    Bitboard pawns   = pieces(Piece::WhitePawn)   | pieces(Piece::BlackPawn);
+    Bitboard rooks   = pieces(Piece::WhiteRook)   | pieces(Piece::BlackRook);
+    Bitboard queens  = pieces(Piece::WhiteQueen)  | pieces(Piece::BlackQueen);
 
-    int white_knights = popcount(pieces(make_piece(Color::White, PieceType::Knight)));
-    int black_knights = popcount(pieces(make_piece(Color::Black, PieceType::Knight)));
-    int white_bishops = popcount(pieces(make_piece(Color::White, PieceType::Bishop)));
-    int black_bishops = popcount(pieces(make_piece(Color::Black, PieceType::Bishop)));
+    if (pawns || rooks || queens) return false;
 
-    int total_minors = white_knights + black_knights + white_bishops + black_bishops;
+    Bitboard w_knights = pieces(Piece::WhiteKnight);
+    Bitboard b_knights = pieces(Piece::BlackKnight);
+    Bitboard w_bishops = pieces(Piece::WhiteBishop);
+    Bitboard b_bishops = pieces(Piece::BlackBishop);
 
-    // K vs K
-    if (total_minors == 0) return true;
+    int w_minor = popcount(w_knights | w_bishops);
+    int b_minor = popcount(b_knights | b_bishops);
 
-    // K+N vs K or K+B vs K
-    if (total_minors == 1) return true;
+    if (w_minor == 0 && b_minor == 0) return true;
+    if (w_minor == 1 && b_minor == 0) return true;
+    if (w_minor == 0 && b_minor == 1) return true;
 
-    // K+B vs K+B (bishops of same color)
-    if (white_bishops == 1 && black_bishops == 1 && white_knights == 0 && black_knights == 0) {
-        Square w_bsq = lsb(pieces(make_piece(Color::White, PieceType::Bishop)));
-        Square b_bsq = lsb(pieces(make_piece(Color::Black, PieceType::Bishop)));
-
-        bool w_is_light = (static_cast<int>(file_of(w_bsq)) + static_cast<int>(rank_of(w_bsq))) % 2 != 0;
-        bool b_is_light = (static_cast<int>(file_of(b_bsq)) + static_cast<int>(rank_of(b_bsq))) % 2 != 0;
-
-        if (w_is_light == b_is_light) return true; // Same color bishops -> Draw!
+    if (w_minor == 1 && b_minor == 1 && w_bishops && b_bishops) {
+        Square w_sq = lsb(w_bishops);
+        Square b_sq = lsb(b_bishops);
+        bool w_light = (static_cast<int>(file_of(w_sq)) + static_cast<int>(rank_of(w_sq))) % 2 != 0;
+        bool b_light = (static_cast<int>(file_of(b_sq)) + static_cast<int>(rank_of(b_sq))) % 2 != 0;
+        if (w_light == b_light) return true;
     }
 
     return false;
 }
 
-void Board::set_piece(Square sq, Piece p) {
-    if (sq == Square::None) return;
-
-    Piece old_p = mailbox_[static_cast<size_t>(sq)];
-    if (old_p != Piece::None) {
-        remove_piece(sq);
-    }
-
-    if (p == Piece::None) return;
-
-    size_t s_idx = static_cast<size_t>(sq);
-    size_t p_idx = static_cast<size_t>(p);
-    Color c = color_of(p);
-    size_t c_idx = static_cast<size_t>(c);
-
-    set_bit(piece_bb_[p_idx], sq);
-    set_bit(color_bb_[c_idx], sq);
-    set_bit(color_bb_[2], sq);
-
-    mailbox_[s_idx] = p;
-
-    zobrist_key_ ^= Zobrist::PieceKeys[p_idx][s_idx];
-}
-
-void Board::remove_piece(Square sq) {
-    if (sq == Square::None) return;
-
-    size_t s_idx = static_cast<size_t>(sq);
-    Piece p = mailbox_[s_idx];
-    if (p == Piece::None) return;
-
-    size_t p_idx = static_cast<size_t>(p);
-    Color c = color_of(p);
-    size_t c_idx = static_cast<size_t>(c);
-
-    clear_bit(piece_bb_[p_idx], sq);
-    clear_bit(color_bb_[c_idx], sq);
-    clear_bit(color_bb_[2], sq);
-
-    mailbox_[s_idx] = Piece::None;
-
-    zobrist_key_ ^= Zobrist::PieceKeys[p_idx][s_idx];
-}
-
-void Board::make_move(Move m) {
+void Board::make_move(const Move& m) {
     StateInfo state;
     state.castling_rights = castling_rights_;
-    state.en_passant_sq   = en_passant_sq_;
-    state.halfmove_clock  = halfmove_clock_;
-    state.zobrist_key     = zobrist_key_;
+    state.ep_square = ep_square_;
+    state.halfmove_clock = halfmove_clock_;
+    state.zobrist_key = zobrist_key_;
+
+    Color us = side_to_move_;
+    Color them = ~us;
 
     Square from = m.from();
-    Square to   = m.to();
-    MoveType type = m.type();
+    Square to = m.to();
+    Piece p = piece_at(from);
+    PieceType pt = piece_type_of(p);
+    Piece captured = piece_at(to);
 
-    Piece moving_piece = piece_at(from);
-    Piece captured_piece = (type == MoveType::EnPassant)
-        ? make_piece(~side_to_move_, PieceType::Pawn)
-        : piece_at(to);
-
-    state.captured_piece = captured_piece;
+    state.captured_piece = captured;
     history_.push_back(state);
 
-    halfmove_clock_++;
-    if (side_to_move_ == Color::Black) {
-        fullmove_number_++;
+    zobrist_key_ ^= Zobrist::side_to_move();
+
+    if (ep_square_ != Square::None) {
+        zobrist_key_ ^= Zobrist::en_passant(file_of(ep_square_));
+        ep_square_ = Square::None;
     }
 
-    if (piece_type_of(moving_piece) == PieceType::Pawn || captured_piece != Piece::None) {
+    halfmove_clock_++;
+
+    if (pt == PieceType::Pawn) {
         halfmove_clock_ = 0;
     }
 
-    if (en_passant_sq_ != Square::None) {
-        zobrist_key_ ^= Zobrist::EnPassantKeys[static_cast<size_t>(en_passant_sq_)];
-        en_passant_sq_ = Square::None;
-    }
-
-    if (captured_piece != Piece::None) {
-        Square cap_sq = (type == MoveType::EnPassant)
-            ? make_square(file_of(to), rank_of(from))
-            : to;
-        remove_piece(cap_sq);
+    if (captured != Piece::None) {
+        halfmove_clock_ = 0;
+        remove_piece(to);
+        zobrist_key_ ^= Zobrist::piece(to, captured);
     }
 
     remove_piece(from);
+    zobrist_key_ ^= Zobrist::piece(from, p);
+
+    if (m.is_ep()) {
+        Square cap_sq = make_square(file_of(to), rank_of(from));
+        Piece ep_cap = piece_at(cap_sq);
+        remove_piece(cap_sq);
+        zobrist_key_ ^= Zobrist::piece(cap_sq, ep_cap);
+    }
 
     if (m.is_promotion()) {
-        set_piece(to, make_piece(side_to_move_, m.promotion_piece_type()));
+        Piece promo_p = make_piece(us, m.promotion_piece_type());
+        set_piece(to, promo_p);
+        zobrist_key_ ^= Zobrist::piece(to, promo_p);
     } else {
-        set_piece(to, moving_piece);
+        set_piece(to, p);
+        zobrist_key_ ^= Zobrist::piece(to, p);
     }
 
-    if (type == MoveType::DoublePawnPush) {
-        Rank ep_rank = (side_to_move_ == Color::White) ? Rank::Rank3 : Rank::Rank6;
-        en_passant_sq_ = make_square(file_of(from), ep_rank);
-        zobrist_key_ ^= Zobrist::EnPassantKeys[static_cast<size_t>(en_passant_sq_)];
-    } else if (type == MoveType::KingCastle) {
-        Square rook_from = (side_to_move_ == Color::White) ? Square::h1 : Square::h8;
-        Square rook_to   = (side_to_move_ == Color::White) ? Square::f1 : Square::f8;
-        Piece rook = piece_at(rook_from);
-        remove_piece(rook_from);
-        set_piece(rook_to, rook);
-    } else if (type == MoveType::QueenCastle) {
-        Square rook_from = (side_to_move_ == Color::White) ? Square::a1 : Square::a8;
-        Square rook_to   = (side_to_move_ == Color::White) ? Square::d1 : Square::d8;
-        Piece rook = piece_at(rook_from);
-        remove_piece(rook_from);
-        set_piece(rook_to, rook);
+    if (m.is_castle()) {
+        Square rfrom = Square::None;
+        Square rto = Square::None;
+
+        if (to == Square::g1) { rfrom = Square::h1; rto = Square::f1; }
+        else if (to == Square::c1) { rfrom = Square::a1; rto = Square::d1; }
+        else if (to == Square::g8) { rfrom = Square::h8; rto = Square::f8; }
+        else if (to == Square::c8) { rfrom = Square::a8; rto = Square::d8; }
+
+        Piece rook = piece_at(rfrom);
+        remove_piece(rfrom);
+        set_piece(rto, rook);
+
+        zobrist_key_ ^= Zobrist::piece(rfrom, rook);
+        zobrist_key_ ^= Zobrist::piece(rto, rook);
     }
 
-    zobrist_key_ ^= Zobrist::CastlingKeys[static_cast<size_t>(castling_rights_)];
+    if (pt == PieceType::Pawn && std::abs(static_cast<int>(rank_of(to)) - static_cast<int>(rank_of(from))) == 2) {
+        ep_square_ = make_square(file_of(from), (us == Color::White) ? Rank::Rank3 : Rank::Rank6);
+        zobrist_key_ ^= Zobrist::en_passant(file_of(ep_square_));
+    }
 
-    if (moving_piece == Piece::WhiteKing) {
-        castling_rights_ &= ~WhiteCastling;
-    } else if (moving_piece == Piece::BlackKing) {
-        castling_rights_ &= ~BlackCastling;
+    zobrist_key_ ^= Zobrist::castling(castling_rights_);
+
+    if (pt == PieceType::King) {
+        if (us == Color::White) {
+            castling_rights_ &= ~(WhiteOO | WhiteOOO);
+        } else {
+            castling_rights_ &= ~(BlackOO | BlackOOO);
+        }
     }
 
     if (from == Square::a1 || to == Square::a1) castling_rights_ &= ~WhiteOOO;
@@ -198,82 +227,92 @@ void Board::make_move(Move m) {
     if (from == Square::a8 || to == Square::a8) castling_rights_ &= ~BlackOOO;
     if (from == Square::h8 || to == Square::h8) castling_rights_ &= ~BlackOO;
 
-    zobrist_key_ ^= Zobrist::CastlingKeys[static_cast<size_t>(castling_rights_)];
+    zobrist_key_ ^= Zobrist::castling(castling_rights_);
 
-    side_to_move_ = ~side_to_move_;
-    zobrist_key_ ^= Zobrist::SideKey;
+    side_to_move_ = them;
+    pos_history_.push_back(zobrist_key_);
+
+    accumulator_.computed[0] = false;
+    accumulator_.computed[1] = false;
 }
 
-void Board::unmake_move(Move m) {
+void Board::unmake_move(const Move& m) {
     if (history_.empty()) return;
 
     StateInfo state = history_.back();
     history_.pop_back();
 
-    side_to_move_ = ~side_to_move_;
-    if (side_to_move_ == Color::Black) {
-        fullmove_number_--;
+    pos_history_.pop_back();
+
+    Color us = side_to_move_;
+    Color them = ~us;
+    side_to_move_ = them;
+
+    Square from = m.from();
+    Square to = m.to();
+
+    Piece p = piece_at(to);
+    if (m.is_promotion()) {
+        remove_piece(to);
+        p = make_piece(them, PieceType::Pawn);
+        set_piece(from, p);
+    } else {
+        remove_piece(to);
+        set_piece(from, p);
+    }
+
+    if (state.captured_piece != Piece::None && !m.is_ep()) {
+        set_piece(to, state.captured_piece);
+    }
+
+    if (m.is_ep()) {
+        Square cap_sq = make_square(file_of(to), rank_of(from));
+        Piece ep_cap = make_piece(us, PieceType::Pawn);
+        set_piece(cap_sq, ep_cap);
+    }
+
+    if (m.is_castle()) {
+        Square rfrom = Square::None;
+        Square rto = Square::None;
+
+        if (to == Square::g1) { rfrom = Square::h1; rto = Square::f1; }
+        else if (to == Square::c1) { rfrom = Square::a1; rto = Square::d1; }
+        else if (to == Square::g8) { rfrom = Square::h8; rto = Square::f8; }
+        else if (to == Square::c8) { rfrom = Square::a8; rto = Square::d8; }
+
+        Piece rook = piece_at(rto);
+        remove_piece(rto);
+        set_piece(rfrom, rook);
     }
 
     castling_rights_ = state.castling_rights;
-    en_passant_sq_   = state.en_passant_sq;
-    halfmove_clock_  = state.halfmove_clock;
-
-    Square from = m.from();
-    Square to   = m.to();
-    MoveType type = m.type();
-
-    Piece moved_piece = piece_at(to);
-
-    remove_piece(to);
-
-    if (m.is_promotion()) {
-        set_piece(from, make_piece(side_to_move_, PieceType::Pawn));
-    } else {
-        set_piece(from, moved_piece);
-    }
-
-    if (state.captured_piece != Piece::None) {
-        Square cap_sq = (type == MoveType::EnPassant)
-            ? make_square(file_of(to), rank_of(from))
-            : to;
-        set_piece(cap_sq, state.captured_piece);
-    }
-
-    if (type == MoveType::KingCastle) {
-        Square rook_from = (side_to_move_ == Color::White) ? Square::h1 : Square::h8;
-        Square rook_to   = (side_to_move_ == Color::White) ? Square::f1 : Square::f8;
-        Piece rook = piece_at(rook_to);
-        remove_piece(rook_to);
-        set_piece(rook_from, rook);
-    } else if (type == MoveType::QueenCastle) {
-        Square rook_from = (side_to_move_ == Color::White) ? Square::a1 : Square::a8;
-        Square rook_to   = (side_to_move_ == Color::White) ? Square::d1 : Square::d8;
-        Piece rook = piece_at(rook_to);
-        remove_piece(rook_to);
-        set_piece(rook_from, rook);
-    }
-
+    ep_square_ = state.ep_square;
+    halfmove_clock_ = state.halfmove_clock;
     zobrist_key_ = state.zobrist_key;
+
+    accumulator_.computed[0] = false;
+    accumulator_.computed[1] = false;
 }
 
 void Board::make_null_move() {
     StateInfo state;
     state.castling_rights = castling_rights_;
-    state.en_passant_sq   = en_passant_sq_;
-    state.halfmove_clock  = halfmove_clock_;
-    state.captured_piece  = Piece::None;
-    state.zobrist_key     = zobrist_key_;
+    state.ep_square = ep_square_;
+    state.halfmove_clock = halfmove_clock_;
+    state.zobrist_key = zobrist_key_;
+    state.captured_piece = Piece::None;
 
     history_.push_back(state);
 
-    if (en_passant_sq_ != Square::None) {
-        zobrist_key_ ^= Zobrist::EnPassantKeys[static_cast<size_t>(en_passant_sq_)];
-        en_passant_sq_ = Square::None;
+    zobrist_key_ ^= Zobrist::side_to_move();
+
+    if (ep_square_ != Square::None) {
+        zobrist_key_ ^= Zobrist::en_passant(file_of(ep_square_));
+        ep_square_ = Square::None;
     }
 
     side_to_move_ = ~side_to_move_;
-    zobrist_key_ ^= Zobrist::SideKey;
+    pos_history_.push_back(zobrist_key_);
 }
 
 void Board::unmake_null_move() {
@@ -282,32 +321,36 @@ void Board::unmake_null_move() {
     StateInfo state = history_.back();
     history_.pop_back();
 
+    pos_history_.pop_back();
+
     side_to_move_ = ~side_to_move_;
+
     castling_rights_ = state.castling_rights;
-    en_passant_sq_   = state.en_passant_sq;
-    halfmove_clock_  = state.halfmove_clock;
-    zobrist_key_     = state.zobrist_key;
+    ep_square_ = state.ep_square;
+    halfmove_clock_ = state.halfmove_clock;
+    zobrist_key_ = state.zobrist_key;
 }
 
 std::string Board::to_ascii() const {
-    std::string out;
-    out.reserve(256);
-    out += "  +-----------------+\n";
+    std::string s = "+---+---+---+---+---+---+---+---+\n";
     for (int r = 7; r >= 0; --r) {
-        out += std::to_string(r + 1) + " | ";
+        s += "|";
         for (int f = 0; f < 8; ++f) {
             Square sq = make_square(static_cast<File>(f), static_cast<Rank>(r));
             Piece p = piece_at(sq);
-            out += piece_to_char(p);
-            out += ' ';
+            char c = ' ';
+            if (p != Piece::None) {
+                c = piece_to_char(p);
+            }
+            s += " ";
+            s += c;
+            s += " |";
         }
-        out += "|\n";
+        s += " " + std::to_string(r + 1) + "\n+---+---+---+---+---+---+---+---+\n";
     }
-    out += "  +-----------------+\n";
-    out += "    a b c d e f g h\n";
-    out += "Side to move: " + std::string(side_to_move_ == Color::White ? "White" : "Black") + "\n";
-    out += "Zobrist Key : " + std::to_string(zobrist_key_) + "\n";
-    return out;
+    s += "  a   b   c   d   e   f   g   h\n";
+    s += "Side to move: " + std::string(side_to_move_ == Color::White ? "White" : "Black") + "\n";
+    return s;
 }
 
 } // namespace heavensgate

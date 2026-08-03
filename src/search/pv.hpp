@@ -3,6 +3,8 @@
 #include "../core/types.hpp"
 #include <array>
 #include <string>
+#include <vector>
+#include <algorithm>
 
 namespace heavensgate {
 
@@ -13,6 +15,10 @@ struct PrincipalVariation {
     int length{0};
 
     void clear() noexcept { length = 0; }
+
+    std::vector<Move> to_vector() const {
+        return std::vector<Move>(moves.begin(), moves.begin() + length);
+    }
 
     std::string to_string() const {
         std::string s;

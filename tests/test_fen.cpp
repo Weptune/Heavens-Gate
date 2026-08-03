@@ -7,7 +7,7 @@ namespace heavensgate::test {
 
 static bool test_fen_startpos() {
     Board board;
-    if (!FEN::parse(StartposFEN, board)) return false;
+    if (!FEN::parse(FEN::StartPOS, board)) return false;
 
     if (board.side_to_move() != Color::White) return false;
     if (board.castling_rights() != AllCastling) return false;
@@ -16,7 +16,7 @@ static bool test_fen_startpos() {
     if (board.piece_at(Square::e8) != Piece::BlackKing) return false;
 
     std::string fen_out = FEN::to_string(board);
-    return fen_out == StartposFEN;
+    return fen_out == FEN::StartPOS;
 }
 
 static bool test_fen_custom_position() {
@@ -33,10 +33,18 @@ static bool test_fen_custom_position() {
     return fen_out == custom_fen;
 }
 
-static bool dummy_fen_init = []() {
-    register_test("FEN Parser: Standard Initial Position", test_fen_startpos);
-    register_test("FEN Parser: Custom Kiweteam Position", test_fen_custom_position);
-    return true;
-}();
-
 } // namespace heavensgate::test
+
+namespace heavensgate {
+
+void test_fen() {
+    std::cout << "[RUN] FEN: Startpos parsing and serialization ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_fen_startpos(), "Startpos FEN parsing mismatch!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] FEN: Custom position (Kiwipete) parsing ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_fen_custom_position(), "Custom FEN parsing mismatch!");
+    std::cout << "PASSED" << std::endl;
+}
+
+} // namespace heavensgate

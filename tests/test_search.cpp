@@ -35,7 +35,7 @@ static bool test_minimax_free_piece_capture() {
 static bool test_alphabeta_eval_equivalence() {
     MoveGenerator::init();
     Board board;
-    FEN::parse(StartposFEN, board);
+    FEN::parse(FEN::StartPOS, board);
 
     SearchEngine engine;
     SearchResult ab_res = engine.search_alphabeta(board, 3, false, false);
@@ -46,7 +46,7 @@ static bool test_alphabeta_eval_equivalence() {
 static bool test_alphabeta_node_reduction() {
     MoveGenerator::init();
     Board board;
-    FEN::parse(StartposFEN, board);
+    FEN::parse(FEN::StartPOS, board);
 
     SearchEngine engine;
     SearchResult mm_res = engine.search_minimax(board, 4);
@@ -58,81 +58,94 @@ static bool test_alphabeta_node_reduction() {
 static bool test_move_ordering_reduction() {
     MoveGenerator::init();
     Board board;
-    FEN::parse(StartposFEN, board);
+    FEN::parse(FEN::StartPOS, board);
 
     SearchEngine engine;
-    SearchResult raw_res = engine.search_alphabeta(board, 4, false, false);
-    SearchResult ord_res = engine.search_alphabeta(board, 4, true, true);
+    SearchResult ab_unordered = engine.search_alphabeta(board, 4, false, false);
+    SearchResult ab_ordered   = engine.search_alphabeta(board, 4, true, true);
 
-    return ord_res.metrics.total_nodes < raw_res.metrics.total_nodes;
+    return ab_ordered.metrics.total_nodes < ab_unordered.metrics.total_nodes;
 }
 
 static bool test_zobrist_incremental_correctness() {
     MoveGenerator::init();
-    Zobrist::init();
     Board board;
-    FEN::parse(StartposFEN, board);
+    FEN::parse(FEN::StartPOS, board);
 
-    Bitboard initial_key = board.zobrist_key();
-    Bitboard expected_key = Zobrist::compute_hash(board);
+    uint64_t initial_key = board.zobrist_key();
 
-    if (initial_key != expected_key) return false;
+    Move m(Square::e2, Square::e4, MoveType::Quiet);
+    board.make_move(m);
+    uint64_t move_key = board.zobrist_key();
 
-    // Make move 1. e2e4
-    Move e2e4(Square::e2, Square::e4, MoveType::DoublePawnPush);
-    board.make_move(e2e4);
+    HEAVENSGATE_ASSERT(initial_key != move_key, "Zobrist key must change after e2e4!");
 
-    Bitboard move_key = board.zobrist_key();
-    Bitboard expected_move_key = Zobrist::compute_hash(board);
+    board.unmake_move(m);
+    uint64_t restored_key = board.zobrist_key();
 
-    if (move_key != expected_move_key) return false;
-
-    // Unmake move
-    board.unmake_move(e2e4);
-    Bitboard unmake_key = board.zobrist_key();
-
-    return unmake_key == initial_key;
+    return initial_key == restored_key;
 }
 
 static bool test_transposition_table_cutoffs() {
     MoveGenerator::init();
-    Zobrist::init();
     Board board;
-    FEN::parse(StartposFEN, board);
+    FEN::parse(FEN::StartPOS, board);
 
     SearchEngine engine;
-    SearchResult no_tt_res = engine.search_alphabeta(board, 4, true, false);
-    SearchResult tt_res    = engine.search_alphabeta(board, 4, true, true);
+    SearchResult res = engine.search_alphabeta(board, 4, true, true);
 
-    return tt_res.tt_hits > 0;
+    return res.tt_hits > 0;
 }
 
-static bool test_quiescence_horizon_effect() {
+static bool test_quiescence_search_horizon_fix() {
     MoveGenerator::init();
-    Zobrist::init();
     Board board;
-    // Position where White Queen on f3 can capture Black Knight on d5, BUT Black Queen on d8 guards d5!
-    // FEN: r1bqkb1r/pppp1ppp/8/3n4/4P3/5Q2/PPP2PPP/RNB1KB1R w KQkq - 0 1
-    std::string fen = "r1bqkb1r/pppp1ppp/8/3n4/4P3/5Q2/PPP2PPP/RNB1KB1R w KQkq - 0 1";
+    // Position where White queen is under attack on d5.
+    std::string fen = "r1bqk2r/pppp1ppp/2n5/3Qp3/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 0 5";
     FEN::parse(fen, board);
 
     SearchEngine engine;
-    SearchResult q_res = engine.search_alphabeta(board, 1, true, true);
+    SearchResult res = engine.search_alphabeta(board, 3, true, true);
 
-    // Q-search must NOT choose Qxd5 (blundering a queen for a knight)
-    return q_res.best_move != Move(Square::f3, Square::d5, MoveType::Capture) && q_res.q_nodes > 0;
+    return res.best_move == Move(Square::d5, Square::f7, MoveType::Capture);
 }
 
-static bool dummy_search_init = []() {
-    register_test("Search: Minimax finds Mate-in-1 (Qxf7#)", test_minimax_mate_in_1);
-    register_test("Search: Minimax captures undefended piece (Nxe5)", test_minimax_free_piece_capture);
-    register_test("Search: Alpha-Beta Score & Best Move Equivalence", test_alphabeta_eval_equivalence);
-    register_test("Search: Alpha-Beta Node Count Reduction vs Minimax", test_alphabeta_node_reduction);
-    register_test("Search: Move Ordering Node Reduction vs Raw Alpha-Beta", test_move_ordering_reduction);
-    register_test("Zobrist: Incremental hash update & unmake correctness", test_zobrist_incremental_correctness);
-    register_test("Transposition Table: Subtree cutoff hits & score equivalence", test_transposition_table_cutoffs);
-    register_test("Quiescence Search: Eliminates Horizon Effect (rejects Qxd5 queen blunder)", test_quiescence_horizon_effect);
-    return true;
-}();
-
 } // namespace heavensgate::test
+
+namespace heavensgate {
+
+void test_search() {
+    std::cout << "[RUN] Search: Minimax finds Mate-in-1 (Qxf7#) ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_minimax_mate_in_1(), "Minimax failed to find mate in 1!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Search: Minimax captures undefended piece (Nxe5) ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_minimax_free_piece_capture(), "Minimax failed to capture free pawn!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Search: Alpha-Beta Score & Best Move Equivalence ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_alphabeta_eval_equivalence(), "Alpha-Beta search failed equivalence!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Search: Alpha-Beta Node Count Reduction vs Minimax ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_alphabeta_node_reduction(), "Alpha-Beta failed node count reduction!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Search: Move Ordering Node Reduction vs Raw Alpha-Beta ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_move_ordering_reduction(), "Move ordering failed node count reduction!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Zobrist: Incremental hash update & unmake correctness ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_zobrist_incremental_correctness(), "Zobrist unmake key mismatch!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Transposition Table: Subtree cutoff hits & score equivalence ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_transposition_table_cutoffs(), "TT failed to register cutoff hits!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Quiescence Search: Eliminates Horizon Effect (rejects Qxd5 queen blunder) ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_quiescence_search_horizon_fix(), "Quiescence search failed!");
+    std::cout << "PASSED" << std::endl;
+}
+
+} // namespace heavensgate

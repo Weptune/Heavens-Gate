@@ -1,15 +1,18 @@
 #include "eval.hpp"
 #include "pst.hpp"
+#include "nnue.hpp"
+#include "tensor_eval.hpp"
 #include <algorithm>
 
 namespace heavensgate {
 
-EvalMode Evaluator::current_mode_ = EvalMode::MasterPositional;
+EvalMode Evaluator::current_mode_ = EvalMode::NNUE;
 
 void Evaluator::init() {
     PST::init();
     EvalFeatures::init();
-    current_mode_ = EvalMode::MasterPositional;
+    NNUEEvaluator::init();
+    current_mode_ = EvalMode::NNUE;
 }
 
 int Evaluator::evaluate_side(const Board& board, Color side) {
@@ -45,11 +48,11 @@ int Evaluator::evaluate_side(const Board& board, Color side) {
     }
 
     // Master Positional Features
-    int pawn_struct = EvalFeatures::evaluate_pawn_structure(board, side);
-    int passed_pawns= EvalFeatures::evaluate_passed_pawns(board, side);
-    int king_safety = EvalFeatures::evaluate_king_safety(board, side);
-    int activity    = EvalFeatures::evaluate_piece_activity(board, side);
-    int mobility    = EvalFeatures::evaluate_mobility(board, side);
+    int pawn_struct  = EvalFeatures::evaluate_pawn_structure(board, side);
+    int passed_pawns = EvalFeatures::evaluate_passed_pawns(board, side);
+    int king_safety  = EvalFeatures::evaluate_king_safety(board, side);
+    int activity     = EvalFeatures::evaluate_piece_activity(board, side);
+    int mobility     = EvalFeatures::evaluate_mobility(board, side);
 
     int pos_total = pawn_struct + passed_pawns + king_safety + activity + mobility;
 
@@ -69,6 +72,14 @@ int Evaluator::evaluate_side(const Board& board, Color side) {
 }
 
 int Evaluator::evaluate(const Board& board) {
+    if (current_mode_ == EvalMode::NNUE) {
+        return NNUEEvaluator::evaluate(board, const_cast<Board&>(board).accumulator());
+    }
+
+    if (current_mode_ == EvalMode::TensorNetwork) {
+        return TensorMPS::instance().evaluate(board);
+    }
+
     int white_score = evaluate_side(board, Color::White);
     int black_score = evaluate_side(board, Color::Black);
 

@@ -6,6 +6,8 @@
 #include "movegen/movegen.hpp"
 #include "movegen/perft.hpp"
 #include "evaluation/eval.hpp"
+#include "evaluation/tensor_eval.hpp"
+#include "evaluation/tensor_train.hpp"
 #include "search/search.hpp"
 #include "benchmark/metrics.hpp"
 #include "uci/uci.hpp"
@@ -23,6 +25,15 @@ static std::string trim(const std::string& str) {
     if (first == std::string::npos) return "";
     size_t last = str.find_last_not_of(" \t\r\n");
     return str.substr(first, (last - first + 1));
+}
+
+static std::string pv_to_string(const std::vector<Move>& pv) {
+    std::string s;
+    for (size_t i = 0; i < pv.size(); ++i) {
+        if (i > 0) s += " ";
+        s += move_to_uci(pv[i]);
+    }
+    return s;
 }
 
 const std::vector<std::string> TournamentOpenings = {
@@ -343,7 +354,7 @@ int main(int argc, char* argv[]) {
             std::cout << "\nCompleted Depth : " << res.completed_depth << "\n";
             std::cout << "Best Move       : " << move_to_uci(res.best_move) << "\n";
             std::cout << "Eval            : " << res.best_score << " cp\n";
-            std::cout << "PV              : " << res.pv.to_string() << "\n";
+            std::cout << "PV              : " << pv_to_string(res.pv) << "\n";
             std::cout << "Q-Nodes         : " << res.q_nodes << " nodes\n";
             std::cout << "TT Hits         : " << res.tt_hits << " (" << std::fixed << std::setprecision(1) << search_engine.tt().hit_rate() << "% hit rate)\n";
             std::cout << res.metrics.report_markdown() << "\n";
@@ -359,7 +370,7 @@ int main(int argc, char* argv[]) {
 
             std::cout << "\nBest Move : " << move_to_uci(res.best_move) << "\n";
             std::cout << "Eval      : " << res.best_score << " cp\n";
-            std::cout << "PV        : " << res.pv.to_string() << "\n";
+            std::cout << "PV        : " << pv_to_string(res.pv) << "\n";
             std::cout << "Q-Nodes   : " << res.q_nodes << " nodes\n";
             std::cout << "TT Hits   : " << res.tt_hits << " (" << std::fixed << std::setprecision(1) << search_engine.tt().hit_rate() << "% hit rate)\n";
             std::cout << res.metrics.report_markdown() << "\n";
@@ -382,7 +393,7 @@ int main(int argc, char* argv[]) {
 
             std::cout << "\nBest Move : " << move_to_uci(res.best_move) << "\n";
             std::cout << "Eval      : " << res.best_score << " cp\n";
-            std::cout << "PV        : " << res.pv.to_string() << "\n";
+            std::cout << "PV        : " << pv_to_string(res.pv) << "\n";
             std::cout << res.metrics.report_markdown() << "\n";
         } else if (line.rfind("export_tree", 0) == 0) {
             int d = 3;
@@ -399,6 +410,64 @@ int main(int argc, char* argv[]) {
             std::cout << "Nodes exported: " << res.metrics.total_nodes << "\n";
         } else if (line.rfind("perft", 0) == 0) {
             Perft::run_verification_suite(4);
+        } else if (line.rfind("eval_mode", 0) == 0) {
+            std::string mode_str = trim(line.substr(9));
+            if (mode_str == "tn" || mode_str == "tensor" || mode_str == "tensornetwork") {
+                Evaluator::set_mode(EvalMode::TensorNetwork);
+                std::cout << "[Eval] Evaluation mode set to TensorNetwork (MPS)\n";
+            } else if (mode_str == "nnue") {
+                Evaluator::set_mode(EvalMode::NNUE);
+                std::cout << "[Eval] Evaluation mode set to NNUE\n";
+            } else if (mode_str == "hce" || mode_str == "positional") {
+                Evaluator::set_mode(EvalMode::MasterPositional);
+                std::cout << "[Eval] Evaluation mode set to MasterPositional (HCE)\n";
+            } else if (mode_str == "material") {
+                Evaluator::set_mode(EvalMode::MaterialOnly);
+                std::cout << "[Eval] Evaluation mode set to MaterialOnly\n";
+            } else {
+                std::cout << "Usage: eval_mode <tn|nnue|hce|material>\n";
+            }
+        } else if (line.rfind("train_tn", 0) == 0) {
+            int bond = 16;
+            int epochs = 10;
+            std::stringstream ss(line.substr(8));
+            if (ss >> bond) ss >> epochs;
+
+            std::cout << "Training Tensor Network MPS (Bond D=" << bond << ", Epochs=" << epochs << ") ...\n";
+            TensorMPS model(bond);
+            model.initialize_random(42);
+
+            std::vector<TrainingSample> dataset;
+            std::vector<std::string> sample_fens = {
+                "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+                "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+                "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+            };
+
+            Board b;
+            Evaluator::set_mode(EvalMode::MasterPositional);
+            for (const auto& fen : sample_fens) {
+                if (FEN::parse(fen, b)) {
+                    float target = static_cast<float>(Evaluator::evaluate(b));
+                    dataset.push_back(TensorTrainer::create_sample(b, target));
+                }
+            }
+
+            TensorTrainer::Config cfg;
+            cfg.bond_dim = bond;
+            cfg.epochs = epochs;
+            cfg.batch_size = 8;
+            cfg.learning_rate = 0.003f;
+
+            TensorTrainer trainer(model, cfg);
+            trainer.train(dataset, 0.0f);
+
+            if (model.save_weights("heavensgate.tnw")) {
+                std::cout << "Saved trained Tensor Network weights to heavensgate.tnw\n";
+            }
+            Evaluator::set_mode(EvalMode::TensorNetwork);
         } else if (line == "d" || line == "display") {
             std::cout << board.to_ascii() << "\n";
         } else if (line.rfind("fen ", 0) == 0) {
@@ -409,7 +478,7 @@ int main(int argc, char* argv[]) {
                 std::cout << "Failed to parse FEN string.\n";
             }
         } else {
-            std::cout << "Unknown command. Available: uci, tournament [games] [d], id <d> [time], ab <d>, compare <d>, minimax <d>, perft, exit\n";
+            std::cout << "Unknown command. Available: uci, tournament [games] [d], id <d> [time], ab <d>, compare <d>, minimax <d>, eval_mode <tn|nnue|hce>, train_tn [D] [epochs], perft, exit\n";
         }
     }
 

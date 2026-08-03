@@ -16,6 +16,10 @@ set(ENGINE_SOURCES
     src/movegen/perft.cpp
     src/evaluation/pst.cpp
     src/evaluation/eval_features.cpp
+    src/evaluation/nnue.cpp
+    src/evaluation/tensor_eval.cpp
+    src/evaluation/tensor_train.cpp
+    src/evaluation/tensor_quant.cpp
     src/evaluation/eval.cpp
     src/search/move_picker.cpp
     src/search/tt.cpp

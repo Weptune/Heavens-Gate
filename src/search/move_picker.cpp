@@ -1,5 +1,6 @@
 #include "move_picker.hpp"
 #include "../evaluation/eval.hpp"
+#include "../movegen/movegen.hpp"
 #include <algorithm>
 
 namespace heavensgate {
@@ -9,131 +10,115 @@ MovePicker::MovePicker() {
 }
 
 void MovePicker::clear() noexcept {
-    for (auto& ply_killers : killer_moves_) {
-        ply_killers[0] = Move();
-        ply_killers[1] = Move();
+    killer_moves_.fill({});
+    history_scores_.fill({});
+    countermoves_.fill({});
+}
+
+void MovePicker::add_killer_move(int ply, Move move) noexcept {
+    if (ply >= 128) return;
+    if (killer_moves_[static_cast<size_t>(ply)][0] != move) {
+        killer_moves_[static_cast<size_t>(ply)][1] = killer_moves_[static_cast<size_t>(ply)][0];
+        killer_moves_[static_cast<size_t>(ply)][0] = move;
     }
-    for (auto& c_table : history_table_) {
-        for (auto& from_table : c_table) {
-            from_table.fill(0);
+}
+
+void MovePicker::add_history_score(Color side, Move move, int depth) noexcept {
+    size_t c_idx = static_cast<size_t>(side);
+    size_t from_idx = static_cast<size_t>(move.from());
+    size_t to_idx = static_cast<size_t>(move.to());
+
+    history_scores_[c_idx][from_idx][to_idx] += depth * depth;
+    if (history_scores_[c_idx][from_idx][to_idx] > 10000) {
+        for (auto& from_arr : history_scores_[c_idx]) {
+            for (auto& val : from_arr) {
+                val /= 2;
+            }
         }
     }
-    for (auto& from_table : countermove_table_) {
-        from_table.fill(Move());
-    }
 }
 
-void MovePicker::add_killer_move(int ply, Move m) noexcept {
-    if (ply < 128 && !m.is_capture()) {
-        if (killer_moves_[ply][0] != m) {
-            killer_moves_[ply][1] = killer_moves_[ply][0];
-            killer_moves_[ply][0] = m;
-        }
-    }
+void MovePicker::add_countermove(Move prev_move, Move move) noexcept {
+    size_t from_idx = static_cast<size_t>(prev_move.from());
+    size_t to_idx = static_cast<size_t>(prev_move.to());
+    countermoves_[from_idx][to_idx] = move;
 }
 
-void MovePicker::add_history_score(Color c, Move m, int depth) noexcept {
-    if (c != Color::None && !m.is_capture()) {
-        size_t c_idx = static_cast<size_t>(c);
-        size_t from  = static_cast<size_t>(m.from());
-        size_t to    = static_cast<size_t>(m.to());
-        history_table_[c_idx][from][to] += depth * depth;
-    }
-}
+void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move tt_move, Move prev_move) const noexcept {
+    std::vector<int> scores(moves.size(), 0);
 
-void MovePicker::add_countermove(Move prev_move, Move countermove) noexcept {
-    if (static_cast<bool>(prev_move) && static_cast<bool>(countermove)) {
-        size_t from = static_cast<size_t>(prev_move.from());
-        size_t to   = static_cast<size_t>(prev_move.to());
-        countermove_table_[from][to] = countermove;
-    }
-}
-
-int MovePicker::score_move(const Board& board, Move m, Move pv_move, Move countermove, int ply) const noexcept {
-    // 1. PV Move from TT gets highest priority
-    if (m == pv_move) {
-        return 1'000'000;
-    }
-
-    // 2. MVV-LVA for Captures
-    if (m.is_capture()) {
-        Piece attacker = board.piece_at(m.from());
-        Piece victim   = (m.type() == MoveType::EnPassant)
-            ? make_piece(~board.side_to_move(), PieceType::Pawn)
-            : board.piece_at(m.to());
-
-        int victim_val = 0;
-        switch (piece_type_of(victim)) {
-            case PieceType::Pawn:   victim_val = PawnValue; break;
-            case PieceType::Knight: victim_val = KnightValue; break;
-            case PieceType::Bishop: victim_val = BishopValue; break;
-            case PieceType::Rook:   victim_val = RookValue; break;
-            case PieceType::Queen:  victim_val = QueenValue; break;
-            default: break;
-        }
-
-        int attacker_val = 0;
-        switch (piece_type_of(attacker)) {
-            case PieceType::Pawn:   attacker_val = PawnValue; break;
-            case PieceType::Knight: attacker_val = KnightValue; break;
-            case PieceType::Bishop: attacker_val = BishopValue; break;
-            case PieceType::Rook:   attacker_val = RookValue; break;
-            case PieceType::Queen:  attacker_val = QueenValue; break;
-            default: break;
-        }
-
-        return 100'000 + (victim_val * 10 - attacker_val);
-    }
-
-    // 3. Killer Moves
-    if (ply < 128) {
-        if (m == killer_moves_[ply][0]) return 90'000;
-        if (m == killer_moves_[ply][1]) return 80'000;
-    }
-
-    // 4. Countermove Heuristic
-    if (m == countermove) {
-        return 70'000;
-    }
-
-    // 5. History Heuristic
-    Color us = board.side_to_move();
-    if (us != Color::None) {
-        size_t c_idx = static_cast<size_t>(us);
-        size_t from  = static_cast<size_t>(m.from());
-        size_t to    = static_cast<size_t>(m.to());
-        return history_table_[c_idx][from][to];
-    }
-
-    return 0;
-}
-
-void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move pv_move, Move prev_move) const noexcept {
-    if (moves.empty()) return;
+    Move killer1 = (ply < 128) ? killer_moves_[static_cast<size_t>(ply)][0] : Move();
+    Move killer2 = (ply < 128) ? killer_moves_[static_cast<size_t>(ply)][1] : Move();
 
     Move countermove = Move();
     if (static_cast<bool>(prev_move)) {
-        size_t from = static_cast<size_t>(prev_move.from());
-        size_t to   = static_cast<size_t>(prev_move.to());
-        countermove = countermove_table_[from][to];
+        size_t prev_from = static_cast<size_t>(prev_move.from());
+        size_t prev_to   = static_cast<size_t>(prev_move.to());
+        countermove = countermoves_[prev_from][prev_to];
     }
 
-    std::vector<std::pair<int, Move>> scored_moves;
-    scored_moves.reserve(moves.size());
+    Color side = board.side_to_move();
+    size_t c_idx = static_cast<size_t>(side);
 
-    for (const auto& m : moves) {
-        int score = score_move(board, m, pv_move, countermove, ply);
-        scored_moves.push_back({score, m});
+    for (size_t i = 0; i < moves.size(); ++i) {
+        Move m = moves[i];
+
+        if (m == tt_move) {
+            scores[i] = 2000000;
+        } else if (m.is_capture()) {
+            Piece attacker = board.piece_at(m.from());
+            Piece victim   = board.piece_at(m.to());
+
+            int victim_val = PawnValue;
+            switch (piece_type_of(victim)) {
+                case PieceType::Pawn:   victim_val = PawnValue; break;
+                case PieceType::Knight: victim_val = KnightValue; break;
+                case PieceType::Bishop: victim_val = BishopValue; break;
+                case PieceType::Rook:   victim_val = RookValue; break;
+                case PieceType::Queen:  victim_val = QueenValue; break;
+                default: break;
+            }
+
+            int attacker_val = PawnValue;
+            switch (piece_type_of(attacker)) {
+                case PieceType::Pawn:   attacker_val = PawnValue; break;
+                case PieceType::Knight: attacker_val = KnightValue; break;
+                case PieceType::Bishop: attacker_val = BishopValue; break;
+                case PieceType::Rook:   attacker_val = RookValue; break;
+                case PieceType::Queen:  attacker_val = QueenValue; break;
+                default: break;
+            }
+
+            scores[i] = 1000000 + (victim_val * 10 - attacker_val);
+        } else if (m.is_promotion()) {
+            scores[i] = 900000;
+        } else if (m == killer1) {
+            scores[i] = 800000;
+        } else if (m == killer2) {
+            scores[i] = 700000;
+        } else if (m == countermove) {
+            scores[i] = 600000;
+        } else {
+            size_t from_idx = static_cast<size_t>(m.from());
+            size_t to_idx   = static_cast<size_t>(m.to());
+            scores[i] = history_scores_[c_idx][from_idx][to_idx];
+        }
     }
 
-    std::sort(scored_moves.begin(), scored_moves.end(),
-        [](const auto& a, const auto& b) {
-            return a.first > b.first;
-        });
+    // Insertion sort
+    for (size_t i = 1; i < moves.size(); ++i) {
+        Move key_move = moves[i];
+        int key_score = scores[i];
+        int j = static_cast<int>(i) - 1;
 
-    moves.clear();
-    for (const auto& item : scored_moves) {
-        moves.push_back(item.second);
+        while (j >= 0 && scores[static_cast<size_t>(j)] < key_score) {
+            moves[static_cast<size_t>(j + 1)] = moves[static_cast<size_t>(j)];
+            scores[static_cast<size_t>(j + 1)] = scores[static_cast<size_t>(j)];
+            j--;
+        }
+
+        moves[static_cast<size_t>(j + 1)] = key_move;
+        scores[static_cast<size_t>(j + 1)] = key_score;
     }
 }
 

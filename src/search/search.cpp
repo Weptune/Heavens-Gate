@@ -1,5 +1,6 @@
 #include "search.hpp"
 #include "../core/fen.hpp"
+#include "../evaluation/eval.hpp"
 #include <iostream>
 #include <algorithm>
 #include <cmath>
@@ -151,8 +152,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     Color us = board.side_to_move();
     bool in_chk = MoveGenerator::in_check(board, us);
 
-    // 0. Check Extension: If in check, extend search depth by +1 ply!
-    if (in_chk) {
+    // Check Extension (bounded by max ply depth 16)
+    if (in_chk && ply < 16) {
         depth++;
     }
 
@@ -381,7 +382,7 @@ SearchResult SearchEngine::search_minimax(Board& board, int depth, bool export_t
 
     result.best_move = best_move;
     result.best_score = best_score;
-    result.pv = pv_table_.get_pv(depth);
+    result.pv = pv_table_.get_pv(depth).to_vector();
     result.metrics = metrics_tracker_.get_metrics();
 
     return result;
@@ -460,7 +461,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
 
     result.best_move = best_move;
     result.best_score = best_score;
-    result.pv = pv_table_.get_pv(depth);
+    result.pv = pv_table_.get_pv(depth).to_vector();
     result.metrics = metrics_tracker_.get_metrics();
     result.tt_hits = tt_.hits();
     result.q_nodes = q_nodes_;
@@ -555,7 +556,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 
         final_result.best_move = current_best_move;
         final_result.best_score = current_best_score;
-        final_result.pv = pv_table_.get_pv(d);
+        final_result.pv = pv_table_.get_pv(d).to_vector();
         final_result.completed_depth = d;
         final_result.tt_hits = tt_.hits();
         final_result.q_nodes = q_nodes_;

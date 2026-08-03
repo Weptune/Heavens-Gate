@@ -2,106 +2,102 @@
 
 #include "../core/types.hpp"
 #include "../core/bitwise.hpp"
-#include "../core/zobrist.hpp"
 #include <array>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace heavensgate {
 
+struct Accumulator {
+    std::array<int16_t, 256> v[2]; // 0: White, 1: Black
+    bool computed[2]{ false, false };
+};
+
 struct StateInfo {
-    CastlingRights castling_rights{CastlingNone};
-    Square en_passant_sq{Square::None};
-    uint16_t halfmove_clock{0};
-    Piece captured_piece{Piece::None};
-    Bitboard zobrist_key{0ULL};
+    Piece captured_piece = Piece::None;
+    CastlingRights castling_rights = CastlingNone;
+    Square ep_square = Square::None;
+    int halfmove_clock = 0;
+    uint64_t zobrist_key = 0ULL;
 };
 
 class Board {
-private:
-    std::array<Bitboard, 13> piece_bb_{};
-    std::array<Bitboard, 3> color_bb_{};
-    std::array<Piece, 64> mailbox_{};
-
-    Color side_to_move_{Color::White};
-    CastlingRights castling_rights_{CastlingNone};
-    Square en_passant_sq_{Square::None};
-    uint16_t halfmove_clock_{0};
-    uint16_t fullmove_number_{1};
-    Bitboard zobrist_key_{0ULL};
-
-    std::vector<StateInfo> history_{};
+    friend class FEN;
 
 public:
     Board();
-    
-    // Position manipulation
-    void clear();
-    void set_piece(Square sq, Piece p);
-    void remove_piece(Square sq);
-    void recalculate_zobrist_key() noexcept;
 
-    // Getters
-    constexpr Color side_to_move() const noexcept { return side_to_move_; }
-    constexpr CastlingRights castling_rights() const noexcept { return castling_rights_; }
-    constexpr Square en_passant_sq() const noexcept { return en_passant_sq_; }
-    constexpr uint16_t halfmove_clock() const noexcept { return halfmove_clock_; }
-    constexpr uint16_t fullmove_number() const noexcept { return fullmove_number_; }
-    constexpr Bitboard zobrist_key() const noexcept { return zobrist_key_; }
+    void reset();
+    void load_fen(const std::string& fen_str);
 
-    constexpr Bitboard pieces(Piece p) const noexcept {
-        if (p == Piece::None) return EmptyBB;
-        return piece_bb_[static_cast<size_t>(p)];
+    // Piece accessors
+    Piece piece_at(Square sq) const { return square_pieces_[static_cast<size_t>(sq)]; }
+    Bitboard pieces(Piece p) const {
+        size_t idx = static_cast<size_t>(p);
+        return idx < 12 ? piece_bitboards_[idx] : EmptyBB;
     }
-    constexpr Bitboard pieces(Color c) const noexcept {
-        if (c == Color::None) return EmptyBB;
-        return color_bb_[static_cast<size_t>(c)];
+    Bitboard pieces(Color c) const {
+        size_t idx = static_cast<size_t>(c);
+        return idx < 2 ? color_bitboards_[idx] : EmptyBB;
     }
-    constexpr Bitboard pieces(PieceType pt) const noexcept {
-        if (pt == PieceType::None) return EmptyBB;
-        return piece_bb_[static_cast<size_t>(make_piece(Color::White, pt))] |
-               piece_bb_[static_cast<size_t>(make_piece(Color::Black, pt))];
-    }
-    constexpr Bitboard occupied() const noexcept { return color_bb_[2]; }
-    constexpr Piece piece_at(Square sq) const noexcept {
-        if (sq == Square::None) return Piece::None;
-        return mailbox_[static_cast<size_t>(sq)];
-    }
+    Bitboard occupied() const { return color_bitboards_[0] | color_bitboards_[1]; }
 
-    constexpr Square king_square(Color c) const noexcept {
-        if (c == Color::None) return Square::None;
-        Bitboard k = piece_bb_[static_cast<size_t>(make_piece(c, PieceType::King))];
-        return k ? lsb(k) : Square::None;
-    }
+    Color side_to_move() const { return side_to_move_; }
+    CastlingRights castling_rights() const { return castling_rights_; }
+    Square ep_square() const { return ep_square_; }
+    Square en_passant_sq() const { return ep_square_; }
+    int halfmove_clock() const { return halfmove_clock_; }
+    int fullmove_number() const { return fullmove_number_; }
+    uint64_t zobrist_key() const { return zobrist_key_; }
+    Square king_square(Color c) const { return king_squares_[static_cast<size_t>(c)]; }
+    bool has_non_pawn_material(Color c) const;
 
-    bool has_non_pawn_material(Color c) const noexcept {
-        Bitboard knights = pieces(make_piece(c, PieceType::Knight));
-        Bitboard bishops = pieces(make_piece(c, PieceType::Bishop));
-        Bitboard rooks   = pieces(make_piece(c, PieceType::Rook));
-        Bitboard queens  = pieces(make_piece(c, PieceType::Queen));
-        return (knights | bishops | rooks | queens) != EmptyBB;
-    }
+    // FEN helper setters
+    void set_side_to_move(Color c) { side_to_move_ = c; }
+    void set_castling_rights(CastlingRights cr) { castling_rights_ = cr; }
+    void set_en_passant_sq(Square sq) { ep_square_ = sq; }
+    void set_halfmove_clock(int h) { halfmove_clock_ = h; }
+    void set_fullmove_number(int f) { fullmove_number_ = f; }
+    void recalculate_zobrist_key();
 
-    bool is_repetition() const noexcept;
-    bool is_insufficient_material() const noexcept;
+    // Move execution
+    void make_move(const Move& m);
+    void unmake_move(const Move& m);
 
-    // Mutators
-    void set_side_to_move(Color c) noexcept { side_to_move_ = c; }
-    void set_castling_rights(CastlingRights cr) noexcept { castling_rights_ = cr; }
-    void set_en_passant_sq(Square sq) noexcept { en_passant_sq_ = sq; }
-    void set_halfmove_clock(uint16_t hm) noexcept { halfmove_clock_ = hm; }
-    void set_fullmove_number(uint16_t fm) noexcept { fullmove_number_ = fm; }
-
-    // Make & Unmake move
-    void make_move(Move m);
-    void unmake_move(Move m);
     void make_null_move();
     void unmake_null_move();
 
-    // String formatting
+    // Game end & draw checks
+    bool is_repetition() const;
+    bool is_insufficient_material() const;
     std::string to_ascii() const;
-};
 
-constexpr std::string_view StartposFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    // NNUE Accumulator accessor
+    Accumulator& accumulator() { return accumulator_; }
+    const Accumulator& accumulator() const { return accumulator_; }
+
+    void set_piece(Square sq, Piece p);
+    void remove_piece(Square sq);
+    void clear();
+
+private:
+    std::array<Piece, 64> square_pieces_{};
+    std::array<Bitboard, 12> piece_bitboards_{};
+    std::array<Bitboard, 2>  color_bitboards_{};
+    std::array<Square, 2>    king_squares_{ Square::None, Square::None };
+
+    Color side_to_move_ = Color::White;
+    CastlingRights castling_rights_ = CastlingNone;
+    Square ep_square_ = Square::None;
+    int halfmove_clock_ = 0;
+    int fullmove_number_ = 1;
+
+    uint64_t zobrist_key_ = 0ULL;
+
+    std::vector<StateInfo> history_;
+    std::vector<uint64_t> pos_history_;
+
+    Accumulator accumulator_;
+};
 
 } // namespace heavensgate

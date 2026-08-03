@@ -174,6 +174,10 @@ public:
         return type() == MoveType::KingCastle || type() == MoveType::QueenCastle;
     }
 
+    constexpr bool is_ep() const noexcept {
+        return type() == MoveType::EnPassant;
+    }
+
     constexpr bool operator==(const Move& other) const noexcept { return data_ == other.data_; }
     constexpr bool operator!=(const Move& other) const noexcept { return data_ != other.data_; }
     constexpr explicit operator bool() const noexcept { return data_ != 0; }

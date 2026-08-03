@@ -51,5 +51,12 @@ int run_all_tests() {
 } // namespace heavensgate::test
 
 int main() {
+    std::cout << "\n======================================================\n";
+    std::cout << "          RUNNING ALL SYSTEM TEST MODULES             \n";
+    std::cout << "======================================================\n";
+    heavensgate::test_fen();
+    heavensgate::test_movegen();
+    heavensgate::test_eval();
+    heavensgate::test_search();
     return heavensgate::test::run_all_tests();
 }

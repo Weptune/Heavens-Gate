@@ -9,10 +9,8 @@ namespace heavensgate {
 class MovePicker {
 private:
     std::array<std::array<Move, 2>, 128> killer_moves_{};
-    std::array<std::array<std::array<int, 64>, 64>, 2> history_table_{};
-    std::array<std::array<Move, 64>, 64> countermove_table_{};
-
-    int score_move(const Board& board, Move m, Move pv_move, Move countermove, int ply) const noexcept;
+    std::array<std::array<std::array<int, 64>, 64>, 2> history_scores_{};
+    std::array<std::array<Move, 64>, 64> countermoves_{};
 
 public:
     MovePicker();

@@ -13,7 +13,7 @@ void UCI::handle_position(const std::string& line, Board& board) {
     ss >> sub_token;
 
     if (sub_token == "startpos") {
-        FEN::parse(StartposFEN, board);
+        FEN::parse(FEN::StartPOS, board);
         ss >> sub_token; // may be "moves"
     } else if (sub_token == "fen") {
         std::string fen_str;
@@ -71,20 +71,19 @@ void UCI::handle_go(const std::string& line, Board& board, SearchEngine& engine)
 
 void UCI::loop() {
     Board board;
-    FEN::parse(StartposFEN, board);
+    FEN::parse(FEN::StartPOS, board);
     SearchEngine engine;
 
     std::string line;
     while (std::getline(std::cin, line)) {
         if (line == "uci") {
-            std::cout << "id name Heaven's Gate 10.0\n";
+            std::cout << "id name Heaven's Gate 10.0 (NNUE Edition)\n";
             std::cout << "id author DeepMind Antigravity\n";
             std::cout << "uciok" << std::endl;
         } else if (line == "isready") {
             std::cout << "readyok" << std::endl;
         } else if (line == "ucinewgame") {
-            engine.tt().clear();
-            FEN::parse(StartposFEN, board);
+            FEN::parse(FEN::StartPOS, board);
         } else if (line.rfind("position", 0) == 0) {
             handle_position(line, board);
         } else if (line.rfind("go", 0) == 0) {
