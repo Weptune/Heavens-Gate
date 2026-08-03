@@ -2,6 +2,7 @@
 #include "pst.hpp"
 #include "nnue.hpp"
 #include "tensor_eval.hpp"
+#include "tensor_quant.hpp"
 #include <algorithm>
 
 namespace heavensgate {
@@ -77,7 +78,7 @@ int Evaluator::evaluate(const Board& board) {
     }
 
     if (current_mode_ == EvalMode::TensorNetwork) {
-        return TensorMPS::instance().evaluate(board);
+        return TensorMPSQuantized::instance().evaluate(board);
     }
 
     int white_score = evaluate_side(board, Color::White);
@@ -85,6 +86,38 @@ int Evaluator::evaluate(const Board& board) {
 
     int relative_score = white_score - black_score;
     return (board.side_to_move() == Color::White) ? relative_score : -relative_score;
+}
+
+static constexpr int MAX_SEARCH_PLY = 128;
+static TensorMPSQuantized::QuantizedEnvironment s_quant_env[MAX_SEARCH_PLY];
+
+void Evaluator::reset_incremental_cache() {
+    for (int i = 0; i < MAX_SEARCH_PLY; i++) {
+        s_quant_env[i].valid_up_to = -1;
+    }
+}
+
+int Evaluator::evaluate_incremental(const Board& board, int ply, Square from_sq, Square to_sq) {
+    if (current_mode_ != EvalMode::TensorNetwork) {
+        return evaluate(board);
+    }
+
+    int idx = std::max(0, std::min(MAX_SEARCH_PLY - 1, ply));
+
+    if (idx == 0 || from_sq == Square::None || to_sq == Square::None || s_quant_env[idx - 1].valid_up_to < 0) {
+        s_quant_env[idx].valid_up_to = -1;
+        return TensorMPSQuantized::instance().evaluate_incremental(board, s_quant_env[idx]);
+    }
+
+    const auto& inv_hilbert = HilbertCurve::inverse_order();
+    int site_from = inv_hilbert[static_cast<int>(from_sq)];
+    int site_to   = inv_hilbert[static_cast<int>(to_sq)];
+    int min_site  = std::min(site_from, site_to);
+
+    s_quant_env[idx] = s_quant_env[idx - 1];
+    s_quant_env[idx].valid_up_to = min_site;
+
+    return TensorMPSQuantized::instance().evaluate_incremental(board, s_quant_env[idx]);
 }
 
 } // namespace heavensgate

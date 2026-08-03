@@ -16,7 +16,7 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
     Color us = board.side_to_move();
     bool in_chk = MoveGenerator::in_check(board, us);
 
-    int stand_pat = Evaluator::evaluate(board);
+    int stand_pat = Evaluator::evaluate_incremental(board, ply);
     if (!in_chk) {
         if (stand_pat >= beta) {
             return beta;
@@ -197,7 +197,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     // 2. Reverse Futility Pruning (Static Null Move Pruning)
     if (depth <= 3 && !in_chk && std::abs(beta) < ScoreMate - 1000) {
-        int eval = Evaluator::evaluate(board);
+        int eval = Evaluator::evaluate_incremental(board, ply);
         int margin = 120 * depth;
         if (eval - margin >= beta) {
             metrics_tracker_.add_cut();
@@ -393,6 +393,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     move_picker_.clear();
     if (use_tt) tt_.clear();
     q_nodes_ = 0;
+    Evaluator::reset_incremental_cache();
 
     metrics_tracker_.start_timer();
     metrics_tracker_.set_version("v10.0 (Master Edition)");
