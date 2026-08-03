@@ -132,7 +132,6 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     if (is_time_up()) return 0;
 
-    // Check Repetition Draw at non-root plies
     if (ply > 0 && board.is_repetition()) {
         return ScoreDraw;
     }
@@ -243,20 +242,23 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         int score = 0;
 
-        // 4. Principal Variation Search (PVS / NegaScout) & LMR
+        // 4. Corrected Principal Variation Search (PVS / NegaScout) & LMR
         if (i == 0) {
             score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
         } else {
+            // Late Move Reductions (LMR) for quiet moves
             if (i >= 4 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk) {
                 int reduction = 1 + static_cast<int>(std::log(depth) * std::log(i + 1) / 2.5);
                 int reduced_depth = std::max(1, depth - 1 - reduction);
 
                 score = -negamax_alphabeta(board, reduced_depth, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
             } else {
+                // Zero-window search
                 score = -negamax_alphabeta(board, depth - 1, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
             }
 
-            if (score > alpha && score < beta) {
+            // Corrected PVS Re-Search: If zero-window search raised alpha, re-search with full [alpha, beta] window!
+            if (score > alpha) {
                 score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
             }
         }

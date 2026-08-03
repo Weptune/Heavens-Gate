@@ -107,12 +107,11 @@ int EvalFeatures::evaluate_king_safety(const Board& board, Color us) {
     bool is_castled = (kf <= File::FileC || kf >= File::FileF) && 
                       ((us == Color::White && kr == Rank::Rank1) || (us == Color::Black && kr == Rank::Rank8));
 
-    if (!is_castled) return 0; // Do not penalize central pawn pushes before castling!
+    if (!is_castled) return 0;
 
     Color them = ~us;
     int danger_units = 0;
 
-    // King Zone = King square + surrounding squares
     Bitboard king_zone = AttackMasks::king_attacks(ksq) | square_bb(ksq);
 
     // 1. Check friendly pawn shield in front of castled king
@@ -163,6 +162,25 @@ int EvalFeatures::evaluate_piece_activity(const Board& board, Color us) {
 
     Bitboard our_pawns   = board.pieces(make_piece(us, PieceType::Pawn));
     Bitboard enemy_pawns = board.pieces(make_piece(them, PieceType::Pawn));
+
+    // Early Queen Development Penalty: Avoid premature queen raids before minor piece development
+    Square q_sq = (us == Color::White) ? Square::d1 : Square::d8;
+    if (board.piece_at(q_sq) != make_piece(us, PieceType::Queen)) {
+        Square b1_sq = (us == Color::White) ? Square::b1 : Square::b8;
+        Square c1_sq = (us == Color::White) ? Square::c1 : Square::c8;
+        Square f1_sq = (us == Color::White) ? Square::f1 : Square::f8;
+        Square g1_sq = (us == Color::White) ? Square::g1 : Square::g8;
+
+        int home_minors = 0;
+        if (board.piece_at(b1_sq) != Piece::None) home_minors++;
+        if (board.piece_at(c1_sq) != Piece::None) home_minors++;
+        if (board.piece_at(f1_sq) != Piece::None) home_minors++;
+        if (board.piece_at(g1_sq) != Piece::None) home_minors++;
+
+        if (home_minors >= 3) {
+            score -= 25; // Penalize early Queen outings when 3+ minor pieces are still at home!
+        }
+    }
 
     // 1. Bishop Pair Bonus
     Bitboard bishops = board.pieces(make_piece(us, PieceType::Bishop));
