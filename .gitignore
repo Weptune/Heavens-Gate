@@ -1,0 +1,15 @@
+# Executables
+*.exe
+heavensgate
+heavensgate_tests
+
+# Build / Toolchain directories
+tools/
+build/
+.cache/
+*.o
+*.obj
+
+# Generated files
+game_tree.json
+*.log

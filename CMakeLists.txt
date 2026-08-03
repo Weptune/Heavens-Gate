@@ -1,0 +1,46 @@
+cmake_minimum_required(VERSION 3.20)
+project(heavensgate LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Source files
+set(ENGINE_SOURCES
+    src/board/board.cpp
+    src/core/fen.cpp
+    src/movegen/attack_masks.cpp
+    src/movegen/movegen.cpp
+    src/movegen/perft.cpp
+    src/evaluation/eval.cpp
+    src/search/search.cpp
+    src/visualization/exporter.cpp
+    src/benchmark/metrics.cpp
+)
+
+# Main engine CLI binary
+add_executable(heavensgate
+    src/main.cpp
+    ${ENGINE_SOURCES}
+)
+target_include_directories(heavensgate PRIVATE src)
+
+# Unit test suite binary
+add_executable(heavensgate_tests
+    tests/main_test.cpp
+    tests/test_fen.cpp
+    tests/test_movegen.cpp
+    tests/test_perft.cpp
+    tests/test_eval.cpp
+    tests/test_search.cpp
+    ${ENGINE_SOURCES}
+)
+target_include_directories(heavensgate_tests PRIVATE src tests)
+
+if(MSVC)
+    target_compile_options(heavensgate PRIVATE /W4 /O2 /permissive-)
+    target_compile_options(heavensgate_tests PRIVATE /W4 /O2 /permissive-)
+else()
+    target_compile_options(heavensgate PRIVATE -Wall -Wextra -O3)
+    target_compile_options(heavensgate_tests PRIVATE -Wall -Wextra -O3)
+endif()
