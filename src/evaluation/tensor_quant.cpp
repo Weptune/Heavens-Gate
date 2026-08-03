@@ -6,7 +6,43 @@
 #include <cstring>
 #include <iostream>
 
+#if defined(__SSE2__) || defined(_M_AMD64) || defined(_M_X64)
+#include <emmintrin.h>
+#include <tmmintrin.h>
+#endif
+
 namespace heavensgate {
+
+// =============================================================================
+// SIMD Dot Product Helper for 16-bit Fixed-Point Vectors
+// =============================================================================
+
+static inline int32_t dot_product_int16(const int16_t* a, const int16_t* b, int D) {
+#if defined(__SSE2__) || defined(_M_AMD64) || defined(_M_X64)
+    if (D == 16) {
+        __m128i a0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(a));
+        __m128i b0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(b));
+        __m128i p0 = _mm_madd_epi16(a0, b0);
+
+        __m128i a1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(a + 8));
+        __m128i b1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(b + 8));
+        __m128i p1 = _mm_madd_epi16(a1, b1);
+
+        __m128i sum = _mm_add_epi32(p0, p1);
+        __m128i shuf = _mm_shuffle_epi32(sum, _MM_SHUFFLE(1, 0, 3, 2));
+        sum = _mm_add_epi32(sum, shuf);
+        shuf = _mm_shuffle_epi32(sum, _MM_SHUFFLE(2, 3, 0, 1));
+        sum = _mm_add_epi32(sum, shuf);
+
+        return _mm_cvtsi128_si32(sum);
+    }
+#endif
+    int32_t sum = 0;
+    for (int k = 0; k < D; k++) {
+        sum += static_cast<int32_t>(a[k]) * static_cast<int32_t>(b[k]);
+    }
+    return sum;
+}
 
 // =============================================================================
 // Construction
@@ -29,7 +65,7 @@ TensorMPSQuantized& TensorMPSQuantized::instance() {
 }
 
 // =============================================================================
-// Quantization from Float Model
+// Quantization from Float Model (Transposed Bulk Matrices for SIMD)
 // =============================================================================
 
 static int16_t float_to_q14(float val) {
@@ -50,9 +86,17 @@ void TensorMPSQuantized::quantize_from(const TensorMPS& float_model) {
         T_stm_q_[i] = float_to_q14(stm_f[i]);
     }
 
+    // Transpose bulk matrices (row k, col j -> col j, row k) for SIMD vector access
     const float* bulk_f = float_model.bulk_data();
-    for (size_t i = 0; i < T_bulk_q_.size(); i++) {
-        T_bulk_q_[i] = float_to_q14(bulk_f[i]);
+    for (int site = 0; site < TensorMPS::NUM_BULK; site++) {
+        for (int piece = 0; piece < TensorMPS::LOCAL_DIM_SQ; piece++) {
+            size_t base_idx = (site * TensorMPS::LOCAL_DIM_SQ + piece) * D_ * D_;
+            for (int k = 0; k < D_; k++) {
+                for (int j = 0; j < D_; j++) {
+                    T_bulk_q_[base_idx + j * D_ + k] = float_to_q14(bulk_f[base_idx + k * D_ + j]);
+                }
+            }
+        }
     }
 
     const float* right_f = float_model.right_data();
@@ -89,10 +133,8 @@ int TensorMPSQuantized::evaluate(const Board& board) const {
         const int16_t* mat = bulk_matrix_q(site, piece_idx);
 
         for (int j = 0; j < D_; j++) {
-            int32_t sum = 0;
-            for (int k = 0; k < D_; k++) {
-                sum += static_cast<int32_t>(v[k]) * static_cast<int32_t>(mat[k * D_ + j]);
-            }
+            const int16_t* col_j = &mat[j * D_];
+            int32_t sum = dot_product_int16(v, col_j, D_);
             int32_t scaled = sum >> Q_SHIFT;
             v_new[j] = static_cast<int16_t>(std::max(-32768, std::min(32767, scaled)));
         }
@@ -106,10 +148,7 @@ int TensorMPSQuantized::evaluate(const Board& board) const {
     int last_idx = TensorMPS::piece_to_local_index(last_p);
 
     const int16_t* rv = &T_right_q_[last_idx * D_];
-    int64_t raw_acc = 0;
-    for (int j = 0; j < D_; j++) {
-        raw_acc += static_cast<int64_t>(v[j]) * static_cast<int64_t>(rv[j]);
-    }
+    int64_t raw_acc = dot_product_int16(v, rv, D_);
 
     // raw_acc is in Q28 scale (16384^2)
     double raw_float = static_cast<double>(raw_acc) / (16384.0 * 16384.0);
@@ -148,10 +187,8 @@ int TensorMPSQuantized::evaluate_incremental(const Board& board, QuantizedEnviro
         int16_t* v_next = &env.L[(site + 1) * D_];
 
         for (int j = 0; j < D_; j++) {
-            int32_t sum = 0;
-            for (int k = 0; k < D_; k++) {
-                sum += static_cast<int32_t>(v_curr[k]) * static_cast<int32_t>(mat[k * D_ + j]);
-            }
+            const int16_t* col_j = &mat[j * D_];
+            int32_t sum = dot_product_int16(v_curr, col_j, D_);
             int32_t scaled = sum >> Q_SHIFT;
             v_next[j] = static_cast<int16_t>(std::max(-32768, std::min(32767, scaled)));
         }
@@ -166,10 +203,7 @@ int TensorMPSQuantized::evaluate_incremental(const Board& board, QuantizedEnviro
     const int16_t* rv = &T_right_q_[last_idx * D_];
     const int16_t* v_final = &env.L[TensorMPS::NUM_BULK * D_];
 
-    int64_t raw_acc = 0;
-    for (int j = 0; j < D_; j++) {
-        raw_acc += static_cast<int64_t>(v_final[j]) * static_cast<int64_t>(rv[j]);
-    }
+    int64_t raw_acc = dot_product_int16(v_final, rv, D_);
 
     double raw_float = static_cast<double>(raw_acc) / (16384.0 * 16384.0);
     double eval_cp = raw_float * scale_;
