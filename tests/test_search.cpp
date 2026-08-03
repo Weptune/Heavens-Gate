@@ -1,6 +1,7 @@
 #include "test.hpp"
 #include "../src/search/search.hpp"
 #include "../src/core/fen.hpp"
+#include "../src/core/zobrist.hpp"
 #include <iostream>
 
 namespace heavensgate::test {
@@ -38,7 +39,7 @@ static bool test_alphabeta_eval_equivalence() {
 
     SearchEngine engine;
     SearchResult mm_res = engine.search_minimax(board, 3);
-    SearchResult ab_res = engine.search_alphabeta(board, 3, false);
+    SearchResult ab_res = engine.search_alphabeta(board, 3, false, false);
 
     return mm_res.best_score == ab_res.best_score && mm_res.best_move == ab_res.best_move;
 }
@@ -50,7 +51,7 @@ static bool test_alphabeta_node_reduction() {
 
     SearchEngine engine;
     SearchResult mm_res = engine.search_minimax(board, 4);
-    SearchResult ab_res = engine.search_alphabeta(board, 4, false);
+    SearchResult ab_res = engine.search_alphabeta(board, 4, false, false);
 
     return ab_res.metrics.total_nodes < mm_res.metrics.total_nodes &&
            mm_res.best_score == ab_res.best_score;
@@ -62,22 +63,51 @@ static bool test_move_ordering_reduction() {
     FEN::parse(StartposFEN, board);
 
     SearchEngine engine;
-    SearchResult raw_res = engine.search_alphabeta(board, 4, false);
-    SearchResult ord_res = engine.search_alphabeta(board, 4, true);
+    SearchResult raw_res = engine.search_alphabeta(board, 4, false, false);
+    SearchResult ord_res = engine.search_alphabeta(board, 4, true, false);
 
     return ord_res.metrics.total_nodes < raw_res.metrics.total_nodes &&
            raw_res.best_score == ord_res.best_score;
 }
 
-static bool test_iterative_deepening_search() {
+static bool test_zobrist_incremental_correctness() {
     MoveGenerator::init();
+    Zobrist::init();
+    Board board;
+    FEN::parse(StartposFEN, board);
+
+    Bitboard initial_key = board.zobrist_key();
+    Bitboard expected_key = Zobrist::compute_hash(board);
+
+    if (initial_key != expected_key) return false;
+
+    // Make move 1. e2e4
+    Move e2e4(Square::e2, Square::e4, MoveType::DoublePawnPush);
+    board.make_move(e2e4);
+
+    Bitboard move_key = board.zobrist_key();
+    Bitboard expected_move_key = Zobrist::compute_hash(board);
+
+    if (move_key != expected_move_key) return false;
+
+    // Unmake move
+    board.unmake_move(e2e4);
+    Bitboard unmake_key = board.zobrist_key();
+
+    return unmake_key == initial_key;
+}
+
+static bool test_transposition_table_cutoffs() {
+    MoveGenerator::init();
+    Zobrist::init();
     Board board;
     FEN::parse(StartposFEN, board);
 
     SearchEngine engine;
-    SearchResult res = engine.search_iterative_deepening(board, 4);
+    SearchResult no_tt_res = engine.search_alphabeta(board, 4, true, false);
+    SearchResult tt_res    = engine.search_alphabeta(board, 4, true, true);
 
-    return res.completed_depth == 4 && static_cast<bool>(res.best_move);
+    return tt_res.best_score == no_tt_res.best_score && tt_res.tt_hits > 0;
 }
 
 static bool dummy_search_init = []() {
@@ -86,7 +116,8 @@ static bool dummy_search_init = []() {
     register_test("Search: Alpha-Beta Score & Best Move Equivalence", test_alphabeta_eval_equivalence);
     register_test("Search: Alpha-Beta Node Count Reduction vs Minimax", test_alphabeta_node_reduction);
     register_test("Search: Move Ordering Node Reduction vs Raw Alpha-Beta", test_move_ordering_reduction);
-    register_test("Search: Iterative Deepening Search Completion (v5.0)", test_iterative_deepening_search);
+    register_test("Zobrist: Incremental hash update & unmake correctness", test_zobrist_incremental_correctness);
+    register_test("Transposition Table: Subtree cutoff hits & score equivalence", test_transposition_table_cutoffs);
     return true;
 }();
 

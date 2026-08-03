@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(ENGINE_SOURCES
     src/board/board.cpp
     src/core/fen.cpp
+    src/core/zobrist.cpp
     src/movegen/magic.cpp
     src/movegen/attack_masks.cpp
     src/movegen/movegen.cpp
@@ -16,6 +17,7 @@ set(ENGINE_SOURCES
     src/evaluation/pst.cpp
     src/evaluation/eval.cpp
     src/search/move_picker.cpp
+    src/search/tt.cpp
     src/search/search.cpp
     src/visualization/exporter.cpp
     src/benchmark/metrics.cpp

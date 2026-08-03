@@ -82,6 +82,9 @@ bool FEN::parse(std::string_view fen_str, Board& board) {
         }
     }
 
+    // Recalculate full Zobrist hash after parsing FEN
+    board.recalculate_zobrist_key();
+
     return true;
 }
 

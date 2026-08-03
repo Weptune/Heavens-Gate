@@ -66,10 +66,39 @@ int SearchEngine::negamax_minimax(Board& board, int depth, int ply, TreeNodeJSON
     return best_score;
 }
 
-int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, Move pv_move, TreeNodeJSON* json_node) {
+int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move, TreeNodeJSON* json_node) {
     metrics_tracker_.add_nodes(1);
 
     if (is_time_up()) return 0;
+
+    int orig_alpha = alpha;
+    Move tt_move = pv_move;
+
+    // 1. Transposition Table Probing & Cutoff Logic
+    if (use_tt) {
+        TTEntry* tt_entry = tt_.probe(board.zobrist_key());
+        if (tt_entry) {
+            if (static_cast<bool>(tt_entry->move)) {
+                tt_move = tt_entry->move;
+            }
+
+            if (tt_entry->depth >= depth) {
+                int tt_score = tt_entry->score;
+                // Un-adjust mate score relative to current ply
+                if (tt_score > ScoreMate - 1000) tt_score -= ply;
+                else if (tt_score < -ScoreMate + 1000) tt_score += ply;
+
+                if (tt_entry->bound == TTBound::Exact) {
+                    return tt_score;
+                } else if (tt_entry->bound == TTBound::Lower && tt_score >= beta) {
+                    metrics_tracker_.add_cut();
+                    return tt_score;
+                } else if (tt_entry->bound == TTBound::Upper && tt_score <= alpha) {
+                    return tt_score;
+                }
+            }
+        }
+    }
 
     if (depth <= 0) {
         int eval = Evaluator::evaluate(board);
@@ -98,10 +127,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     }
 
     if (use_move_ordering) {
-        move_picker_.score_and_sort_moves(board, moves, ply, pv_move);
+        move_picker_.score_and_sort_moves(board, moves, ply, tt_move);
     }
 
     int best_score = -ScoreInfinity;
+    Move best_move = Move();
 
     for (const auto& m : moves) {
         board.make_move(m);
@@ -116,7 +146,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             child_node->ply = ply + 1;
         }
 
-        int score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, Move(), child_node);
+        int score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), child_node);
 
         board.unmake_move(m);
 
@@ -124,6 +154,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         if (score > best_score) {
             best_score = score;
+            best_move = m;
         }
 
         if (score >= beta) {
@@ -131,6 +162,9 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             if (use_move_ordering && !m.is_capture()) {
                 move_picker_.add_killer_move(ply, m);
                 move_picker_.add_history_score(board.side_to_move(), m, depth);
+            }
+            if (use_tt) {
+                tt_.store(board.zobrist_key(), m, beta, depth, TTBound::Lower, ply);
             }
             if (child_node) {
                 child_node->is_pruned = true;
@@ -142,6 +176,12 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             alpha = score;
             pv_table_.update(ply, m);
         }
+    }
+
+    // Store evaluation in Transposition Table
+    if (use_tt && !time_stop_flag_) {
+        TTBound bound = (best_score <= orig_alpha) ? TTBound::Upper : TTBound::Exact;
+        tt_.store(board.zobrist_key(), best_move, best_score, depth, bound, ply);
     }
 
     if (json_node) {
@@ -213,11 +253,13 @@ SearchResult SearchEngine::search_minimax(Board& board, int depth, bool export_t
     return result;
 }
 
-SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_move_ordering, bool export_tree) {
+SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_move_ordering, bool use_tt, bool export_tree) {
     pv_table_.clear();
     move_picker_.clear();
+    if (use_tt) tt_.clear();
+
     metrics_tracker_.start_timer();
-    metrics_tracker_.set_version(use_move_ordering ? "v4.0 (PST Positional Eval)" : "v2.0 (Alpha-Beta Raw)");
+    metrics_tracker_.set_version(use_tt ? "v7.0 (Transposition Table)" : "v4.0 (PST Positional Eval)");
     metrics_tracker_.set_depth(depth);
 
     time_stop_flag_ = false;
@@ -263,7 +305,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
             child_json->ply = 1;
         }
 
-        int score = -negamax_alphabeta(board, depth - 1, 1, -beta, -alpha, use_move_ordering, Move(), child_json);
+        int score = -negamax_alphabeta(board, depth - 1, 1, -beta, -alpha, use_move_ordering, use_tt, Move(), child_json);
 
         board.unmake_move(m);
 
@@ -285,6 +327,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     result.best_score = best_score;
     result.pv = pv_table_.get_pv(depth);
     result.metrics = metrics_tracker_.get_metrics();
+    result.tt_hits = tt_.hits();
 
     return result;
 }
@@ -292,13 +335,14 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
 SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_depth, double max_time_ms) {
     pv_table_.clear();
     move_picker_.clear();
+    tt_.clear();
 
     search_start_time_ = std::chrono::high_resolution_clock::now();
     max_time_ms_ = max_time_ms;
     time_stop_flag_ = false;
 
     metrics_tracker_.start_timer();
-    metrics_tracker_.set_version("v5.0 (Iterative Deepening)");
+    metrics_tracker_.set_version("v7.0 (Iterative Deepening + TT)");
 
     SearchResult final_result;
     Move best_pv_move = Move();
@@ -323,7 +367,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
         for (const auto& m : moves) {
             board.make_move(m);
 
-            int score = -negamax_alphabeta(board, d - 1, 1, -beta, -alpha, true, Move(), nullptr);
+            int score = -negamax_alphabeta(board, d - 1, 1, -beta, -alpha, true, true, Move(), nullptr);
 
             board.unmake_move(m);
 
@@ -345,7 +389,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
         }
 
         if (interrupted && d > 1) {
-            break; // Stop and return best result from previous completed iteration
+            break;
         }
 
         best_pv_move = current_best_move;
@@ -353,6 +397,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
         final_result.best_score = current_best_score;
         final_result.pv = pv_table_.get_pv(d);
         final_result.completed_depth = d;
+        final_result.tt_hits = tt_.hits();
 
         if (is_time_up()) break;
     }

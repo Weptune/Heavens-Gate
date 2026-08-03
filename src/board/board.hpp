@@ -2,6 +2,7 @@
 
 #include "../core/types.hpp"
 #include "../core/bitwise.hpp"
+#include "../core/zobrist.hpp"
 #include <array>
 #include <vector>
 #include <string>
@@ -13,6 +14,7 @@ struct StateInfo {
     Square en_passant_sq{Square::None};
     uint16_t halfmove_clock{0};
     Piece captured_piece{Piece::None};
+    Bitboard zobrist_key{0ULL};
 };
 
 class Board {
@@ -26,6 +28,7 @@ private:
     Square en_passant_sq_{Square::None};
     uint16_t halfmove_clock_{0};
     uint16_t fullmove_number_{1};
+    Bitboard zobrist_key_{0ULL};
 
     std::vector<StateInfo> history_{};
 
@@ -36,6 +39,7 @@ public:
     void clear();
     void set_piece(Square sq, Piece p);
     void remove_piece(Square sq);
+    void recalculate_zobrist_key() noexcept;
 
     // Getters
     constexpr Color side_to_move() const noexcept { return side_to_move_; }
@@ -43,6 +47,7 @@ public:
     constexpr Square en_passant_sq() const noexcept { return en_passant_sq_; }
     constexpr uint16_t halfmove_clock() const noexcept { return halfmove_clock_; }
     constexpr uint16_t fullmove_number() const noexcept { return fullmove_number_; }
+    constexpr Bitboard zobrist_key() const noexcept { return zobrist_key_; }
 
     constexpr Bitboard pieces(Piece p) const noexcept {
         if (p == Piece::None) return EmptyBB;
