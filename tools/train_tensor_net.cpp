@@ -19,25 +19,64 @@ using namespace heavensgate;
 
 const std::vector<std::string> SelfPlayOpenings = {
     std::string(StartposFEN),
+    // Sicilian Defense variations
     "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2",
     "rnbqkb1r/pp2pppp/3p1n2/8/3NP3/8/PPP2PPP/RNBQKB1R w KQkq - 0 5",
     "r1bqkb1r/pp1ppp1p/2n2np1/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+    "rnbqkb1r/1p2pppp/p2p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",
+    "r1bqk2r/pp2bppp/2n1pn2/3p4/3PP3/2N2N2/PP2BPPP/R1BQ1RK1 w kq - 0 8",
+    // Ruy Lopez & Italian Game
     "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",
     "r1bqkb1r/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+    "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+    "r1bqk1nr/pppp1ppp/2n5/2b1p3/1PB1P3/5N2/P1PP1PPP/RNBQK2R b KQkq b3 0 4",
+    // French Defense & Caro-Kann
     "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
     "rnbqk1nr/pppp1ppp/4p3/8/3PP3/2b5/PPP2PPP/R1BQKBNR w KQkq - 0 4",
+    "rnbqkbnr/pp2pppp/2p5/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+    "rnbqkbnr/pp2pppp/2p5/3P4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 3",
+    // Queen's Gambit & Indian Defenses
     "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2",
     "rnbqkbnr/ppp1pppp/8/8/2pP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3",
     "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP2BPPP/R1BQK2R b KQ - 1 6",
     "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2P2/PP2G1PP/R1BQKBNR w KQ - 0 6",
-    "rnbqkbnr/pp2pppp/2p5/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
-    "rnbqkbnr/pp2pppp/2p5/3P4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 3",
-    "r1bqkb1r/pppp1ppp/2n2n2/4p3/4P3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4",
-    "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
-    "r1bqk1nr/pppp1ppp/2n5/2b1p3/1PB1P3/5N2/P1PP1PPP/RNBQK2R b KQkq b3 0 4",
     "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
     "rnbqkbnr/ppp2ppp/4p3/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq d6 0 3",
-    "rnbqk2r/ppp1bppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5"
+    "rnbqk2r/ppp1bppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",
+    // English Opening & Reti
+    "rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq c3 0 1",
+    "rnbqkbnr/pppp1ppp/4p3/8/2P5/5N2/PP1PPPPPPP/RNBQKB1R b KQkq - 1 2",
+    "rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq - 1 1",
+    // Scandinavian & Pirc
+    "rnbqkbnr/ppp1pppp/8/3P4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2",
+    "rnbqkb1r/ppp1pppp/3p1n2/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 1 3",
+    // Alekhine & Benoni
+    "rnbqkb1r/pppppppp/5n2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 1 2",
+    "rnbqkb1r/pp1ppppp/5n2/2p5/2PP4/8/PP2PPPP/RNBQKBNR w KQkq c6 0 3",
+    // Dutch Defense & King's Gambit
+    "rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 2",
+    "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq f3 0 2",
+    // Tactical Benchmark Middlegames & Endgames
+    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+    "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+    "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+    "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+    "2r2rk1/pp1b1ppp/1q2p3/3pP3/1b1P4/1P1Q1N2/P3NPPP/2R2RK1 w - - 1 16",
+    "r1b1qrk1/1pp1b1pp/p1n1p3/3p1p2/3P1P2/2N1PN2/PPP1B1PP/R2Q1RK1 w - - 0 11",
+    "r1bqk2r/1pp1bppp/p1n1pn2/3p4/3PP3/2N2N2/PPP1BPPP/R1BQ1RK1 w kq - 0 8",
+    "r1bq1rk1/pp2bppp/2n1pn2/3p4/2PP4/2N2N2/PP2BPPP/R1BQ1RK1 w - - 0 9",
+    "r2q1rk1/pp1nbppp/2p1pn2/3p4/2PP4/2N1PN2/PP2BPPP/R2Q1RK1 w - - 0 10",
+    "r1b2rk1/pp1qbppp/2n1pn2/3p4/2PP4/2N2N2/PP2BPPP/R1BQ1RK1 w - - 0 10",
+    "r2q1rk1/1pp1bppp/p1n1pn2/3p4/2PP4/2N2N2/PP2BPPP/R1BQ1RK1 w - - 0 10",
+    "r1bqk2r/pp2bppp/2n1p3/3pP3/3P4/2N2N2/PP2BPPP/R1BQ1RK1 w kq - 0 10",
+    "r1b1k2r/pp2bppp/2n1pn2/3p4/3PP3/2N2N2/PP2BPPP/R1BQ1RK1 w kq - 0 10",
+    "r1bq1rk1/pp2bppp/2n1pn2/3p4/3PP3/2N2N2/PP2BPPP/R1BQ1RK1 w - - 0 10",
+    "rnbqk2r/ppp1bppp/4pn2/3p4/3PP3/2N2N2/PPP2PPP/R1BQKB1R w KQkq - 0 5",
+    "r1bqk2r/ppp1bppp/2n1pn2/3p4/3PP3/2N2N2/PPP1BPPP/R1BQ1RK1 w kq - 0 7",
+    "rnbq1rk1/ppp1bppp/4pn2/3p4/3PP3/2N2N2/PPP1BPPP/R1BQ1RK1 w - - 0 7",
+    "r1bq1rk1/ppp1bppp/2n1p3/3pP3/3P4/2N2N2/PPP1BPPP/R1BQ1RK1 w - - 0 9",
+    "r1bq1rk1/pp2bppp/2n1pn2/3p4/2PP4/2N2N2/PP2BPPP/R1BQK2R w KQ - 0 9",
+    "r1bqk2r/pp2bppp/2n1pn2/3p4/2PP4/2N2N2/PP2BPPP/R1BQ1RK1 w kq - 0 9"
 };
 
 struct GamePos {
@@ -51,9 +90,9 @@ int main(int argc, char* argv[]) {
     std::cout << "  Simulating Games, Extracting Features & Training    \n";
     std::cout << "======================================================\n\n";
 
-    int num_games = 20;
+    int num_games = 100;
     int search_depth = 3;
-    int epochs = 15;
+    int epochs = 25;
     int bond_dim = 16;
     std::string output_path = "heavensgate.tnw";
 
