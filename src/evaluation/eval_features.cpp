@@ -1,6 +1,5 @@
 #include "eval_features.hpp"
 #include "../core/bitwise.hpp"
-#include "../movegen/attack_masks.hpp"
 #include <cmath>
 
 namespace heavensgate {
@@ -8,14 +7,8 @@ namespace heavensgate {
 std::array<Bitboard, 64> EvalFeatures::PassedPawnMask[2]{};
 std::array<Bitboard, 8>  EvalFeatures::IsolatedPawnMask{};
 std::array<int, 32>      EvalFeatures::KingDangerTable{};
-Bitboard EvalFeatures::LightSquaresBB = 0ULL;
-Bitboard EvalFeatures::DarkSquaresBB = 0ULL;
 
 void EvalFeatures::init() {
-    // 0. Light/Dark Square Bitboard Masks
-    LightSquaresBB = 0x55AA55AA55AA55AAULL;
-    DarkSquaresBB  = ~LightSquaresBB;
-
     // 1. Isolated Pawn Masks (adjacent files)
     for (int f = 0; f < 8; ++f) {
         File file_enum = static_cast<File>(f);
@@ -103,42 +96,6 @@ int EvalFeatures::evaluate_passed_pawns(const Board& board, Color us) {
     return score;
 }
 
-int EvalFeatures::evaluate_bad_bishops(const Board& board, Color us) {
-    int penalty = 0;
-    Bitboard our_pawns   = board.pieces(make_piece(us, PieceType::Pawn));
-    Bitboard our_bishops = board.pieces(make_piece(us, PieceType::Bishop));
-
-    Bitboard temp = our_bishops;
-    while (temp) {
-        Square sq = pop_lsb(temp);
-        bool is_light = (static_cast<int>(file_of(sq)) + static_cast<int>(rank_of(sq))) % 2 != 0;
-        Bitboard same_color_squares = is_light ? LightSquaresBB : DarkSquaresBB;
-
-        int blocked_pawns = popcount(our_pawns & same_color_squares);
-        penalty += blocked_pawns * 6; // -6 cp per friendly pawn on same color square
-    }
-
-    return -penalty;
-}
-
-int EvalFeatures::evaluate_pin_threats(const Board& board, Color us) {
-    int score = 0;
-    Color them = ~us;
-
-    Square e_king = board.king_square(them);
-    if (e_king == Square::None) return 0;
-
-    Bitboard occ = board.occupied();
-    Bitboard them_pieces = board.pieces(them);
-
-    // X-ray attacks along King rays from slider pieces
-    Bitboard slider_atks = AttackMasks::bishop_attacks(e_king, occ) | AttackMasks::rook_attacks(e_king, occ);
-    Bitboard pinned = slider_atks & them_pieces;
-
-    score += popcount(pinned) * 20; // +20 cp per enemy piece in pin ray
-    return score;
-}
-
 int EvalFeatures::evaluate_king_safety(const Board& board, Color us) {
     Square ksq = board.king_square(us);
     if (ksq == Square::None) return 0;
@@ -146,6 +103,7 @@ int EvalFeatures::evaluate_king_safety(const Board& board, Color us) {
     File kf = file_of(ksq);
     Rank kr = rank_of(ksq);
 
+    // ONLY evaluate King Shield when King is castled on Kingside (f/g/h) or Queenside (a/b/c)
     bool is_castled = (kf <= File::FileC || kf >= File::FileF) && 
                       ((us == Color::White && kr == Rank::Rank1) || (us == Color::Black && kr == Rank::Rank8));
 
@@ -156,10 +114,12 @@ int EvalFeatures::evaluate_king_safety(const Board& board, Color us) {
 
     Bitboard king_zone = AttackMasks::king_attacks(ksq) | square_bb(ksq);
 
+    // 1. Check friendly pawn shield in front of castled king
     Bitboard shield_pawns = board.pieces(make_piece(us, PieceType::Pawn)) & king_zone;
     int shield_count = popcount(shield_pawns);
     int shield_score = shield_count * 10;
 
+    // 2. Count enemy piece attack intersections with king zone
     Bitboard occ = board.occupied();
 
     Bitboard enemy_knights = board.pieces(make_piece(them, PieceType::Knight));
@@ -203,6 +163,7 @@ int EvalFeatures::evaluate_piece_activity(const Board& board, Color us) {
     Bitboard our_pawns   = board.pieces(make_piece(us, PieceType::Pawn));
     Bitboard enemy_pawns = board.pieces(make_piece(them, PieceType::Pawn));
 
+    // Early Queen Development Penalty: Avoid premature queen raids before minor piece development
     Square q_sq = (us == Color::White) ? Square::d1 : Square::d8;
     if (board.piece_at(q_sq) != make_piece(us, PieceType::Queen)) {
         Square b1_sq = (us == Color::White) ? Square::b1 : Square::b8;
@@ -217,7 +178,7 @@ int EvalFeatures::evaluate_piece_activity(const Board& board, Color us) {
         if (board.piece_at(g1_sq) != Piece::None) home_minors++;
 
         if (home_minors >= 3) {
-            score -= 25;
+            score -= 25; // Penalize early Queen outings when 3+ minor pieces are still at home!
         }
     }
 

@@ -151,6 +151,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     Color us = board.side_to_move();
     bool in_chk = MoveGenerator::in_check(board, us);
 
+    // 0. Check Extension: If in check, extend search depth by +1 ply!
+    if (in_chk) {
+        depth++;
+    }
+
     int orig_alpha = alpha;
     Move tt_move = pv_move;
 
@@ -240,23 +245,6 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     for (size_t i = 0; i < moves.size(); ++i) {
         Move m = moves[i];
-        
-        // Strictly Bounded Search Extension (Max extension +1 ply, capped at ply < 16)
-        bool is_passed_pawn_push = false;
-        if (piece_type_of(board.piece_at(m.from())) == PieceType::Pawn) {
-            Rank to_r = rank_of(m.to());
-            if ((us == Color::White && to_r >= Rank::Rank6) || (us == Color::Black && to_r <= Rank::Rank3)) {
-                is_passed_pawn_push = true;
-            }
-        }
-
-        int extension = 0;
-        if (ply < 16 && (in_chk || is_passed_pawn_push)) {
-            extension = 1;
-        }
-
-        int next_depth = depth - 1 + extension;
-
         board.make_move(m);
 
         TreeNodeJSON* child_node = nullptr;
@@ -265,7 +253,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             child_node = &json_node->children.back();
             child_node->move_uci = move_to_uci(m);
             child_node->fen = FEN::to_string(board);
-            child_node->depth = next_depth;
+            child_node->depth = depth - 1;
             child_node->ply = ply + 1;
         }
 
@@ -273,22 +261,22 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         // 4. Principal Variation Search (PVS / NegaScout) & LMR
         if (i == 0) {
-            score = -negamax_alphabeta(board, next_depth, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
+            score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
         } else {
             // Late Move Reductions (LMR) for quiet moves
-            if (i >= 4 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk && !is_passed_pawn_push) {
+            if (i >= 4 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk) {
                 int reduction = 1 + static_cast<int>(std::log(depth) * std::log(i + 1) / 2.5);
-                int reduced_depth = std::max(1, next_depth - reduction);
+                int reduced_depth = std::max(1, depth - 1 - reduction);
 
                 score = -negamax_alphabeta(board, reduced_depth, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
             } else {
                 // Zero-window search
-                score = -negamax_alphabeta(board, next_depth, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
+                score = -negamax_alphabeta(board, depth - 1, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
             }
 
             // PVS Re-Search: If zero-window search raised alpha, re-search with full [alpha, beta] window!
             if (score > alpha) {
-                score = -negamax_alphabeta(board, next_depth, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
+                score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
             }
         }
 
