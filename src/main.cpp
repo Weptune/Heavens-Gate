@@ -13,38 +13,39 @@
 
 using namespace heavensgate;
 
-void run_comparison(Board& board, int depth) {
+void run_three_way_comparison(Board& board, int depth) {
     SearchEngine engine;
     
     std::cout << "\n======================================================\n";
-    std::cout << "  BENCHMARK COMPARISON: MINIMAX vs ALPHA-BETA (Depth " << depth << ")\n";
+    std::cout << "  BENCHMARK: MINIMAX vs RAW ALPHA-BETA vs MOVE ORDERING (Depth " << depth << ")\n";
     std::cout << "======================================================\n";
 
     SearchResult mm_res = engine.search_minimax(board, depth);
-    SearchResult ab_res = engine.search_alphabeta(board, depth);
+    SearchResult ab_raw_res = engine.search_alphabeta(board, depth, false);
+    SearchResult ab_ord_res = engine.search_alphabeta(board, depth, true);
 
     double node_reduction = 0.0;
+    if (ab_raw_res.metrics.total_nodes > 0) {
+        node_reduction = (1.0 - static_cast<double>(ab_ord_res.metrics.total_nodes) / ab_raw_res.metrics.total_nodes) * 100.0;
+    }
+
+    double overall_reduction = 0.0;
     if (mm_res.metrics.total_nodes > 0) {
-        node_reduction = (1.0 - static_cast<double>(ab_res.metrics.total_nodes) / mm_res.metrics.total_nodes) * 100.0;
+        overall_reduction = (1.0 - static_cast<double>(ab_ord_res.metrics.total_nodes) / mm_res.metrics.total_nodes) * 100.0;
     }
 
-    double speedup = 0.0;
-    if (ab_res.metrics.elapsed_seconds > 0.0) {
-        speedup = mm_res.metrics.elapsed_seconds / ab_res.metrics.elapsed_seconds;
-    }
-
-    std::cout << "\n| Metric | Minimax (v1.0) | Alpha-Beta (v2.0) | Improvement |\n";
-    std::cout << "| :--- | :--- | :--- | :--- |\n";
-    std::cout << "| Best Move | " << move_to_uci(mm_res.best_move) << " | " << move_to_uci(ab_res.best_move) << " | Identical |\n";
-    std::cout << "| Eval Score | " << mm_res.best_score << " cp | " << ab_res.best_score << " cp | Identical |\n";
-    std::cout << "| Total Nodes | " << mm_res.metrics.total_nodes << " | " << ab_res.metrics.total_nodes << " | " 
-              << std::fixed << std::setprecision(1) << node_reduction << "% REDUCTION |\n";
-    std::cout << "| Time Elapsed | " << std::fixed << std::setprecision(4) << mm_res.metrics.elapsed_seconds << " s | "
-              << std::fixed << std::setprecision(4) << ab_res.metrics.elapsed_seconds << " s | " 
-              << std::fixed << std::setprecision(2) << speedup << "x FASTER |\n";
+    std::cout << "\n| Metric | Minimax (v1.0) | Raw Alpha-Beta (v2.0) | Move-Ordered Alpha-Beta (v3.0) | Improvement |\n";
+    std::cout << "| :--- | :--- | :--- | :--- | :--- |\n";
+    std::cout << "| Best Move | " << move_to_uci(mm_res.best_move) << " | " << move_to_uci(ab_raw_res.best_move) << " | " << move_to_uci(ab_ord_res.best_move) << " | Identical |\n";
+    std::cout << "| Eval Score | " << mm_res.best_score << " cp | " << ab_raw_res.best_score << " cp | " << ab_ord_res.best_score << " cp | Identical |\n";
+    std::cout << "| Total Nodes | " << mm_res.metrics.total_nodes << " | " << ab_raw_res.metrics.total_nodes << " | " << ab_ord_res.metrics.total_nodes << " | " 
+              << std::fixed << std::setprecision(1) << node_reduction << "% vs v2.0 (" << overall_reduction << "% vs v1.0) |\n";
     std::cout << "| Branching Factor (EBF) | " << std::fixed << std::setprecision(2) << mm_res.metrics.effective_branching_factor 
-              << " | " << std::fixed << std::setprecision(2) << ab_res.metrics.effective_branching_factor 
-              << " | " << (mm_res.metrics.effective_branching_factor - ab_res.metrics.effective_branching_factor) << " lower |\n";
+              << " | " << std::fixed << std::setprecision(2) << ab_raw_res.metrics.effective_branching_factor 
+              << " | " << std::fixed << std::setprecision(2) << ab_ord_res.metrics.effective_branching_factor 
+              << " | " << (ab_raw_res.metrics.effective_branching_factor - ab_ord_res.metrics.effective_branching_factor) << " lower |\n";
+    std::cout << "| Cutoff Rate | 0% | " << std::fixed << std::setprecision(1) << ab_raw_res.metrics.alpha_beta_cut_percentage << "% | "
+              << std::fixed << std::setprecision(1) << ab_ord_res.metrics.alpha_beta_cut_percentage << "% | Higher cutoff rate |\n";
     std::cout << "------------------------------------------------------\n\n";
 }
 
@@ -61,11 +62,11 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "======================================================\n";
-    std::cout << "  HEAVEN'S GATE CHESS ENGINE - VERSION 2.0 (Alpha-Beta Pruning) \n";
+    std::cout << "  HEAVEN'S GATE CHESS ENGINE - VERSION 3.0 (Move Ordering) \n";
     std::cout << "======================================================\n";
     std::cout << "Commands:\n";
-    std::cout << "  alphabeta <depth> / ab <d>  - Run Alpha-Beta search\n";
-    std::cout << "  compare <depth>             - Compare Minimax vs Alpha-Beta side-by-side\n";
+    std::cout << "  alphabeta <depth> / ab <d>  - Run Move-Ordered Alpha-Beta search\n";
+    std::cout << "  compare <depth>             - Compare Minimax vs Raw Alpha-Beta vs Move-Ordered\n";
     std::cout << "  minimax <depth>             - Run unpruned Minimax search\n";
     std::cout << "  export_tree <d>             - Export JSON search tree (game_tree.json)\n";
     std::cout << "  perft                       - Run Perft verification suite\n";
@@ -84,14 +85,14 @@ int main(int argc, char* argv[]) {
         if (!std::getline(std::cin, line) || line == "exit") break;
 
         if (line.rfind("alphabeta", 0) == 0 || line.rfind("ab ", 0) == 0 || line == "ab") {
-            int d = 4;
+            int d = 5;
             try {
                 size_t pos = line.find_first_of("0123456789");
                 if (pos != std::string::npos) d = std::stoi(line.substr(pos));
             } catch (...) {}
 
-            std::cout << "Searching Alpha-Beta depth " << d << " ...\n";
-            SearchResult res = search_engine.search_alphabeta(board, d);
+            std::cout << "Searching Move-Ordered Alpha-Beta depth " << d << " ...\n";
+            SearchResult res = search_engine.search_alphabeta(board, d, true);
 
             std::cout << "\nBest Move : " << move_to_uci(res.best_move) << "\n";
             std::cout << "Eval      : " << res.best_score << " cp\n";
@@ -103,7 +104,7 @@ int main(int argc, char* argv[]) {
                 size_t pos = line.find_first_of("0123456789");
                 if (pos != std::string::npos) d = std::stoi(line.substr(pos));
             } catch (...) {}
-            run_comparison(board, d);
+            run_three_way_comparison(board, d);
         } else if (line.rfind("minimax", 0) == 0) {
             int d = 4;
             try {
@@ -125,8 +126,8 @@ int main(int argc, char* argv[]) {
                 if (pos != std::string::npos) d = std::stoi(line.substr(pos));
             } catch (...) {}
 
-            std::cout << "Exporting JSON game tree with Alpha-Beta pruning for depth " << d << " ...\n";
-            SearchResult res = search_engine.search_alphabeta(board, d, true);
+            std::cout << "Exporting JSON game tree with Move Ordering for depth " << d << " ...\n";
+            SearchResult res = search_engine.search_alphabeta(board, d, true, true);
             bool ok = search_engine.tree_exporter().export_file("game_tree.json");
 
             std::cout << "Export " << (ok ? "SUCCESSFUL -> game_tree.json" : "FAILED") << "\n";

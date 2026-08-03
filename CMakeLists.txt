@@ -13,6 +13,7 @@ set(ENGINE_SOURCES
     src/movegen/movegen.cpp
     src/movegen/perft.cpp
     src/evaluation/eval.cpp
+    src/search/move_picker.cpp
     src/search/search.cpp
     src/visualization/exporter.cpp
     src/benchmark/metrics.cpp

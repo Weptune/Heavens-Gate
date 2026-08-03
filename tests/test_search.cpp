@@ -38,7 +38,7 @@ static bool test_alphabeta_eval_equivalence() {
 
     SearchEngine engine;
     SearchResult mm_res = engine.search_minimax(board, 3);
-    SearchResult ab_res = engine.search_alphabeta(board, 3);
+    SearchResult ab_res = engine.search_alphabeta(board, 3, false);
 
     return mm_res.best_score == ab_res.best_score && mm_res.best_move == ab_res.best_move;
 }
@@ -50,11 +50,24 @@ static bool test_alphabeta_node_reduction() {
 
     SearchEngine engine;
     SearchResult mm_res = engine.search_minimax(board, 4);
-    SearchResult ab_res = engine.search_alphabeta(board, 4);
+    SearchResult ab_res = engine.search_alphabeta(board, 4, false);
 
-    // Alpha-Beta must search strictly fewer nodes than raw Minimax
     return ab_res.metrics.total_nodes < mm_res.metrics.total_nodes &&
            mm_res.best_score == ab_res.best_score;
+}
+
+static bool test_move_ordering_reduction() {
+    MoveGenerator::init();
+    Board board;
+    FEN::parse(StartposFEN, board);
+
+    SearchEngine engine;
+    SearchResult raw_res = engine.search_alphabeta(board, 4, false);
+    SearchResult ord_res = engine.search_alphabeta(board, 4, true);
+
+    // Move ordering must search fewer nodes than raw alpha-beta while returning identical score
+    return ord_res.metrics.total_nodes < raw_res.metrics.total_nodes &&
+           raw_res.best_score == ord_res.best_score;
 }
 
 static bool dummy_search_init = []() {
@@ -62,6 +75,7 @@ static bool dummy_search_init = []() {
     register_test("Search: Minimax captures undefended piece (Nxe5)", test_minimax_free_piece_capture);
     register_test("Search: Alpha-Beta Score & Best Move Equivalence", test_alphabeta_eval_equivalence);
     register_test("Search: Alpha-Beta Node Count Reduction vs Minimax", test_alphabeta_node_reduction);
+    register_test("Search: Move Ordering Node Reduction vs Raw Alpha-Beta", test_move_ordering_reduction);
     return true;
 }();
 

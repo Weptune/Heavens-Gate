@@ -66,7 +66,7 @@ int SearchEngine::negamax_minimax(Board& board, int depth, int ply, TreeNodeJSON
     return best_score;
 }
 
-int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, TreeNodeJSON* json_node) {
+int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, TreeNodeJSON* json_node) {
     metrics_tracker_.add_nodes(1);
 
     if (depth <= 0) {
@@ -95,6 +95,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         return score;
     }
 
+    // Apply Move Ordering (MVV-LVA, Killer, History)
+    if (use_move_ordering) {
+        move_picker_.score_and_sort_moves(board, moves, ply);
+    }
+
     int best_score = -ScoreInfinity;
 
     for (const auto& m : moves) {
@@ -110,7 +115,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             child_node->ply = ply + 1;
         }
 
-        int score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, child_node);
+        int score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, child_node);
 
         board.unmake_move(m);
 
@@ -120,6 +125,10 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         if (score >= beta) {
             metrics_tracker_.add_cut();
+            if (use_move_ordering && !m.is_capture()) {
+                move_picker_.add_killer_move(ply, m);
+                move_picker_.add_history_score(board.side_to_move(), m, depth);
+            }
             if (child_node) {
                 child_node->is_pruned = true;
             }
@@ -201,10 +210,11 @@ SearchResult SearchEngine::search_minimax(Board& board, int depth, bool export_t
     return result;
 }
 
-SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool export_tree) {
+SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_move_ordering, bool export_tree) {
     pv_table_.clear();
+    move_picker_.clear();
     metrics_tracker_.start_timer();
-    metrics_tracker_.set_version("v2.0 (Alpha-Beta)");
+    metrics_tracker_.set_version(use_move_ordering ? "v3.0 (Alpha-Beta + MoveOrdering)" : "v2.0 (Alpha-Beta Raw)");
     metrics_tracker_.set_depth(depth);
 
     if (export_tree) {
@@ -221,6 +231,10 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool export
         metrics_tracker_.stop_timer();
         result.metrics = metrics_tracker_.get_metrics();
         return result;
+    }
+
+    if (use_move_ordering) {
+        move_picker_.score_and_sort_moves(board, moves, 0);
     }
 
     int alpha = -ScoreInfinity;
@@ -243,7 +257,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool export
             child_json->ply = 1;
         }
 
-        int score = -negamax_alphabeta(board, depth - 1, 1, -beta, -alpha, child_json);
+        int score = -negamax_alphabeta(board, depth - 1, 1, -beta, -alpha, use_move_ordering, child_json);
 
         board.unmake_move(m);
 
