@@ -30,8 +30,8 @@ class Board; // Forward declaration
 
 class TropicalEvaluator {
 public:
-    static constexpr size_t NUM_SECTORS = 8;
-    static constexpr size_t NUM_FEATURES = 8;
+    static constexpr size_t NUM_SECTORS  = 32;
+    static constexpr size_t NUM_FEATURES = 12;
 
     struct SectorWeights {
         std::array<float, NUM_FEATURES> w;

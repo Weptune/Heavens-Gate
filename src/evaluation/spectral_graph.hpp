@@ -26,13 +26,19 @@ class Board; // Forward declaration
 // =============================================================================
 
 struct SpectralFeatures {
-    float fiedler_val;      // Global λ₂: Algebraic Connectivity (Piece Coordination)
-    float fiedler_us;       // λ₂ for side to move pieces
-    float fiedler_them;     // λ₂ for opponent pieces
-    float spectral_gap;     // λ_N - λ₂: Control Bottleneck (Cheeger Constant)
-    float laplacian_trace;  // Tr(L): Total Activity & Pressure Energy
-    float cohesion_us;      // Subgraph connectivity for side to move
-    float cohesion_them;    // Subgraph connectivity for opponent
+    float fiedler_val;         // Global λ₂: Algebraic Connectivity (Piece Coordination)
+    float fiedler_us;          // λ₂ for side to move pieces
+    float fiedler_them;        // λ₂ for opponent pieces
+    float spectral_gap;        // λ_N - λ₂: Control Bottleneck (Cheeger Constant)
+    float laplacian_trace;     // Tr(L): Total Activity & Pressure Energy
+    float cohesion_us;         // Subgraph connectivity for side to move
+    float cohesion_them;       // Subgraph connectivity for opponent
+    float king_pressure_us;    // Attack Laplacian energy targeting opponent King
+    float king_pressure_them;  // Attack Laplacian energy targeting us King
+    float battery_energy_us;   // Ray alignment energy (Rook/Queen/Bishop batteries)
+    float battery_energy_them; // Ray alignment energy for opponent
+    float pawn_cohesion_us;    // Pawn chain Laplacian cohesion
+    float pawn_cohesion_them;  // Pawn chain Laplacian cohesion for opponent
 };
 
 class SpectralGraph {

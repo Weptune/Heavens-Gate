@@ -161,15 +161,70 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     feat.fiedler_val = std::max(0.0f, fiedler_lambda);
     feat.spectral_gap = std::max(0.0f, max_lambda - feat.fiedler_val);
 
-    // Subgraph cohesion for Us vs Them
+    // Subgraph cohesion, King pressure, Battery energy, Pawn structure for Us vs Them
     Color us = board.side_to_move();
-    float us_deg_sum = 0.0f;
-    float them_deg_sum = 0.0f;
+    Color them = ~us;
+
+    Piece us_king = (us == Color::White) ? Piece::WhiteKing : Piece::BlackKing;
+    Piece them_king = (them == Color::White) ? Piece::WhiteKing : Piece::BlackKing;
+    Square us_king_sq = board.pieces(us_king) ? lsb(board.pieces(us_king)) : Square::None;
+    Square them_king_sq = board.pieces(them_king) ? lsb(board.pieces(them_king)) : Square::None;
+
+    float us_deg_sum = 0.0f, them_deg_sum = 0.0f;
+    float us_king_press = 0.0f, them_king_press = 0.0f;
+    float us_battery = 0.0f, them_battery = 0.0f;
+    float us_pawn_coh = 0.0f, them_pawn_coh = 0.0f;
+
     for (int i = 0; i < N; i++) {
-        if (color_of(nodes[i].piece) == us) {
-            us_deg_sum += deg[i];
-        } else {
-            them_deg_sum += deg[i];
+        Color c = color_of(nodes[i].piece);
+        PieceType pt = piece_type_of(nodes[i].piece);
+        Square sq = nodes[i].sq;
+
+        if (c == us) us_deg_sum += deg[i];
+        else them_deg_sum += deg[i];
+
+        // King pressure energy targeting opponent King
+        if (c == us && them_king_sq != Square::None) {
+            int dist = std::max(std::abs(static_cast<int>(rank_of(sq)) - static_cast<int>(rank_of(them_king_sq))),
+                                std::abs(static_cast<int>(file_of(sq)) - static_cast<int>(file_of(them_king_sq))));
+            if (dist <= 3) us_king_press += 3.0f / static_cast<float>(dist);
+        } else if (c == them && us_king_sq != Square::None) {
+            int dist = std::max(std::abs(static_cast<int>(rank_of(sq)) - static_cast<int>(rank_of(us_king_sq))),
+                                std::abs(static_cast<int>(file_of(sq)) - static_cast<int>(file_of(us_king_sq))));
+            if (dist <= 3) them_king_press += 3.0f / static_cast<float>(dist);
+        }
+
+        // Battery ray alignment energy
+        if (pt == PieceType::Rook || pt == PieceType::Queen || pt == PieceType::Bishop) {
+            for (int j = i + 1; j < N; j++) {
+                if (color_of(nodes[j].piece) == c) {
+                    PieceType pt2 = piece_type_of(nodes[j].piece);
+                    if (pt2 == PieceType::Rook || pt2 == PieceType::Queen || pt2 == PieceType::Bishop) {
+                        Square sq2 = nodes[j].sq;
+                        if (file_of(sq) == file_of(sq2) || rank_of(sq) == rank_of(sq2) ||
+                            std::abs(static_cast<int>(rank_of(sq)) - static_cast<int>(rank_of(sq2))) ==
+                            std::abs(static_cast<int>(file_of(sq)) - static_cast<int>(file_of(sq2)))) {
+                            if (c == us) us_battery += 2.0f;
+                            else them_battery += 2.0f;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Pawn chain cohesion
+        if (pt == PieceType::Pawn) {
+            for (int j = i + 1; j < N; j++) {
+                if (piece_type_of(nodes[j].piece) == PieceType::Pawn && color_of(nodes[j].piece) == c) {
+                    Square sq2 = nodes[j].sq;
+                    int f_diff = std::abs(static_cast<int>(file_of(sq)) - static_cast<int>(file_of(sq2)));
+                    int r_diff = std::abs(static_cast<int>(rank_of(sq)) - static_cast<int>(rank_of(sq2)));
+                    if (f_diff == 1 && r_diff == 1) {
+                        if (c == us) us_pawn_coh += 2.5f;
+                        else them_pawn_coh += 2.5f;
+                    }
+                }
+            }
         }
     }
 
@@ -177,6 +232,12 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     feat.cohesion_them = them_deg_sum;
     feat.fiedler_us = feat.fiedler_val;
     feat.fiedler_them = feat.fiedler_val;
+    feat.king_pressure_us = us_king_press;
+    feat.king_pressure_them = them_king_press;
+    feat.battery_energy_us = us_battery;
+    feat.battery_energy_them = them_battery;
+    feat.pawn_cohesion_us = us_pawn_coh;
+    feat.pawn_cohesion_them = them_pawn_coh;
 
     return feat;
 }

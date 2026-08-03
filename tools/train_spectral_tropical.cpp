@@ -40,9 +40,9 @@ int main(int argc, char* argv[]) {
     std::cout << "  Laplacian Spectrum + (max, +) Minimax Surface Model \n";
     std::cout << "======================================================\n\n";
 
-    int num_games = 30;
+    int num_games = 60;
     int depth = 3;
-    int epochs = 15;
+    int epochs = 25;
 
     if (argc > 1) num_games = std::stoi(argv[1]);
     if (argc > 2) depth = std::stoi(argv[2]);

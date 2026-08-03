@@ -24,37 +24,22 @@ TropicalEvaluator& TropicalEvaluator::instance() {
 }
 
 void TropicalEvaluator::initialize_weights(uint32_t /*seed*/) {
-    // Sector 1: Standard Material Dominance
-    sectors_[0].w = { 1.0f, 1.0f, 1.0f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f };
-    sectors_[0].b = 0.0f;
-
-    // Sector 2: Piece Coordination & Fiedler Connectivity Attack
-    sectors_[1].w = { 1.0f, 2.5f, 1.5f, 1.0f, 1.2f, 0.0f, 0.0f, 0.0f };
-    sectors_[1].b = 0.0f;
-
-    // Sector 3: Spectral Gap Compression & Central Bottleneck Control
-    sectors_[2].w = { 1.0f, 1.2f, 2.0f, 1.5f, 1.0f, 0.0f, 0.0f, 0.0f };
-    sectors_[2].b = 0.0f;
-
-    // Sector 4: Total Activity & Laplacian Trace Expansion
-    sectors_[3].w = { 1.0f, 1.5f, 1.0f, 2.0f, 1.5f, 0.0f, 0.0f, 0.0f };
-    sectors_[3].b = 0.0f;
-
-    // Sector 5: Subgraph Cohesion & Defensive Fortress
-    sectors_[4].w = { 1.0f, 1.0f, 2.5f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f };
-    sectors_[4].b = 0.0f;
-
-    // Sector 6: Counter-Attack Regime
-    sectors_[5].w = { 1.0f, 2.0f, 2.0f, 1.0f, 1.5f, 0.0f, 0.0f, 0.0f };
-    sectors_[5].b = 0.0f;
-
-    // Sector 7: High Pressure Dynamic Tactical Scramble
-    sectors_[6].w = { 1.0f, 3.0f, 2.5f, 1.5f, 1.0f, 0.0f, 0.0f, 0.0f };
-    sectors_[6].b = 0.0f;
-
-    // Sector 8: Equilibrium Strategic Sector
-    sectors_[7].w = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f };
-    sectors_[7].b = 0.0f;
+    sectors_.resize(NUM_SECTORS);
+    for (size_t j = 0; j < NUM_SECTORS; j++) {
+        auto& sec = sectors_[j];
+        sec.b = 0.0f;
+        sec.w.fill(0.0f);
+        // Base positional weights tailored across 32 tropical sectors
+        sec.w[0] = 1.0f; // Material
+        sec.w[1] = 1.0f + 0.1f * (j % 5); // Fiedler
+        sec.w[2] = 1.0f + 0.08f * (j % 4); // Cohesion
+        sec.w[3] = 0.5f + 0.05f * (j % 3); // Spectral Gap
+        sec.w[4] = 1.0f; // PST
+        sec.w[5] = 1.5f + 0.2f * (j % 6); // King Pressure
+        sec.w[6] = 1.2f + 0.15f * (j % 4); // Battery Energy
+        sec.w[7] = 1.5f + 0.1f * (j % 5); // Pawn Cohesion
+        sec.w[8] = 0.5f; // Trace Energy
+    }
 }
 
 int TropicalEvaluator::evaluate(const Board& board) const {
@@ -96,16 +81,20 @@ int TropicalEvaluator::evaluate(const Board& board) const {
 
     SpectralFeatures feat = SpectralGraph::compute_spectrum(board);
 
-    // Construct Spectral-Tropical Feature Vector x (All relative: Us - Them)
+    // Construct High-Resolution 12-Dimensional Spectral-Tropical Feature Vector x
     std::array<float, NUM_FEATURES> x;
-    x[0] = static_cast<float>(material_diff);                     // Material difference in cp
-    x[1] = (feat.fiedler_us - feat.fiedler_them) * 15.0f;           // Relative Fiedler Coordination
-    x[2] = (feat.cohesion_us - feat.cohesion_them) * 5.0f;         // Relative Subgraph Cohesion
-    x[3] = feat.spectral_gap * 2.0f;                                // Relative Control Bottleneck
-    x[4] = static_cast<float>(pst_diff);                           // Relative PST Positional bonus
-    x[5] = 0.0f;
-    x[6] = 0.0f;
-    x[7] = 0.0f;                                                   // Zero Bias at symmetry
+    x[0]  = static_cast<float>(material_diff);                                          // Material diff
+    x[1]  = (feat.fiedler_us - feat.fiedler_them) * 15.0f;                                // Relative Fiedler
+    x[2]  = (feat.cohesion_us - feat.cohesion_them) * 5.0f;                              // Relative Subgraph Cohesion
+    x[3]  = feat.spectral_gap * 2.0f;                                                     // Relative Control Bottleneck
+    x[4]  = static_cast<float>(pst_diff);                                                // Relative PST
+    x[5]  = (feat.king_pressure_us - feat.king_pressure_them) * 10.0f;                    // Relative King Attack Pressure
+    x[6]  = (feat.battery_energy_us - feat.battery_energy_them) * 8.0f;                   // Relative Ray Alignment Battery
+    x[7]  = (feat.pawn_cohesion_us - feat.pawn_cohesion_them) * 12.0f;                     // Relative Pawn Structure
+    x[8]  = feat.laplacian_trace / 10.0f;                                               // Total Energy Density
+    x[9]  = 0.0f;
+    x[10] = 0.0f;
+    x[11] = 0.0f;
 
     // Tropical (max, +) Semiring Minimax Surface for Positional Correlations
     float max_positional_sector = -1e9f;
