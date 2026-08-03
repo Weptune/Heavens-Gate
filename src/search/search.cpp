@@ -12,38 +12,50 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
 
     if (is_time_up()) return 0;
 
+    Color us = board.side_to_move();
+    bool in_chk = MoveGenerator::in_check(board, us);
+
     int stand_pat = Evaluator::evaluate(board);
-    if (stand_pat >= beta) {
-        return beta;
+    if (!in_chk) {
+        if (stand_pat >= beta) {
+            return beta;
+        }
+
+        if (stand_pat > alpha) {
+            alpha = stand_pat;
+        }
     }
 
-    if (stand_pat > alpha) {
-        alpha = stand_pat;
+    MoveList moves;
+    if (in_chk) {
+        MoveGenerator::generate_legal_moves(board, moves);
+    } else {
+        MoveGenerator::generate_capture_moves(board, moves);
     }
 
-    MoveList captures;
-    MoveGenerator::generate_capture_moves(board, captures);
-
-    if (captures.empty()) {
+    if (moves.empty()) {
+        if (in_chk) return -ScoreMate + ply;
         return stand_pat;
     }
 
-    move_picker_.score_and_sort_moves(board, captures, ply);
+    move_picker_.score_and_sort_moves(board, moves, ply);
 
-    for (const auto& m : captures) {
-        Piece victim = board.piece_at(m.to());
-        int victim_val = (victim != Piece::None) ? PawnValue : 0;
-        switch (piece_type_of(victim)) {
-            case PieceType::Pawn:   victim_val = PawnValue; break;
-            case PieceType::Knight: victim_val = KnightValue; break;
-            case PieceType::Bishop: victim_val = BishopValue; break;
-            case PieceType::Rook:   victim_val = RookValue; break;
-            case PieceType::Queen:  victim_val = QueenValue; break;
-            default: break;
-        }
+    for (const auto& m : moves) {
+        if (!in_chk) {
+            Piece victim = board.piece_at(m.to());
+            int victim_val = (victim != Piece::None) ? PawnValue : 0;
+            switch (piece_type_of(victim)) {
+                case PieceType::Pawn:   victim_val = PawnValue; break;
+                case PieceType::Knight: victim_val = KnightValue; break;
+                case PieceType::Bishop: victim_val = BishopValue; break;
+                case PieceType::Rook:   victim_val = RookValue; break;
+                case PieceType::Queen:  victim_val = QueenValue; break;
+                default: break;
+            }
 
-        if (stand_pat + victim_val + 200 < alpha && !m.is_promotion()) {
-            continue;
+            if (stand_pat + victim_val + 200 < alpha && !m.is_promotion()) {
+                continue;
+            }
         }
 
         board.make_move(m);
@@ -136,6 +148,14 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         return ScoreDraw;
     }
 
+    Color us = board.side_to_move();
+    bool in_chk = MoveGenerator::in_check(board, us);
+
+    // 0. Check Extension: If in check, extend search depth by +1 ply!
+    if (in_chk) {
+        depth++;
+    }
+
     int orig_alpha = alpha;
     Move tt_move = pv_move;
 
@@ -173,9 +193,6 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
         return q_eval;
     }
-
-    Color us = board.side_to_move();
-    bool in_chk = MoveGenerator::in_check(board, us);
 
     // 2. Reverse Futility Pruning (Static Null Move Pruning)
     if (depth <= 3 && !in_chk && std::abs(beta) < ScoreMate - 1000) {
@@ -242,7 +259,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         int score = 0;
 
-        // 4. Corrected Principal Variation Search (PVS / NegaScout) & LMR
+        // 4. Principal Variation Search (PVS / NegaScout) & LMR
         if (i == 0) {
             score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
         } else {
@@ -257,7 +274,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 score = -negamax_alphabeta(board, depth - 1, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
             }
 
-            // Corrected PVS Re-Search: If zero-window search raised alpha, re-search with full [alpha, beta] window!
+            // PVS Re-Search: If zero-window search raised alpha, re-search with full [alpha, beta] window!
             if (score > alpha) {
                 score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
             }
