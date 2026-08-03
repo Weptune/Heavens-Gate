@@ -19,6 +19,7 @@ struct SearchResult {
     PrincipalVariation pv;
     int completed_depth{0};
     size_t tt_hits{0};
+    uint64_t q_nodes{0};
 };
 
 class SearchEngine {
@@ -27,11 +28,12 @@ private:
     PVTable pv_table_;
     TreeExporter exporter_;
     MovePicker move_picker_;
-    TranspositionTable tt_{64}; // 64 MB default TT
+    TranspositionTable tt_{64};
 
     std::chrono::high_resolution_clock::time_point search_start_time_;
     double max_time_ms_{0.0};
     bool time_stop_flag_{false};
+    uint64_t q_nodes_{0};
 
     bool is_time_up() noexcept {
         if (time_stop_flag_) return true;
@@ -45,6 +47,7 @@ private:
         return false;
     }
 
+    int quiescence_search(Board& board, int alpha, int beta, int ply);
     int negamax_minimax(Board& board, int depth, int ply, TreeNodeJSON* json_node);
     int negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move, TreeNodeJSON* json_node);
 

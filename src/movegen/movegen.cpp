@@ -1,4 +1,6 @@
 #include "movegen.hpp"
+#include "attack_masks.hpp"
+#include <iostream>
 
 namespace heavensgate {
 
@@ -6,33 +8,34 @@ void MoveGenerator::init() {
     AttackMasks::init();
 }
 
-bool MoveGenerator::is_square_attacked(const Board& board, Square sq, Color attacker_color) {
-    if (sq == Square::None) return false;
-
-    Color victim_color = ~attacker_color;
-    Bitboard occ = board.occupied();
+bool MoveGenerator::is_square_attacked(const Board& board, Square sq, Color by_color) {
+    if (sq == Square::None || by_color == Color::None) return false;
 
     // 1. Pawn attacks
-    Bitboard pawns = board.pieces(make_piece(attacker_color, PieceType::Pawn));
-    if (pawns & AttackMasks::pawn_attacks(victim_color, sq)) return true;
+    Color victim_color = ~by_color;
+    Bitboard pawn_atks = AttackMasks::pawn_attacks(victim_color, sq);
+    if (pawn_atks & board.pieces(make_piece(by_color, PieceType::Pawn))) return true;
 
     // 2. Knight attacks
-    Bitboard knights = board.pieces(make_piece(attacker_color, PieceType::Knight));
-    if (knights & AttackMasks::knight_attacks(sq)) return true;
+    Bitboard knight_atks = AttackMasks::knight_attacks(sq);
+    if (knight_atks & board.pieces(make_piece(by_color, PieceType::Knight))) return true;
 
-    // 3. King attacks
-    Bitboard king = board.pieces(make_piece(attacker_color, PieceType::King));
-    if (king & AttackMasks::king_attacks(sq)) return true;
+    // 3. Bishop / Queen diagonal attacks
+    Bitboard occ = board.occupied();
+    Bitboard bishop_atks = AttackMasks::bishop_attacks(sq, occ);
+    Bitboard b_q = board.pieces(make_piece(by_color, PieceType::Bishop)) |
+                   board.pieces(make_piece(by_color, PieceType::Queen));
+    if (bishop_atks & b_q) return true;
 
-    // 4. Bishop/Queen diagonal attacks
-    Bitboard bishops_queens = board.pieces(make_piece(attacker_color, PieceType::Bishop)) |
-                             board.pieces(make_piece(attacker_color, PieceType::Queen));
-    if (bishops_queens & AttackMasks::bishop_attacks(sq, occ)) return true;
+    // 4. Rook / Queen orthogonal attacks
+    Bitboard rook_atks = AttackMasks::rook_attacks(sq, occ);
+    Bitboard r_q = board.pieces(make_piece(by_color, PieceType::Rook)) |
+                   board.pieces(make_piece(by_color, PieceType::Queen));
+    if (rook_atks & r_q) return true;
 
-    // 5. Rook/Queen orthogonal attacks
-    Bitboard rooks_queens = board.pieces(make_piece(attacker_color, PieceType::Rook)) |
-                           board.pieces(make_piece(attacker_color, PieceType::Queen));
-    if (rooks_queens & AttackMasks::rook_attacks(sq, occ)) return true;
+    // 5. King attacks
+    Bitboard king_atks = AttackMasks::king_attacks(sq);
+    if (king_atks & board.pieces(make_piece(by_color, PieceType::King))) return true;
 
     return false;
 }
@@ -43,189 +46,150 @@ bool MoveGenerator::in_check(const Board& board, Color c) {
     return is_square_attacked(board, ksq, ~c);
 }
 
-void MoveGenerator::generate_pseudo_legal_moves(const Board& board, MoveList& moves, MoveGenType type) {
+void MoveGenerator::generate_legal_moves(const Board& board, MoveList& moves) {
+    moves.clear();
     Color us = board.side_to_move();
     Color them = ~us;
 
-    Bitboard us_bb = board.pieces(us);
-    Bitboard them_bb = board.pieces(them);
-    Bitboard empty_bb = ~board.occupied();
-    Bitboard occ = board.occupied();
+    Bitboard us_pieces   = board.pieces(us);
+    Bitboard them_pieces = board.pieces(them);
+    Bitboard empty_sqs   = ~board.occupied();
 
-    // 1. Pawn Moves
-    Piece pawn_piece = make_piece(us, PieceType::Pawn);
-    Bitboard pawns = board.pieces(pawn_piece);
+    // 1. Pawns
+    Piece pawn = make_piece(us, PieceType::Pawn);
+    Bitboard pawns = board.pieces(pawn);
 
     Rank promo_rank = (us == Color::White) ? Rank::Rank8 : Rank::Rank1;
-    Rank start_rank = (us == Color::White) ? Rank::Rank2 : Rank::Rank7;
+    Rank double_rank = (us == Color::White) ? Rank::Rank2 : Rank::Rank7;
 
     while (pawns) {
         Square from = pop_lsb(pawns);
-        int r = static_cast<int>(rank_of(from));
-        int f = static_cast<int>(file_of(from));
+        Bitboard from_bb = square_bb(from);
 
         // Single push
-        int push_r = (us == Color::White) ? r + 1 : r - 1;
-        Square push_sq = make_square(static_cast<File>(f), static_cast<Rank>(push_r));
-        if (test_bit(empty_bb, push_sq)) {
-            if (rank_of(push_sq) == promo_rank) {
-                if (type != MoveGenType::Captures) {
-                    moves.push_back(Move(from, push_sq, MoveType::PromoQueen));
-                    moves.push_back(Move(from, push_sq, MoveType::PromoRook));
-                    moves.push_back(Move(from, push_sq, MoveType::PromoBishop));
-                    moves.push_back(Move(from, push_sq, MoveType::PromoKnight));
-                }
+        Bitboard push_bb = (us == Color::White) ? (shift<Direction::North>(from_bb) & empty_sqs)
+                                                : (shift<Direction::South>(from_bb) & empty_sqs);
+        if (push_bb) {
+            Square to = lsb(push_bb);
+            if (rank_of(to) == promo_rank) {
+                moves.push_back(Move(from, to, MoveType::PromoQueen));
+                moves.push_back(Move(from, to, MoveType::PromoRook));
+                moves.push_back(Move(from, to, MoveType::PromoKnight));
+                moves.push_back(Move(from, to, MoveType::PromoBishop));
             } else {
-                if (type != MoveGenType::Captures) {
-                    moves.push_back(Move(from, push_sq, MoveType::Quiet));
-                }
+                moves.push_back(Move(from, to, MoveType::Quiet));
 
-                // Double push from starting rank
-                if (rank_of(from) == start_rank) {
-                    int dbl_r = (us == Color::White) ? r + 2 : r - 2;
-                    Square dbl_sq = make_square(static_cast<File>(f), static_cast<Rank>(dbl_r));
-                    if (test_bit(empty_bb, dbl_sq)) {
-                        if (type != MoveGenType::Captures) {
-                            moves.push_back(Move(from, dbl_sq, MoveType::DoublePawnPush));
-                        }
+                // Double push
+                if (rank_of(from) == double_rank) {
+                    Bitboard dbl_bb = (us == Color::White) ? (shift<Direction::North>(push_bb) & empty_sqs)
+                                                           : (shift<Direction::South>(push_bb) & empty_sqs);
+                    if (dbl_bb) {
+                        moves.push_back(Move(from, lsb(dbl_bb), MoveType::DoublePawnPush));
                     }
                 }
             }
         }
 
-        // Standard Pawn Captures
-        Bitboard attacks = AttackMasks::pawn_attacks(us, from) & them_bb;
-        while (attacks) {
-            Square to = pop_lsb(attacks);
+        // Captures
+        Bitboard atk_bb = AttackMasks::pawn_attacks(us, from);
+        Bitboard cap_bb = atk_bb & them_pieces;
+
+        while (cap_bb) {
+            Square to = pop_lsb(cap_bb);
             if (rank_of(to) == promo_rank) {
-                if (type != MoveGenType::Quiets) {
-                    moves.push_back(Move(from, to, MoveType::PromoCaptureQueen));
-                    moves.push_back(Move(from, to, MoveType::PromoCaptureRook));
-                    moves.push_back(Move(from, to, MoveType::PromoCaptureBishop));
-                    moves.push_back(Move(from, to, MoveType::PromoCaptureKnight));
-                }
+                moves.push_back(Move(from, to, MoveType::PromoCaptureQueen));
+                moves.push_back(Move(from, to, MoveType::PromoCaptureRook));
+                moves.push_back(Move(from, to, MoveType::PromoCaptureKnight));
+                moves.push_back(Move(from, to, MoveType::PromoCaptureBishop));
             } else {
-                if (type != MoveGenType::Quiets) {
-                    moves.push_back(Move(from, to, MoveType::Capture));
-                }
+                moves.push_back(Move(from, to, MoveType::Capture));
             }
         }
 
-        // En Passant Capture
+        // En Passant
         Square ep_sq = board.en_passant_sq();
         if (ep_sq != Square::None) {
             Bitboard ep_atk = AttackMasks::pawn_attacks(us, from) & square_bb(ep_sq);
             if (ep_atk) {
-                if (type != MoveGenType::Quiets) {
-                    moves.push_back(Move(from, ep_sq, MoveType::EnPassant));
-                }
+                moves.push_back(Move(from, ep_sq, MoveType::EnPassant));
             }
         }
     }
 
-    // Helper lambda for piece moves
+    // Helper for piece moves
     auto gen_piece_moves = [&](PieceType pt, auto attack_fn) {
-        Bitboard pieces_bb = board.pieces(make_piece(us, pt));
-        while (pieces_bb) {
-            Square from = pop_lsb(pieces_bb);
-            Bitboard targets = attack_fn(from, occ) & ~us_bb;
-            while (targets) {
-                Square to = pop_lsb(targets);
-                bool is_cap = test_bit(them_bb, to);
-                if (is_cap) {
-                    if (type != MoveGenType::Quiets) {
-                        moves.push_back(Move(from, to, MoveType::Capture));
-                    }
-                } else {
-                    if (type != MoveGenType::Captures) {
-                        moves.push_back(Move(from, to, MoveType::Quiet));
-                    }
-                }
+        Piece p = make_piece(us, pt);
+        Bitboard bb = board.pieces(p);
+        while (bb) {
+            Square from = pop_lsb(bb);
+            Bitboard atks = attack_fn(from, board.occupied());
+            Bitboard valid_atks = atks & ~us_pieces;
+
+            while (valid_atks) {
+                Square to = pop_lsb(valid_atks);
+                MoveType type = test_bit(them_pieces, to) ? MoveType::Capture : MoveType::Quiet;
+                moves.push_back(Move(from, to, type));
             }
         }
     };
 
-    // 2. Knights
     gen_piece_moves(PieceType::Knight, [](Square s, Bitboard) { return AttackMasks::knight_attacks(s); });
+    gen_piece_moves(PieceType::Bishop, [](Square s, Bitboard occ) { return AttackMasks::bishop_attacks(s, occ); });
+    gen_piece_moves(PieceType::Rook,   [](Square s, Bitboard occ) { return AttackMasks::rook_attacks(s, occ); });
+    gen_piece_moves(PieceType::Queen,  [](Square s, Bitboard occ) { return AttackMasks::queen_attacks(s, occ); });
+    gen_piece_moves(PieceType::King,   [](Square s, Bitboard) { return AttackMasks::king_attacks(s); });
 
-    // 3. Bishops
-    gen_piece_moves(PieceType::Bishop, [](Square s, Bitboard o) { return AttackMasks::bishop_attacks(s, o); });
-
-    // 4. Rooks
-    gen_piece_moves(PieceType::Rook, [](Square s, Bitboard o) { return AttackMasks::rook_attacks(s, o); });
-
-    // 5. Queens
-    gen_piece_moves(PieceType::Queen, [](Square s, Bitboard o) { return AttackMasks::queen_attacks(s, o); });
-
-    // 6. Kings
-    gen_piece_moves(PieceType::King, [](Square s, Bitboard) { return AttackMasks::king_attacks(s); });
-
-    // 7. Castling Moves
-    if (type != MoveGenType::Captures) {
-        Square ksq = board.king_square(us);
-        if (ksq != Square::None && !in_check(board, us)) {
-            CastlingRights cr = board.castling_rights();
-            if (us == Color::White) {
-                // White Kingside (e1 -> g1)
-                if (cr & WhiteOO) {
-                    if (board.piece_at(Square::f1) == Piece::None && board.piece_at(Square::g1) == Piece::None) {
-                        if (!is_square_attacked(board, Square::f1, Color::Black) &&
-                            !is_square_attacked(board, Square::g1, Color::Black)) {
-                            moves.push_back(Move(Square::e1, Square::g1, MoveType::KingCastle));
-                        }
-                    }
+    // Castling
+    if (!in_check(board, us)) {
+        CastlingRights cr = board.castling_rights();
+        if (us == Color::White) {
+            if ((cr & WhiteOO) && !test_bit(board.occupied(), Square::f1) && !test_bit(board.occupied(), Square::g1)) {
+                if (!is_square_attacked(board, Square::f1, Color::Black) && !is_square_attacked(board, Square::g1, Color::Black)) {
+                    moves.push_back(Move(Square::e1, Square::g1, MoveType::KingCastle));
                 }
-                // White Queenside (e1 -> c1)
-                if (cr & WhiteOOO) {
-                    if (board.piece_at(Square::d1) == Piece::None &&
-                        board.piece_at(Square::c1) == Piece::None &&
-                        board.piece_at(Square::b1) == Piece::None) {
-                        if (!is_square_attacked(board, Square::d1, Color::Black) &&
-                            !is_square_attacked(board, Square::c1, Color::Black)) {
-                            moves.push_back(Move(Square::e1, Square::c1, MoveType::QueenCastle));
-                        }
-                    }
+            }
+            if ((cr & WhiteOOO) && !test_bit(board.occupied(), Square::d1) && !test_bit(board.occupied(), Square::c1) && !test_bit(board.occupied(), Square::b1)) {
+                if (!is_square_attacked(board, Square::d1, Color::Black) && !is_square_attacked(board, Square::c1, Color::Black)) {
+                    moves.push_back(Move(Square::e1, Square::c1, MoveType::QueenCastle));
                 }
-            } else {
-                // Black Kingside (e8 -> g8)
-                if (cr & BlackOO) {
-                    if (board.piece_at(Square::f8) == Piece::None && board.piece_at(Square::g8) == Piece::None) {
-                        if (!is_square_attacked(board, Square::f8, Color::White) &&
-                            !is_square_attacked(board, Square::g8, Color::White)) {
-                            moves.push_back(Move(Square::e8, Square::g8, MoveType::KingCastle));
-                        }
-                    }
+            }
+        } else {
+            if ((cr & BlackOO) && !test_bit(board.occupied(), Square::f8) && !test_bit(board.occupied(), Square::g8)) {
+                if (!is_square_attacked(board, Square::f8, Color::White) && !is_square_attacked(board, Square::g8, Color::White)) {
+                    moves.push_back(Move(Square::e8, Square::g8, MoveType::KingCastle));
                 }
-                // Black Queenside (e8 -> c8)
-                if (cr & BlackOOO) {
-                    if (board.piece_at(Square::d8) == Piece::None &&
-                        board.piece_at(Square::c8) == Piece::None &&
-                        board.piece_at(Square::b8) == Piece::None) {
-                        if (!is_square_attacked(board, Square::d8, Color::White) &&
-                            !is_square_attacked(board, Square::c8, Color::White)) {
-                            moves.push_back(Move(Square::e8, Square::c8, MoveType::QueenCastle));
-                        }
-                    }
+            }
+            if ((cr & BlackOOO) && !test_bit(board.occupied(), Square::d8) && !test_bit(board.occupied(), Square::c8) && !test_bit(board.occupied(), Square::b8)) {
+                if (!is_square_attacked(board, Square::d8, Color::White) && !is_square_attacked(board, Square::c8, Color::White)) {
+                    moves.push_back(Move(Square::e8, Square::c8, MoveType::QueenCastle));
                 }
             }
         }
     }
+
+    // Filter out illegal moves that leave king in check
+    MoveList legal_moves;
+    Board temp_board = board;
+    for (size_t i = 0; i < moves.size(); ++i) {
+        temp_board.make_move(moves[i]);
+        if (!in_check(temp_board, us)) {
+            legal_moves.push_back(moves[i]);
+        }
+        temp_board.unmake_move(moves[i]);
+    }
+
+    moves = legal_moves;
 }
 
-void MoveGenerator::generate_legal_moves(Board& board, MoveList& moves, MoveGenType type) {
-    MoveList pseudo_moves;
-    generate_pseudo_legal_moves(board, pseudo_moves, type);
+void MoveGenerator::generate_capture_moves(const Board& board, MoveList& moves) {
+    MoveList all_moves;
+    generate_legal_moves(board, all_moves);
 
-    Color us = board.side_to_move();
     moves.clear();
-
-    for (const auto& m : pseudo_moves) {
-        board.make_move(m);
-        // Verify king of side that moved is NOT in check
-        if (!in_check(board, us)) {
+    for (const auto& m : all_moves) {
+        if (m.is_capture()) {
             moves.push_back(m);
         }
-        board.unmake_move(m);
     }
 }
 

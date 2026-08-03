@@ -7,6 +7,27 @@
 
 namespace heavensgate {
 
+enum class Direction {
+    North, South, East, West,
+    NorthEast, NorthWest, SouthEast, SouthWest
+};
+
+template<Direction D>
+constexpr Bitboard shift(Bitboard b) noexcept {
+    constexpr Bitboard FileA = 0x0101010101010101ULL;
+    constexpr Bitboard FileH = 0x8080808080808080ULL;
+
+    if constexpr (D == Direction::North)     return b << 8;
+    if constexpr (D == Direction::South)     return b >> 8;
+    if constexpr (D == Direction::East)      return (b & ~FileH) << 1;
+    if constexpr (D == Direction::West)      return (b & ~FileA) >> 1;
+    if constexpr (D == Direction::NorthEast) return (b & ~FileH) << 9;
+    if constexpr (D == Direction::NorthWest) return (b & ~FileA) << 7;
+    if constexpr (D == Direction::SouthEast) return (b & ~FileH) >> 7;
+    if constexpr (D == Direction::SouthWest) return (b & ~FileA) >> 9;
+    return EmptyBB;
+}
+
 class AttackMasks {
 public:
     static std::array<Bitboard, 64> pawn_attacks_table[2];

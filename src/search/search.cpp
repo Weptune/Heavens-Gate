@@ -5,6 +5,69 @@
 
 namespace heavensgate {
 
+int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) {
+    metrics_tracker_.add_nodes(1);
+    q_nodes_++;
+
+    if (is_time_up()) return 0;
+
+    // 1. Stand-Pat evaluation threshold
+    int stand_pat = Evaluator::evaluate(board);
+    if (stand_pat >= beta) {
+        return beta; // Fail-high cutoff
+    }
+
+    if (stand_pat > alpha) {
+        alpha = stand_pat;
+    }
+
+    MoveList captures;
+    MoveGenerator::generate_capture_moves(board, captures);
+
+    if (captures.empty()) {
+        return stand_pat;
+    }
+
+    // Sort captures via MVV-LVA
+    move_picker_.score_and_sort_moves(board, captures, ply);
+
+    for (const auto& m : captures) {
+        // Delta Pruning: If capture cannot possibly raise alpha even with Queen value + margin
+        Piece victim = board.piece_at(m.to());
+        int victim_val = (victim != Piece::None) ? PawnValue : 0;
+        switch (piece_type_of(victim)) {
+            case PieceType::Pawn:   victim_val = PawnValue; break;
+            case PieceType::Knight: victim_val = KnightValue; break;
+            case PieceType::Bishop: victim_val = BishopValue; break;
+            case PieceType::Rook:   victim_val = RookValue; break;
+            case PieceType::Queen:  victim_val = QueenValue; break;
+            default: break;
+        }
+
+        if (stand_pat + victim_val + 200 < alpha && !m.is_promotion()) {
+            continue; // Prune unpromising capture
+        }
+
+        board.make_move(m);
+
+        int score = -quiescence_search(board, -beta, -alpha, ply + 1);
+
+        board.unmake_move(m);
+
+        if (time_stop_flag_) return 0;
+
+        if (score >= beta) {
+            return beta; // Fail-high cutoff
+        }
+
+        if (score > alpha) {
+            alpha = score;
+        }
+    }
+
+    return alpha;
+}
+
 int SearchEngine::negamax_minimax(Board& board, int depth, int ply, TreeNodeJSON* json_node) {
     metrics_tracker_.add_nodes(1);
 
@@ -84,7 +147,6 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
             if (tt_entry->depth >= depth) {
                 int tt_score = tt_entry->score;
-                // Un-adjust mate score relative to current ply
                 if (tt_score > ScoreMate - 1000) tt_score -= ply;
                 else if (tt_score < -ScoreMate + 1000) tt_score += ply;
 
@@ -100,13 +162,14 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
     }
 
+    // Reach search horizon -> enter Quiescence Search!
     if (depth <= 0) {
-        int eval = Evaluator::evaluate(board);
+        int q_eval = quiescence_search(board, alpha, beta, ply);
         if (json_node) {
-            json_node->eval = eval;
+            json_node->eval = q_eval;
             json_node->is_terminal = true;
         }
-        return eval;
+        return q_eval;
     }
 
     MoveList moves;
@@ -178,7 +241,6 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
     }
 
-    // Store evaluation in Transposition Table
     if (use_tt && !time_stop_flag_) {
         TTBound bound = (best_score <= orig_alpha) ? TTBound::Upper : TTBound::Exact;
         tt_.store(board.zobrist_key(), best_move, best_score, depth, bound, ply);
@@ -257,9 +319,10 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     pv_table_.clear();
     move_picker_.clear();
     if (use_tt) tt_.clear();
+    q_nodes_ = 0;
 
     metrics_tracker_.start_timer();
-    metrics_tracker_.set_version(use_tt ? "v7.0 (Transposition Table)" : "v4.0 (PST Positional Eval)");
+    metrics_tracker_.set_version("v8.0 (Quiescence Search)");
     metrics_tracker_.set_depth(depth);
 
     time_stop_flag_ = false;
@@ -328,6 +391,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     result.pv = pv_table_.get_pv(depth);
     result.metrics = metrics_tracker_.get_metrics();
     result.tt_hits = tt_.hits();
+    result.q_nodes = q_nodes_;
 
     return result;
 }
@@ -336,13 +400,14 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
     pv_table_.clear();
     move_picker_.clear();
     tt_.clear();
+    q_nodes_ = 0;
 
     search_start_time_ = std::chrono::high_resolution_clock::now();
     max_time_ms_ = max_time_ms;
     time_stop_flag_ = false;
 
     metrics_tracker_.start_timer();
-    metrics_tracker_.set_version("v7.0 (Iterative Deepening + TT)");
+    metrics_tracker_.set_version("v8.0 (Iterative Deepening + QSearch)");
 
     SearchResult final_result;
     Move best_pv_move = Move();
@@ -398,6 +463,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
         final_result.pv = pv_table_.get_pv(d);
         final_result.completed_depth = d;
         final_result.tt_hits = tt_.hits();
+        final_result.q_nodes = q_nodes_;
 
         if (is_time_up()) break;
     }
