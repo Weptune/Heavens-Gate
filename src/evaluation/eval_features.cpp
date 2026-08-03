@@ -43,9 +43,9 @@ void EvalFeatures::init() {
         PassedPawnMask[static_cast<size_t>(Color::Black)][static_cast<size_t>(sq)] = black_mask;
     }
 
-    // 3. Non-linear King Danger Quadratic Curve
+    // 3. Calibrated King Danger Quadratic Curve
     for (int d = 0; d < 32; ++d) {
-        KingDangerTable[static_cast<size_t>(d)] = (d * d) / 4;
+        KingDangerTable[static_cast<size_t>(d)] = (d * d) / 8;
     }
 }
 
@@ -60,13 +60,13 @@ int EvalFeatures::evaluate_pawn_structure(const Board& board, Color us) {
 
         // Isolated Pawn Penalty
         if ((our_pawns & IsolatedPawnMask[static_cast<size_t>(f)]) == EmptyBB) {
-            score -= 15;
+            score -= 10;
         }
 
         // Doubled Pawn Penalty
         Bitboard file_pawns = our_pawns & file_bb(f);
         if (popcount(file_pawns) > 1) {
-            score -= 10;
+            score -= 8;
         }
     }
 
@@ -79,7 +79,7 @@ int EvalFeatures::evaluate_passed_pawns(const Board& board, Color us) {
     Bitboard our_pawns   = board.pieces(make_piece(us, PieceType::Pawn));
     Bitboard enemy_pawns = board.pieces(make_piece(them, PieceType::Pawn));
 
-    constexpr int PassedPawnBonus[8] = { 0, 10, 20, 35, 60, 100, 160, 0 };
+    constexpr int PassedPawnBonus[8] = { 0, 5, 10, 20, 40, 70, 110, 0 };
 
     Bitboard temp = our_pawns;
     while (temp) {
@@ -100,16 +100,25 @@ int EvalFeatures::evaluate_king_safety(const Board& board, Color us) {
     Square ksq = board.king_square(us);
     if (ksq == Square::None) return 0;
 
+    File kf = file_of(ksq);
+    Rank kr = rank_of(ksq);
+
+    // ONLY evaluate King Shield when King is castled on Kingside (f/g/h) or Queenside (a/b/c)
+    bool is_castled = (kf <= File::FileC || kf >= File::FileF) && 
+                      ((us == Color::White && kr == Rank::Rank1) || (us == Color::Black && kr == Rank::Rank8));
+
+    if (!is_castled) return 0; // Do not penalize central pawn pushes before castling!
+
     Color them = ~us;
     int danger_units = 0;
 
-    // King Zone = King square + 8 surrounding squares
+    // King Zone = King square + surrounding squares
     Bitboard king_zone = AttackMasks::king_attacks(ksq) | square_bb(ksq);
 
-    // 1. Check friendly pawn shield in front of king
+    // 1. Check friendly pawn shield in front of castled king
     Bitboard shield_pawns = board.pieces(make_piece(us, PieceType::Pawn)) & king_zone;
     int shield_count = popcount(shield_pawns);
-    int shield_score = shield_count * 12;
+    int shield_score = shield_count * 10;
 
     // 2. Count enemy piece attack intersections with king zone
     Bitboard occ = board.occupied();
@@ -139,7 +148,7 @@ int EvalFeatures::evaluate_king_safety(const Board& board, Color us) {
     Bitboard temp_q = enemy_queens;
     while (temp_q) {
         Square sq = pop_lsb(temp_q);
-        if (AttackMasks::queen_attacks(sq, occ) & king_zone) danger_units += 5;
+        if (AttackMasks::queen_attacks(sq, occ) & king_zone) danger_units += 4;
     }
 
     size_t danger_idx = static_cast<size_t>(std::min(danger_units, 31));
@@ -158,7 +167,7 @@ int EvalFeatures::evaluate_piece_activity(const Board& board, Color us) {
     // 1. Bishop Pair Bonus
     Bitboard bishops = board.pieces(make_piece(us, PieceType::Bishop));
     if (popcount(bishops) >= 2) {
-        score += 35;
+        score += 25;
     }
 
     // 2. Rooks on Open & Semi-Open Files
@@ -175,15 +184,15 @@ int EvalFeatures::evaluate_piece_activity(const Board& board, Color us) {
         bool no_enemy_pawns = (enemy_pawns & file_bb_mask) == EmptyBB;
 
         if (no_our_pawns && no_enemy_pawns) {
-            score += 25; // Open file
+            score += 20; // Open file
         } else if (no_our_pawns) {
-            score += 12; // Semi-open file
+            score += 10; // Semi-open file
         }
 
         // Rook on 7th rank bonus
         Rank seventh = (us == Color::White) ? Rank::Rank7 : Rank::Rank2;
         if (r == seventh) {
-            score += 30;
+            score += 20;
         }
     }
 
@@ -196,10 +205,9 @@ int EvalFeatures::evaluate_piece_activity(const Board& board, Color us) {
         int rel_rank = (us == Color::White) ? static_cast<int>(r) : (7 - static_cast<int>(r));
 
         if (rel_rank >= 3 && rel_rank <= 5) {
-            // Protected by pawn?
             Bitboard pawn_atks = AttackMasks::pawn_attacks(them, sq);
             if (pawn_atks & our_pawns) {
-                score += 25; // Knight Outpost
+                score += 15; // Knight Outpost
             }
         }
     }
@@ -221,12 +229,12 @@ int EvalFeatures::evaluate_mobility(const Board& board, Color us) {
         }
     };
 
-    add_mob(PieceType::Knight, 4, [](Square s, Bitboard) { return AttackMasks::knight_attacks(s); });
-    add_mob(PieceType::Bishop, 3, [](Square s, Bitboard o) { return AttackMasks::bishop_attacks(s, o); });
-    add_mob(PieceType::Rook,   2, [](Square s, Bitboard o) { return AttackMasks::rook_attacks(s, o); });
+    add_mob(PieceType::Knight, 1, [](Square s, Bitboard) { return AttackMasks::knight_attacks(s); });
+    add_mob(PieceType::Bishop, 1, [](Square s, Bitboard o) { return AttackMasks::bishop_attacks(s, o); });
+    add_mob(PieceType::Rook,   1, [](Square s, Bitboard o) { return AttackMasks::rook_attacks(s, o); });
     add_mob(PieceType::Queen,  1, [](Square s, Bitboard o) { return AttackMasks::queen_attacks(s, o); });
 
-    return score;
+    return score / 2;
 }
 
 } // namespace heavensgate

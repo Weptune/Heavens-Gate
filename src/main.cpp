@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <random>
 #include <chrono>
+#include <cmath>
 
 using namespace heavensgate;
 
@@ -21,6 +22,110 @@ static std::string trim(const std::string& str) {
     if (first == std::string::npos) return "";
     size_t last = str.find_last_not_of(" \t\r\n");
     return str.substr(first, (last - first + 1));
+}
+
+const std::vector<std::string> TournamentOpenings = {
+    std::string(StartposFEN),
+    "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2", // Sicilian Defense
+    "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3", // Ruy Lopez
+    "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", // French Defense
+    "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2", // Queen's Gambit
+    "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP2BPPP/R1BQK2R b KQ - 1 6"  // King's Indian
+};
+
+void run_automated_tournament(int num_games, int depth) {
+    std::cout << "\n======================================================\n";
+    std::cout << "  HEAVEN'S GATE ELO TOURNAMENT SUITE (" << num_games << " Games @ Depth " << depth << ")\n";
+    std::cout << "  Engine A: Master Edition (Advanced Positional Eval + PVS)\n";
+    std::cout << "  Engine B: Baseline Engine (Raw Material + Basic PST)\n";
+    std::cout << "======================================================\n\n";
+
+    int a_wins = 0;
+    int b_wins = 0;
+    int draws  = 0;
+
+    SearchEngine master_engine;
+    SearchEngine baseline_engine;
+
+    for (int g = 1; g <= num_games; ++g) {
+        Board board;
+        std::string opening_fen = TournamentOpenings[(g - 1) % TournamentOpenings.size()];
+        FEN::parse(opening_fen, board);
+
+        bool a_is_white = (g % 2 != 0);
+        int game_moves = 0;
+
+        std::cout << "[Game " << std::setw(2) << g << "/" << num_games << "] "
+                  << (a_is_white ? "Master (White) vs Baseline (Black)" : "Baseline (White) vs Master (Black)")
+                  << " ... " << std::flush;
+
+        while (game_moves < 80) {
+            MoveList legal_moves;
+            MoveGenerator::generate_legal_moves(board, legal_moves);
+
+            if (legal_moves.empty()) {
+                if (MoveGenerator::in_check(board, board.side_to_move())) {
+                    if (board.side_to_move() == Color::White) {
+                        if (a_is_white) b_wins++; else a_wins++;
+                    } else {
+                        if (a_is_white) a_wins++; else b_wins++;
+                    }
+                } else {
+                    draws++;
+                }
+                break;
+            }
+
+            if (board.halfmove_clock() >= 100) {
+                draws++;
+                break;
+            }
+
+            bool current_is_master = (board.side_to_move() == Color::White && a_is_white) ||
+                                     (board.side_to_move() == Color::Black && !a_is_white);
+
+            SearchResult res;
+            if (current_is_master) {
+                Evaluator::set_mode(EvalMode::MasterPositional);
+                res = master_engine.search_alphabeta(board, depth, true, true);
+            } else {
+                Evaluator::set_mode(EvalMode::MaterialOnly);
+                res = baseline_engine.search_alphabeta(board, depth, false, false);
+            }
+
+            if (!res.best_move) break;
+            board.make_move(res.best_move);
+            game_moves++;
+        }
+
+        if (game_moves >= 80) {
+            draws++;
+        }
+
+        std::cout << "Done (" << game_moves << " moves). Score: Master " 
+                  << a_wins << " - " << b_wins << " Baseline (" << draws << " draws)\n";
+    }
+
+    Evaluator::set_mode(EvalMode::MasterPositional);
+
+    double total_score = a_wins + 0.5 * draws;
+    double score_pct = (total_score / num_games) * 100.0;
+
+    double elo_diff = 0.0;
+    if (score_pct > 0.0 && score_pct < 100.0) {
+        elo_diff = -400.0 * std::log10(1.0 / (total_score / static_cast<double>(num_games)) - 1.0);
+    } else if (score_pct >= 100.0) {
+        elo_diff = 800.0;
+    }
+
+    std::cout << "\n------------------------------------------------------\n";
+    std::cout << "TOURNAMENT FINAL RESULTS:\n";
+    std::cout << "  Master Wins   : " << a_wins << "\n";
+    std::cout << "  Baseline Wins : " << b_wins << "\n";
+    std::cout << "  Draws         : " << draws  << "\n";
+    std::cout << "  Master Score  : " << std::fixed << std::setprecision(1) << score_pct << "%\n";
+    std::cout << "  Calculated Delta Elo : +" << std::setprecision(0) << elo_diff << " Elo Advantage\n";
+    std::cout << "------------------------------------------------------\n\n";
 }
 
 void run_three_way_comparison(Board& board, int depth) {
@@ -69,14 +174,20 @@ int main(int argc, char* argv[]) {
         } else if (arg == "uci") {
             UCI::loop();
             return 0;
+        } else if (arg == "tournament") {
+            int games = (argc > 2) ? std::stoi(argv[2]) : 6;
+            int depth = (argc > 3) ? std::stoi(argv[3]) : 4;
+            run_automated_tournament(games, depth);
+            return 0;
         }
     }
 
     std::cout << "======================================================\n";
-    std::cout << "  HEAVEN'S GATE CHESS ENGINE - MASTER EDITION (PVS & Eval)\n";
+    std::cout << "  HEAVEN'S GATE CHESS ENGINE - MASTER EDITION\n";
     std::cout << "======================================================\n";
     std::cout << "Commands:\n";
     std::cout << "  uci                         - Switch to standard UCI Protocol mode\n";
+    std::cout << "  tournament [games] [depth]  - Run automated self-play tournament & compute Elo delta\n";
     std::cout << "  id <depth> [time_ms]        - Run Iterative Deepening + PVS + Eval\n";
     std::cout << "  alphabeta <depth> / ab <d>  - Run Move-Ordered PVS search\n";
     std::cout << "  compare <depth>             - Compare Minimax vs Raw Alpha-Beta vs Master Search\n";
@@ -107,6 +218,18 @@ int main(int argc, char* argv[]) {
             std::cout << "uciok" << std::endl;
             UCI::loop();
             break;
+        } else if (line.rfind("tournament", 0) == 0) {
+            int games = 6;
+            int depth = 4;
+            try {
+                std::stringstream ss(line);
+                std::string cmd;
+                ss >> cmd;
+                if (ss >> games) {
+                    ss >> depth;
+                }
+            } catch (...) {}
+            run_automated_tournament(games, depth);
         } else if (line.rfind("id", 0) == 0 || line.rfind("go", 0) == 0) {
             int d = 6;
             double time_ms = 0.0;
@@ -194,7 +317,7 @@ int main(int argc, char* argv[]) {
                 std::cout << "Failed to parse FEN string.\n";
             }
         } else {
-            std::cout << "Unknown command. Available: uci, id <d> [time], ab <d>, compare <d>, minimax <d>, perft, exit\n";
+            std::cout << "Unknown command. Available: uci, tournament [games] [d], id <d> [time], ab <d>, compare <d>, minimax <d>, perft, exit\n";
         }
     }
 

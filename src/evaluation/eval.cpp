@@ -4,9 +4,12 @@
 
 namespace heavensgate {
 
+EvalMode Evaluator::current_mode_ = EvalMode::MasterPositional;
+
 void Evaluator::init() {
     PST::init();
     EvalFeatures::init();
+    current_mode_ = EvalMode::MasterPositional;
 }
 
 int Evaluator::evaluate_side(const Board& board, Color side) {
@@ -37,7 +40,11 @@ int Evaluator::evaluate_side(const Board& board, Color side) {
     score_piece(PieceType::Queen,  900, 950);
     score_piece(PieceType::King,     0,   0);
 
-    // Advanced Mathematical Features
+    if (current_mode_ == EvalMode::MaterialOnly) {
+        return mg_material + mg_pst;
+    }
+
+    // Master Positional Features
     int pawn_struct = EvalFeatures::evaluate_pawn_structure(board, side);
     int passed_pawns= EvalFeatures::evaluate_passed_pawns(board, side);
     int king_safety = EvalFeatures::evaluate_king_safety(board, side);
@@ -46,7 +53,6 @@ int Evaluator::evaluate_side(const Board& board, Color side) {
 
     int pos_total = pawn_struct + passed_pawns + king_safety + activity + mobility;
 
-    // Calculate game phase phi in [0, 24]
     int knights = popcount(board.pieces(make_piece(side, PieceType::Knight)));
     int bishops = popcount(board.pieces(make_piece(side, PieceType::Bishop)));
     int rooks   = popcount(board.pieces(make_piece(side, PieceType::Rook)));
