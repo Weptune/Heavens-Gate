@@ -132,6 +132,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     if (is_time_up()) return 0;
 
+    // Check Repetition Draw at non-root plies
+    if (ply > 0 && board.is_repetition()) {
+        return ScoreDraw;
+    }
+
     int orig_alpha = alpha;
     Move tt_move = pv_move;
 
@@ -179,7 +184,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         int margin = 120 * depth;
         if (eval - margin >= beta) {
             metrics_tracker_.add_cut();
-            return eval - margin; // Static fail-high cutoff
+            return eval - margin;
         }
     }
 
@@ -194,7 +199,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         if (null_score >= beta) {
             metrics_tracker_.add_cut();
-            return beta; // Fail-high NMP cutoff
+            return beta;
         }
     }
 
@@ -240,22 +245,17 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         // 4. Principal Variation Search (PVS / NegaScout) & LMR
         if (i == 0) {
-            // Full window search for first move (PV move)
             score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
         } else {
-            // Late Move Reductions (LMR) for quiet moves
             if (i >= 4 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk) {
                 int reduction = 1 + static_cast<int>(std::log(depth) * std::log(i + 1) / 2.5);
                 int reduced_depth = std::max(1, depth - 1 - reduction);
 
-                // Zero-window search at reduced depth
                 score = -negamax_alphabeta(board, reduced_depth, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
             } else {
-                // Zero-window search at full depth
                 score = -negamax_alphabeta(board, depth - 1, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
             }
 
-            // If zero-window search raised alpha, re-search with full [alpha, beta] window!
             if (score > alpha && score < beta) {
                 score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
             }
@@ -375,7 +375,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     q_nodes_ = 0;
 
     metrics_tracker_.start_timer();
-    metrics_tracker_.set_version("v10.0 (PVS + Aspiration + NMP + LMR)");
+    metrics_tracker_.set_version("v10.0 (Master Edition)");
     metrics_tracker_.set_depth(depth);
 
     time_stop_flag_ = false;
@@ -476,7 +476,6 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 
         move_picker_.score_and_sort_moves(board, moves, 0, best_pv_move);
 
-        // Aspiration Windows Setup (d >= 4)
         int alpha = -ScoreInfinity;
         int beta  =  ScoreInfinity;
         constexpr int WindowDelta = 25;
@@ -519,13 +518,12 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 
             if (interrupted) break;
 
-            // Check Aspiration Fail Low / Fail High
             if (current_best_score <= alpha) {
-                alpha = -ScoreInfinity; // Fail low -> widen alpha
+                alpha = -ScoreInfinity;
             } else if (current_best_score >= beta) {
-                beta = ScoreInfinity;  // Fail high -> widen beta
+                beta = ScoreInfinity;
             } else {
-                break; // Score within aspiration window -> search complete for depth d
+                break;
             }
         }
 

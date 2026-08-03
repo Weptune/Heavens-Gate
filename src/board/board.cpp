@@ -27,6 +27,21 @@ void Board::recalculate_zobrist_key() noexcept {
     zobrist_key_ = Zobrist::compute_hash(*this);
 }
 
+bool Board::is_repetition() const noexcept {
+    if (history_.empty()) return false;
+    int count = 0;
+    int search_limit = std::min(static_cast<int>(history_.size()), static_cast<int>(halfmove_clock_));
+    int size = static_cast<int>(history_.size());
+
+    for (int i = 1; i <= search_limit; ++i) {
+        if (history_[size - i].zobrist_key == zobrist_key_) {
+            count++;
+            if (count >= 1) return true; // Repeats once -> Repetition Draw!
+        }
+    }
+    return false;
+}
+
 void Board::set_piece(Square sq, Piece p) {
     if (sq == Square::None) return;
 

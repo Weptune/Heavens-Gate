@@ -82,6 +82,8 @@ public:
         return (knights | bishops | rooks | queens) != EmptyBB;
     }
 
+    bool is_repetition() const noexcept;
+
     // Mutators
     void set_side_to_move(Color c) noexcept { side_to_move_ = c; }
     void set_castling_rights(CastlingRights cr) noexcept { castling_rights_ = cr; }

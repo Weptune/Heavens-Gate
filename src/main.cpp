@@ -55,28 +55,34 @@ void run_automated_tournament(int num_games, int depth) {
         bool a_is_white = (g % 2 != 0);
         int game_moves = 0;
 
-        std::cout << "[Game " << std::setw(2) << g << "/" << num_games << "] "
+        std::cout << "\n--- Game " << g << "/" << num_games << ": "
                   << (a_is_white ? "Master (White) vs Baseline (Black)" : "Baseline (White) vs Master (Black)")
-                  << " ... " << std::flush;
+                  << " ---\n";
 
-        while (game_moves < 80) {
+        std::string game_pgn = "";
+
+        while (game_moves < 150) {
             MoveList legal_moves;
             MoveGenerator::generate_legal_moves(board, legal_moves);
 
             if (legal_moves.empty()) {
                 if (MoveGenerator::in_check(board, board.side_to_move())) {
                     if (board.side_to_move() == Color::White) {
+                        std::cout << "\n[RESULT] Black wins by Checkmate!\n";
                         if (a_is_white) b_wins++; else a_wins++;
                     } else {
+                        std::cout << "\n[RESULT] White wins by Checkmate!\n";
                         if (a_is_white) a_wins++; else b_wins++;
                     }
                 } else {
+                    std::cout << "\n[RESULT] Draw by Stalemate!\n";
                     draws++;
                 }
                 break;
             }
 
             if (board.halfmove_clock() >= 100) {
+                std::cout << "\n[RESULT] Draw by 50-Move Rule!\n";
                 draws++;
                 break;
             }
@@ -93,16 +99,29 @@ void run_automated_tournament(int num_games, int depth) {
                 res = baseline_engine.search_alphabeta(board, depth, false, false);
             }
 
-            if (!res.best_move) break;
+            if (!res.best_move) {
+                std::cout << "\n[RESULT] Draw by No Valid Move!\n";
+                draws++;
+                break;
+            }
+
+            std::string uci_move = move_to_uci(res.best_move);
+            if (board.side_to_move() == Color::White) {
+                std::cout << (game_moves / 2 + 1) << ". " << uci_move << " (" << res.best_score << "cp) ";
+            } else {
+                std::cout << uci_move << " (" << res.best_score << "cp)\n";
+            }
+
             board.make_move(res.best_move);
             game_moves++;
         }
 
-        if (game_moves >= 80) {
+        if (game_moves >= 150) {
+            std::cout << "\n[RESULT] Draw by Max Move Limit (150 Moves)!\n";
             draws++;
         }
 
-        std::cout << "Done (" << game_moves << " moves). Score: Master " 
+        std::cout << "Score after Game " << g << ": Master " 
                   << a_wins << " - " << b_wins << " Baseline (" << draws << " draws)\n";
     }
 
@@ -175,7 +194,7 @@ int main(int argc, char* argv[]) {
             UCI::loop();
             return 0;
         } else if (arg == "tournament") {
-            int games = (argc > 2) ? std::stoi(argv[2]) : 6;
+            int games = (argc > 2) ? std::stoi(argv[2]) : 2;
             int depth = (argc > 3) ? std::stoi(argv[3]) : 4;
             run_automated_tournament(games, depth);
             return 0;
@@ -219,7 +238,7 @@ int main(int argc, char* argv[]) {
             UCI::loop();
             break;
         } else if (line.rfind("tournament", 0) == 0) {
-            int games = 6;
+            int games = 2;
             int depth = 4;
             try {
                 std::stringstream ss(line);
