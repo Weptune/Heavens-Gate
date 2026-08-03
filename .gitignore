@@ -1,15 +1,19 @@
-# Executables
+# Build binaries and executables
 *.exe
-heavensgate
-heavensgate_tests
-
-# Build / Toolchain directories
-tools/
-build/
-.cache/
 *.o
 *.obj
+heavensgate
+heavensgate.exe
+heavensgate_tests.exe
 
-# Generated files
+# Local data & tournament outputs
+tournament_results.pgn
 game_tree.json
 *.log
+*.pgn
+
+# IDE & OS files
+.vscode/
+.idea/
+*.swp
+*.DS_Store
