@@ -13,6 +13,7 @@
 #include <chrono>
 #include <algorithm>
 #include <iomanip>
+#include <random>
 
 using namespace heavensgate;
 
@@ -90,7 +91,9 @@ int main(int argc, char* argv[]) {
         int moves_count = 0;
         int game_result_score = 0; // +1 = White win, -1 = Black win, 0 = Draw
 
-        while (moves_count < 60) {
+        std::mt19937 rng(42 + g);
+
+        while (moves_count < 100) {
             MoveList legal_moves;
             MoveGenerator::generate_legal_moves(board, legal_moves);
 
@@ -104,19 +107,43 @@ int main(int argc, char* argv[]) {
             }
 
             SearchResult res = search_engine.search_alphabeta(board, search_depth, true, true);
-            if (!static_cast<bool>(res.best_move)) {
-                res.best_move = legal_moves[0];
+            Move chosen_move = res.best_move;
+
+            if (!static_cast<bool>(chosen_move)) {
+                chosen_move = legal_moves[0];
+            }
+
+            // In early opening (first 4 moves), add slight move sampling among legal moves for diversity
+            if (moves_count < 4 && legal_moves.size() > 1) {
+                std::uniform_int_distribution<size_t> dist(0, std::min<size_t>(legal_moves.size() - 1, 3));
+                chosen_move = legal_moves[dist(rng)];
             }
 
             game_history.push_back({board, res.best_score});
 
-            board.make_move(res.best_move);
+            board.make_move(chosen_move);
             moves_count++;
+
+            // Adjudicate decisive evaluation advantage (> +450 cp or < -450 cp)
+            if (res.best_score > 450) {
+                game_result_score = (board.side_to_move() == Color::White) ? 1 : -1; // Previous mover won
+                break;
+            } else if (res.best_score < -450) {
+                game_result_score = (board.side_to_move() == Color::White) ? -1 : 1;
+                break;
+            }
 
             if (board.halfmove_clock() >= 100 || board.is_repetition()) {
                 game_result_score = 0;
                 break;
             }
+        }
+
+        // If game reached max move limit without mate, adjudicate based on final score
+        if (moves_count >= 100 && game_result_score == 0 && !game_history.empty()) {
+            int final_eval = game_history.back().search_eval;
+            if (final_eval > 200) game_result_score = 1;
+            else if (final_eval < -200) game_result_score = -1;
         }
 
         total_moves += moves_count;
