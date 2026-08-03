@@ -1,90 +1,36 @@
-[Event "Heaven's Gate Self-Play Tournament"]
+[Event "Heaven's Gate Unlimited Endgame Tournament"]
 [Site "Localhost"]
 [Date "2026.08.03"]
 [Round "1"]
 [White "Master Edition"]
 [Black "Baseline Engine"]
 [FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]
-1. g1f3 b8c6 2. b1c3 g8f6 3. h1g1 d7d6 4. c3b5 c8g4 5. b5d4 c6b4 6. e2e3 e7e5 7. d4b3 e5e4 8. c2c3 b4d5 9. h2h3 g4h5 10. g2g4 h5g4 11. h3g4 e4f3 12. d1f3 c7c6 13. g1h1 f6d7 14. h1h7 d7e5 15. f3h1 h8h7 16. h1h7 e5g4 17. h7e4 g4e5 18. b3d4 d5f6 19. e4f5 f6d5 20. f1g2 d5e7 21. f5g5 e7d5 22. g5d8 a8d8 23. g2d5 c6d5 24. d4b5 e5d3 25. e1e2 d3c1 26. a1c1 e8d7 27. e2d3 d7e6 28. d3d4 d8c8 29. c1h1 f8e7 30. d4d3 e7f6 31. h1h7 c8c4 32. h7h5 c4c5 33. b5d4 f6d4 34. d3d4 c5c4 35. d4d3 c4a4 36. a2a3 a4g4 37. h5h8 g4g2 38. h8b8 b7b6 39. b8g8 g2f2 40. g8g7 e6e5 41. g7g4 e5f5 42. g4a4 a7a5 43. b2b4 f2f1 44. b4a5 f1b1 45. a5b6 b1b6 46. a4f4 f5g6 47. f4d4 b6b5 48. a3a4 b5c5 49. d4b4 c5c6 50. d3d4 c6c5 51. b4b5 c5b5 52. a4b5 g6f6 53. d4d5 f6e7 54. b5b6 e7d7 55. c3c4 d7e7 56. b6b7 e7f6 57. b7b8q f6g5 58. b8g8 g5h4 59. g8f7 h4g3 60. d5d6 g3g2 1/2-1/2
+1. g1f3 b8c6 2. b1c3 g8f6 3. h1g1 d7d6 4. c3b5 c8g4 5. b5d4 c6b4 6. e2e3 e7e5 7. d4b3 e5e4 8. c2c3 b4d5 9. h2h3 g4h5 10. g2g4 h5g4 11. h3g4 e4f3 12. d1f3 c7c6 13. g1h1 f6d7 14. h1h7 d7e5 15. f3h1 h8h7 16. h1h7 e5g4 17. h7e4 g4e5 18. b3d4 d5f6 19. e4f5 f6d5 20. f1g2 d5e7 21. f5g5 e7d5 22. g5d8 a8d8 23. g2d5 c6d5 24. d4b5 e5d3 25. e1e2 d3c1 26. a1c1 e8d7 27. e2d3 d7e6 28. d3d4 d8c8 29. c1h1 f8e7 30. d4d3 e7f6 31. h1h7 c8c4 32. h7h5 c4c5 33. b5d4 f6d4 34. d3d4 c5c4 35. d4d3 c4a4 36. a2a3 a4g4 37. h5h8 g4g2 38. h8b8 b7b6 39. b8g8 g2f2 40. g8g7 e6e5 41. g7g4 e5f5 42. g4a4 a7a5 43. b2b4 f2f1 44. b4a5 f1b1 45. a5b6 b1b6 46. a4f4 f5g6 47. f4d4 b6b5 48. a3a4 b5c5 49. d4b4 c5c6 50. d3d4 c6c5 51. b4b5 c5b5 52. a4b5 g6f6 53. d4d5 f6e7 54. b5b6 e7d7 55. c3c4 d7e7 56. b6b7 e7f6 57. b7b8q f6g5 58. b8g8 g5h4 59. g8f7 h4g3 60. d5d6 g3g2 61. f7f5 g2h1 62. f5g4 h1h2 63. c4c5 h2h1 64. c5c6 h1h2 65. c6c7 h2h1 66. c7c8q h1h2 67. c8h8 1-0
 
-[Event "Heaven's Gate Self-Play Tournament"]
+[Event "Heaven's Gate Unlimited Endgame Tournament"]
 [Site "Localhost"]
 [Date "2026.08.03"]
 [Round "2"]
 [White "Baseline Engine"]
 [Black "Master Edition"]
 [FEN "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"]
-1. f1b5 g8f6 2. b1c3 d8c7 3. e1f1 b8c6 4. g1e2 c7d6 5. b5d3 c6e5 6. e2f4 e5d3 7. f4d3 d6d4 8. c3b5 d4c4 9. b5c7 e8d8 10. c7a8 f6e4 11. f1g1 e4d6 12. d3e5 c4e4 13. e5f3 b7b5 14. a8b6 a7b6 15. f3g5 e4e5 16. d2d3 c8b7 17. d1d2 f7f6 18. g5f3 b7f3 19. g2f3 d8c7 20. d2f4 e5f4 21. c1f4 c7c6 22. a1d1 d6f5 23. g1g2 c6d5 24. d1d2 f5d4 25. f4e3 d5e5 26. h1b1 h8g8 27. b2b4 e5d6 28. b4c5 d6c5 29. c2c3 e7e5 30. c3d4 e5d4 31. d2c2 c5d5 32. e3f4 f8c5 33. b1b5 g8a8 34. b5b2 a8a3 35. c2d2 d5e6 36. f4c7 a3a6 37. d2c2 e6f5 38. g2h1 a6a3 39. c2d2 a3a6 40. c7g3 a6a3 41. g3b8 a3a8 42. d2c2 a8a3 43. b2b3 a3b3 44. a2b3 f5e6 45. b8c7 e6d5 46. b3b4 c5b4 47. c7b6 b4d6 48. c2c4 d6e5 49. f3f4 e5f4 50. b6d4 f4b8 51. d4e3 b8e5 52. c4h4 h7h6 53. d3d4 e5d6 54. h4g4 d6f8 55. g4g1 d5e4 56. g1b1 e4d5 57. b1b8 f8d6 58. b8g8 g7g5 59. g8g6 f6f5 60. g6h6 f5f4 1/2-1/2
+1. f1b5 g8f6 2. b1c3 d8c7 3. e1f1 b8c6 4. g1e2 c7d6 5. b5d3 c6e5 6. e2f4 e5d3 7. f4d3 d6d4 8. c3b5 d4c4 9. b5c7 e8d8 10. c7a8 f6e4 11. f1g1 e4d6 12. d3e5 c4e4 13. e5f3 b7b5 14. a8b6 a7b6 15. f3g5 e4e5 16. d2d3 c8b7 17. d1d2 f7f6 18. g5f3 b7f3 19. g2f3 d8c7 20. d2f4 e5f4 21. c1f4 c7c6 22. a1d1 d6f5 23. g1g2 c6d5 24. d1d2 f5d4 25. f4e3 d5e5 26. h1b1 h8g8 27. b2b4 e5d6 28. b4c5 d6c5 29. c2c3 e7e5 30. c3d4 e5d4 31. d2c2 c5d5 32. e3f4 f8c5 33. b1b5 g8a8 34. b5b2 a8a3 35. c2d2 d5e6 36. f4c7 a3a6 37. d2c2 e6f5 38. g2h1 a6a3 39. c2d2 a3a6 40. c7g3 a6a3 41. g3b8 a3a8 42. d2c2 a8a3 43. b2b3 a3b3 44. a2b3 f5e6 45. b8c7 e6d5 46. b3b4 c5b4 47. c7b6 b4d6 48. c2c4 d6e5 49. f3f4 e5f4 50. b6d4 f4b8 51. d4e3 b8e5 52. c4h4 h7h6 53. d3d4 e5d6 54. h4g4 d6f8 55. g4g1 d5e4 56. g1b1 e4d5 57. b1b8 f8d6 58. b8g8 g7g5 59. g8g6 f6f5 60. g6h6 f5f4 61. e3d2 d6e7 62. h6h7 d5e6 63. d4d5 e6d6 64. d2b4 d6d5 65. b4e7 g5g4 66. e7g5 d5e6 67. g5f4 e6f5 68. f4e3 d7d6 69. h7g7 g4g3 70. g7g3 f5e5 71. g3g6 d6d5 72. g6g4 e5f5 73. g4g1 f5e4 74. g1g5 d5d4 75. g5g4 e4f5 76. g4d4 f5e6 77. e3f4 e6f5 78. f4c1 f5e5 79. d4b4 e5d5 80. c1e3 d5e5 81. e3c5 e5d5 82. c5b6 d5e5 83. b6e3 e5f5 84. b4c4 f5e5 85. e3f4 e5d5 86. c4a4 d5c5 87. f4e3 c5b5 88. a4d4 b5b6 89. d4d5 b6c7 90. d5b5 c7c6 91. b5b2 c6d5 92. e3f4 d5e4 93. f4g3 e4d3 94. g3h4 d3d4 95. h4g5 d4d3 96. g5e3 d3c3 97. b2d2 c3b3 98. e3c5 b3c4 99. c5d6 c4c3 100. d2a2 c3c4 101. a2b2 c4d5 102. d6c7 d5c6 103. c7g3 c6d5 104. b2c2 d5d4 105. g3d6 d4d5 106. d6a3 d5e4 107. a3b4 e4d3 108. c2a2 d3c4 109. b4d6 c4d5 110. a2d2 d5c4 111. d2e2 c4d3 112. e2b2 d3c3 113. d6e5 c3c4 114. e5g7 c4d5 115. b2b4 d5c5 116. g7c3 c5c6 117. c3d4 c6d5 118. d4f6 d5c5 119. b4a4 c5d5 120. a4d4 d5e6 121. f6d8 e6e5 122. d8b6 e5f5 123. b6c5 f5e6 124. c5d6 e6f5 125. d6a3 f5e5 126. a3b2 1/2-1/2
 
-[Event "Heaven's Gate Self-Play Tournament"]
+[Event "Heaven's Gate Unlimited Endgame Tournament"]
 [Site "Localhost"]
 [Date "2026.08.03"]
 [Round "3"]
 [White "Master Edition"]
 [Black "Baseline Engine"]
 [FEN "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3"]
-c6d4 1. f3d4 e5d4 2. b5d3 g8f6 3. e1g1 f8b4 4. e4e5 f6d5 5. d1g4 d8e7 6. g4g7 e7f8 7. g7g4 f8c5 8. b1a3 b4a3 9. b2a3 d5b6 10. c1b2 b6c4 11. b2d4 c5d5 12. g4g7 h8f8 13. d4c3 h7h5 14. d3c4 d5c4 15. c3b4 c7c5 16. b4c3 c4e4 17. f1c1 e4f5 18. g7g3 f5e4 19. g3g5 e4e2 20. c1b1 e2a6 21. g5h5 a6a3 22. e5e6 d7e6 23. c3g7 f8g8 24. h5h7 g8g7 25. h7g7 a3a4 26. b1b2 a4f4 27. g7c3 f4d4 28. c3d4 c5d4 29. b2b4 d4d3 30. c2d3 a8b8 31. a1c1 c8d7 32. c1c7 d7c8 33. b4h4 e8d8 34. c7f7 d8e8 35. f7c7 e8d8 36. h4h7 b8a8 37. h7e7 a8b8 38. g1f1 b8a8 39. f1e2 a8b8 40. e2f3 b8a8 41. f3f4 a8b8 42. f4e5 b8a8 43. c7b7 c8b7 44. e7b7 d8c8 45. b7h7 a8b8 46. h7h8 c8b7 47. h8b8 b7b8 48. e5e6 b8b7 49. e6d6 b7b6 50. d3d4 b6b7 51. d6c5 b7c7 52. d4d5 c7d7 53. c5d4 d7c7 54. d4e5 c7d7 55. d5d6 d7c8 56. e5e4 c8b7 57. e4d5 b7a6 58. d6d7 a6a5 59. d7d8q a5b5 60. d8b8 1/2-1/2
+c6d4 1. f3d4 e5d4 2. b5d3 g8f6 3. e1g1 f8b4 4. e4e5 f6d5 5. d1g4 d8e7 6. g4g7 e7f8 7. g7g4 f8c5 8. b1a3 b4a3 9. b2a3 d5b6 10. c1b2 b6c4 11. b2d4 c5d5 12. g4g7 h8f8 13. d4c3 h7h5 14. d3c4 d5c4 15. c3b4 c7c5 16. b4c3 c4e4 17. f1c1 e4f5 18. g7g3 f5e4 19. g3g5 e4e2 20. c1b1 e2a6 21. g5h5 a6a3 22. e5e6 d7e6 23. c3g7 f8g8 24. h5h7 g8g7 25. h7g7 a3a4 26. b1b2 a4f4 27. g7c3 f4d4 28. c3d4 c5d4 29. b2b4 d4d3 30. c2d3 a8b8 31. a1c1 c8d7 32. c1c7 d7c8 33. b4h4 e8d8 34. c7f7 d8e8 35. f7c7 e8d8 36. h4h7 b8a8 37. h7e7 a8b8 38. g1f1 b8a8 39. f1e2 a8b8 40. e2f3 b8a8 41. f3f4 a8b8 42. f4e5 b8a8 43. c7b7 c8b7 44. e7b7 d8c8 45. b7h7 a8b8 46. h7h8 c8b7 47. h8b8 b7b8 48. e5e6 b8b7 49. e6d6 b7b6 50. d3d4 b6b7 51. d6c5 b7c7 52. d4d5 c7d7 53. c5d4 d7c7 54. d4e5 c7d7 55. d5d6 d7c8 56. e5e4 c8b7 57. e4d5 b7a6 58. d6d7 a6a5 59. d7d8q a5b5 60. d8b8 b5a6 61. d5c4 a6a5 62. b8a7 1-0
 
-[Event "Heaven's Gate Self-Play Tournament"]
+[Event "Heaven's Gate Unlimited Endgame Tournament"]
 [Site "Localhost"]
 [Date "2026.08.03"]
 [Round "4"]
 [White "Baseline Engine"]
 [Black "Master Edition"]
 [FEN "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"]
-1. b1c3 b8c6 2. g1e2 g8f6 3. e2f4 f8d6 4. f4d3 e8g8 5. f1e2 c6d4 6. e4e5 d4e2 7. d1e2 d6e7 8. e5f6 e7f6 9. c3e4 f6d4 10. e2f3 f8e8 11. e1g1 d7d5 12. e4g3 c8d7 13. g3e2 d4f6 14. e2f4 d7a4 15. f3d1 d8d6 16. g1h1 f6g5 17. f4e2 a4b5 18. e2d4 b5d3 19. c2d3 g5f6 20. d4f3 d6b6 21. a1b1 e8e7 22. d1e2 b6a5 23. a2a3 a5a4 24. e2d1 a4b5 25. d1c2 b5b6 26. b1a1 a8d8 27. a1a2 d8d7 28. c2a4 d7d6 29. a4b4 b6b4 30. a3b4 a7a6 31. b4b5 e7d7 32. b5a6 d6a6 33. a2a6 b7a6 34. f1e1 d7d8 35. f3e5 f6g5 36. d3d4 d8b8 37. e5c6 b8b6 38. c6a7 g5f6 39. a7c8 b6b8 40. c8a7 f6d4 41. a7c6 d4f2 42. e1e2 b8b6 43. c6e7 g8f8 44. e7d5 b6c6 45. d5c3 f2d4 46. e2e1 f8g8 47. c3e2 d4f6 48. e2f4 f6g5 49. f4h3 g5h4 50. e1d1 h4f6 51. h3f2 c6c2 52. f2d3 f6e7 53. d1f1 e7g5 54. d3b4 c2c1 55. f1c1 g5d2 56. c1c4 d2b4 57. c4b4 g8f8 58. b4c4 f8e7 59. c4c7 e7f6 60. c7c6 a6a5 1/2-1/2
-
-[Event "Heaven's Gate Self-Play Tournament"]
-[Site "Localhost"]
-[Date "2026.08.03"]
-[Round "5"]
-[White "Master Edition"]
-[Black "Baseline Engine"]
-[FEN "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2"]
-d5c4 1. g1f3 b8c6 2. d4d5 c6b8 3. f3e5 g8f6 4. b1c3 b8d7 5. e5c4 d7c5 6. d1d4 c5e6 7. d4d1 e6c5 8. d1d4 c5e6 9. d4d1 e6c5 10. d1d4 c5e6 11. d4d1 e6c5 12. d1d4 c5e6 13. d4d1 e6c5 14. d1d4 c5e6 15. d4d1 e6c5 16. d1d4 c5e6 17. d4d1 e6c5 18. d1d4 c5e6 19. d4d1 e6c5 20. d1d4 c5e6 21. d4d1 e6c5 22. d1d4 c5e6 23. d4d1 e6c5 24. d1d4 c5e6 25. d4d1 e6c5 26. d1d4 c5e6 27. d4d1 e6c5 28. d1d4 c5e6 29. d4d1 e6c5 30. d1d4 c5e6 31. d4d1 e6c5 32. d1d4 c5e6 33. d4d1 e6c5 34. d1d4 c5e6 35. d4d1 e6c5 36. d1d4 c5e6 37. d4d1 e6c5 38. d1d4 c5e6 39. d4d1 e6c5 40. d1d4 c5e6 41. d4d1 e6c5 42. d1d4 c5e6 43. d4d1 e6c5 44. d1d4 c5e6 45. d4d1 e6c5 46. d1d4 c5e6 47. d4d1 e6c5 48. d1d4 c5e6 49. d4d1 e6c5 50. d1d4 c5e6 51. d4d1 e6c5 52. d1d4 c5e6 53. d4d1 e6c5 54. d1d4 c5e6 55. d4d1 1/2-1/2
-
-[Event "Heaven's Gate Self-Play Tournament"]
-[Site "Localhost"]
-[Date "2026.08.03"]
-[Round "6"]
-[White "Baseline Engine"]
-[Black "Master Edition"]
-[FEN "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP2BPPP/R1BQK2R b KQ - 1 6"]
-b8c6 1. c1e3 f6g4 2. e3d2 c6d4 3. f3d4 g4f2 4. e1f2 g7d4 5. f2f1 c8e6 6. d2h6 d4c3 7. h6f8 c3b2 8. a1b1 g8f8 9. b1b2 d8c8 10. e2d3 e6d7 11. d1f3 d7g4 12. f3f2 c8b8 13. f2h4 h7h5 14. h4f2 g4e6 15. c4c5 d6c5 16. f2c5 h5h4 17. c5g5 h4h3 18. g5h6 f8e8 19. d3b5 c7c6 20. b5c6 e8d8 21. h6d2 b8d6 22. d2d6 e7d6 23. c6b7 a8b8 24. g2h3 d8c7 25. f1g2 b8b7 26. h1b1 b7b2 27. b1b2 c7c6 28. h3h4 c6c5 29. g2h1 c5d4 30. b2b4 d4e5 31. b4a4 d6d5 32. e4d5 e6d5 33. h1g1 a7a5 34. g1f1 d5f3 35. f1f2 f3c6 36. a4a5 c6d5 37. a5a4 d5e4 38. f2g3 e4d5 39. g3g4 d5e6 40. g4g5 e6f5 41. g5h6 f5e6 42. h6g7 e5f5 43. g7h7 f5e5 44. h7g8 e6d5 45. a4a6 d5e6 46. a6a3 e6d5 47. a3e3 e5d4 48. e3e2 d5e6 49. e2b2 d4e5 50. b2f2 e6c4 51. f2c2 c4e6 52. g8g7 e5f5 53. c2g2 e6c4 54. g2b2 c4d5 55. b2d2 f5e6 56. d2d5 e6d5 57. g7f7 d5d4 58. f7g6 d4e4 59. g6f7 e4f4 60. h4h5 1/2-1/2
-
-[Event "Heaven's Gate Self-Play Tournament"]
-[Site "Localhost"]
-[Date "2026.08.03"]
-[Round "7"]
-[White "Master Edition"]
-[Black "Baseline Engine"]
-[FEN "rnbqkbnr/pp2pppp/2p5/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"]
-1. e4d5 c6d5 2. g1f3 b8c6 3. b1c3 g8f6 4. f1d3 c8e6 5. e1g1 d8d6 6. f1e1 e8c8 7. f3g5 c6d4 8. c3b5 d4b5 9. d3b5 d6c5 10. g5e6 f7e6 11. b5d3 d8d6 12. d1f3 c5c6 13. e1e2 h8g8 14. f3e3 c8b8 15. e3g3 c6d7 16. g3h4 g8h8 17. h4d4 d7c6 18. d4f4 b8a8 19. f4g3 f6e4 20. g3f3 e4f6 21. f3e3 d5d4 22. e3e5 f6d7 23. e5e4 d7c5 24. e4c6 d6c6 25. d3b5 c6b6 26. b5e8 b6b4 27. a2a3 b4b6 28. e2e5 c5a6 29. e5h5 a6c7 30. e8g6 h7h6 31. h5h4 e6e5 32. g6d3 c7d5 33. h4h5 g7g5 34. h5h3 f8g7 35. d3f5 d5f4 36. h3b3 b6b3 37. c2b3 h8f8 38. f5g4 f4d3 39. f2f3 g7f6 40. g4f5 d3f4 41. g1f2 f6g7 42. f5g4 f8f7 43. f2g3 h6h5 44. g4d7 h5h4 45. g3f2 f4d3 46. f2e2 d3c5 47. d7e8 c5b3 48. e8f7 b3a1 49. e2d3 g7h8 50. f7c4 h8f6 51. d3e4 a1c2 52. e4d5 c2e1 53. c4f1 h4h3 54. g2h3 e1f3 55. f1g2 f3h2 56. g2e4 g5g4 57. h3g4 h2g4 58. e4b1 f6g7 59. d5e6 g4f6 60. b1g6 e5e4 1/2-1/2
-
-[Event "Heaven's Gate Self-Play Tournament"]
-[Site "Localhost"]
-[Date "2026.08.03"]
-[Round "8"]
-[White "Baseline Engine"]
-[Black "Master Edition"]
-[FEN "r1bqkb1r/pppp1ppp/2n2n2/4p3/4P3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4"]
-1. f1b5 c6d4 2. b5d3 f8d6 3. e1f1 e8g8 4. f3d4 e5d4 5. c3b5 d6e5 6. a1b1 f8e8 7. d1f3 d7d5 8. h2h3 d5e4 9. d3e4 f6e4 10. f3e4 c7c6 11. b5a3 c8e6 12. e4e5 e6a2 13. e5f4 d8e7 14. f1g1 a2b1 15. a3b1 e7e1 16. g1h2 e1e4 17. f4e4 e8e4 18. b1a3 d4d3 19. c2d3 e4f4 20. h1f1 a8d8 21. a3c4 d8d3 22. c4e5 d3d5 23. e5g4 f4c4 24. g4e3 c4c1 25. f1c1 d5d2 26. c1c2 d2c2 27. e3c2 g8f8 28. c2d4 f8e7 29. d4f5 e7f6 30. f5d6 b7b5 31. d6c8 a7a6 32. c8a7 c6c5 33. h3h4 f6e5 34. a7c8 b5b4 35. c8e7 e5e6 36. e7c6 f7f6 37. c6b8 a6a5 38. b8c6 a5a4 39. c6d8 e6d5 40. d8f7 a4a3 41. b2a3 b4a3 42. h4h5 a3a2 43. h5h6 g7h6 44. f7h6 a2a1q 45. h6g4 a1c3 46. g4e3 d5e4 47. h2h3 c3e5 48. e3g4 e5e6 49. h3h2 e6d6 50. h2h3 f6f5 51. g4e3 d6h6 52. h3g3 f5f4 53. g3g4 h6g7 54. g4h5 f4e3 55. f2e3 g7g2 56. h5h4 h7h6 57. h4h5 g2g5 0-1
-
-[Event "Heaven's Gate Self-Play Tournament"]
-[Site "Localhost"]
-[Date "2026.08.03"]
-[Round "9"]
-[White "Master Edition"]
-[Black "Baseline Engine"]
-[FEN "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"]
-1. e1g1 g8f6 2. c4d3 c6b4 3. f3e5 d8e7 4. e5f3 f6e4 5. d3e4 e7e4 6. f1e1 e4e1 7. f3e1 b4d5 8. d1h5 c7c6 9. c2c4 d5f4 10. h5c5 f4e2 11. g1f1 e2c1 12. b1c3 c1a2 13. a1a2 b7b6 14. c5e5 e8f8 15. e5c7 f8e7 16. a2a7 a8a7 17. c7a7 b6b5 18. c4b5 c6b5 19. a7d4 f7f6 20. e1d3 c8a6 21. d4g4 h8g8 22. g4e4 e7f7 23. e4d5 f7f8 24. d5d6 f8f7 25. d6a6 b5b4 26. a6c4 f7f8 27. d3b4 f6f5 28. c4d5 f5f4 29. d5d7 f4f3 30. d7d8 f8f7 31. d8d5 f7f8 32. d5f3 f8e7 33. b4c6 e7e8 34. f3e4 e8f7 35. e4e7 f7g6 36. e7e6 g6g5 37. e6g8 g5g6 38. c6e7 g6h6 39. g8f8 h6h5 40. f8f5 g7g5 41. f5h3 1-0
-
-[Event "Heaven's Gate Self-Play Tournament"]
-[Site "Localhost"]
-[Date "2026.08.03"]
-[Round "10"]
-[White "Baseline Engine"]
-[Black "Master Edition"]
-[FEN "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3"]
-1. b1c3 b8c6 2. f1b5 c6d4 3. b5d3 f8d6 4. e1f1 e8g8 5. f3d4 e5d4 6. c3b5 d6e5 7. a1b1 f8e8 8. d1f3 d7d5 9. h2h3 d5e4 10. d3e4 f6e4 11. f3e4 c7c6 12. b5a3 c8e6 13. e4e5 e6a2 14. e5f4 d8e7 15. f1g1 a2b1 16. a3b1 e7e1 17. g1h2 e1e4 18. f4e4 e8e4 19. b1a3 d4d3 20. c2d3 e4f4 21. h1f1 a8d8 22. a3c4 d8d3 23. c4e5 d3d5 24. e5g4 f4c4 25. g4e3 c4c1 26. f1c1 d5d2 27. c1c2 d2c2 28. e3c2 g8f8 29. c2d4 f8e7 30. d4f5 e7f6 31. f5d6 b7b5 32. d6c8 a7a6 33. c8a7 c6c5 34. h3h4 f6e5 35. a7c8 b5b4 36. c8e7 e5e6 37. e7c6 f7f6 38. c6b8 a6a5 39. b8c6 a5a4 40. c6d8 e6d5 41. d8f7 a4a3 42. b2a3 b4a3 43. h4h5 a3a2 44. h5h6 g7h6 45. f7h6 a2a1q 46. h6g4 a1c3 47. g4e3 d5e4 48. h2h3 c3e5 49. e3g4 e5e6 50. h3h2 e6d6 51. h2h3 f6f5 52. g4e3 d6h6 53. h3g3 f5f4 54. g3g4 h6g7 55. g4h5 f4e3 56. f2e3 g7g2 57. h5h4 h7h6 58. h4h5 g2g5 0-1
+1. b1c3 b8c6 2. g1e2 g8f6 3. e2f4 f8d6 4. f4d3 e8g8 5. f1e2 c6d4 6. e4e5 d4e2 7. d1e2 d6e7 8. e5f6 e7f6 9. c3e4 f6d4 10. e2f3 f8e8 11. e1g1 d7d5 12. e4g3 c8d7 13. g3e2 d4f6 14. e2f4 d7a4 15. f3d1 d8d6 16. g1h1 f6g5 17. f4e2 a4b5 18. e2d4 b5d3 19. c2d3 g5f6 20. d4f3 d6b6 21. a1b1 e8e7 22. d1e2 b6a5 23. a2a3 a5a4 24. e2d1 a4b5 25. d1c2 b5b6 26. b1a1 a8d8 27. a1a2 d8d7 28. c2a4 d7d6 29. a4b4 b6b4 30. a3b4 a7a6 31. b4b5 e7d7 32. b5a6 d6a6 33. a2a6 b7a6 34. f1e1 d7d8 35. f3e5 f6g5 36. d3d4 d8b8 37. e5c6 b8b6 38. c6a7 g5f6 39. a7c8 b6b8 40. c8a7 f6d4 41. a7c6 d4f2 42. e1e2 b8b6 43. c6e7 g8f8 44. e7d5 b6c6 45. d5c3 f2d4 46. e2e1 f8g8 47. c3e2 d4f6 48. e2f4 f6g5 49. f4h3 g5h4 50. e1d1 h4f6 51. h3f2 c6c2 52. f2d3 f6e7 53. d1f1 e7g5 54. d3b4 c2c1 55. f1c1 g5d2 56. c1c4 d2b4 57. c4b4 g8f8 58. b4c4 f8e7 59. c4c7 e7f6 60. c7c6 a6a5 61. c6c5 a5a4 62. c5a5 a4a3 63. a5a3 e6e5 64. a3g3 e5e4 65. g3g4 e4e3 66. g4g3 e3e2 67. g3e3 e2e1q 68. e3e1 f6f5 69. e1f1 f5e6 70. f1f3 f7f5 71. f3h3 h7h6 72. h3c3 e6e5 73. c3c6 f5f4 74. c6g6 f4f3 75. g2f3 e5d4 76. g6g7 d4d3 77. g7g2 d3e3 78. g2g3 e3d3 79. g3h3 d3c2 80. b2b4 c2b3 81. b4b5 b3c4 82. b5b6 c4d4 83. b6b7 d4d3 84. b7b8q d3e3 85. b8b2 e3f4 86. b2c1 f4e5 87. h3h4 e5d5 88. c1c4 d5d6 89. h4h5 d6d7 90. h5h3 d7d6 91. h3h4 d6e5 92. c4f4 e5e6 93. h4h5 e6d7 94. h5h6 d7c8 95. h6h7 c8d8 96. f4b8 1-0
 

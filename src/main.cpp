@@ -35,22 +35,12 @@ const std::vector<std::string> TournamentOpenings = {
     "rnbqkbnr/pp2pppp/2p5/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",     // 7. Caro-Kann Defense
     "r1bqkb1r/pppp1ppp/2n2n2/4p3/4P3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4",// 8. Four Knights Game
     "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4", // 9. Italian Game
-    "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",  // 10. Petrov Defense
-    "rnbqkbnr/ppp2ppp/4p3/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq d6 0 3",    // 11. QGD Exchange
-    "rnbqk2r/ppp1bppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",  // 12. QGD Main Line
-    "rnbqkb1r/ppp1pp1p/5np1/3p4/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 0 4",  // 13. Grünfeld Defense
-    "rnbqk2r/pppp1ppp/4pn2/8/2PP4/2P5/P3PPPP/R1BQKBNR w KQkq - 0 4",     // 14. Nimzo-Indian Defense
-    "rnbqkbnr/pppppp1p/6p1/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",      // 15. Modern Defense
-    "rnbqkbnr/pppp1ppp/8/4p3/2P5/8/PP1PPPPPR/RNBQKBNR b KQkq c3 0 2",     // 16. English Opening
-    "rnbqkbnr/ppp1p1pp/8/3p1p2/2PP4/8/PP2PPPP/RNBQKBNR w KQkq f6 0 3",    // 17. Dutch Defense
-    "rnbqkbnr/pp1ppppp/8/3P4/8/8/PPP1PPPP/RNBQKBNR b KQkq - 0 2",         // 18. Benoni Defense
-    "rnbqk2r/ppppppbp/5np1/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 1 3",      // 19. King's Indian Setup
-    "r1bqk2r/pp2bppp/2n1pn2/2pp4/2PP4/2N1PN2/PP2BPPP/R1BQ1RK1 w kq - 4 8" // 20. Tarrasch Defense
+    "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3"   // 10. Petrov Defense
 };
 
 void run_automated_tournament(int num_games, int depth) {
     std::cout << "\n======================================================\n";
-    std::cout << "  HEAVEN'S GATE LARGE-SCALE TOURNAMENT SUITE (" << num_games << " Games @ Depth " << depth << ")\n";
+    std::cout << "  HEAVEN'S GATE UNLIMITED ENDGAME TOURNAMENT (" << num_games << " Games @ Depth " << depth << ")\n";
     std::cout << "  Engine A: Master Edition (Advanced Positional Eval + PVS)\n";
     std::cout << "  Engine B: Baseline Engine (Raw Material + Basic PST)\n";
     std::cout << "======================================================\n\n";
@@ -72,7 +62,7 @@ void run_automated_tournament(int num_games, int depth) {
         bool a_is_white = (g % 2 != 0);
         int game_moves = 0;
 
-        pgn_file << "[Event \"Heaven's Gate Self-Play Tournament\"]\n";
+        pgn_file << "[Event \"Heaven's Gate Unlimited Endgame Tournament\"]\n";
         pgn_file << "[Site \"Localhost\"]\n";
         pgn_file << "[Date \"2026.08.03\"]\n";
         pgn_file << "[Round \"" << g << "\"]\n";
@@ -86,7 +76,8 @@ void run_automated_tournament(int num_games, int depth) {
 
         std::string result_str = "*";
 
-        while (game_moves < 120) {
+        // Unlimited game move loop (safety cap 400 moves)
+        while (game_moves < 400) {
             MoveList legal_moves;
             MoveGenerator::generate_legal_moves(board, legal_moves);
 
@@ -106,6 +97,13 @@ void run_automated_tournament(int num_games, int depth) {
                     result_str = "1/2-1/2";
                     draws++;
                 }
+                break;
+            }
+
+            if (board.is_insufficient_material()) {
+                std::cout << "\n[RESULT] Draw by Insufficient Material!\n";
+                result_str = "1/2-1/2";
+                draws++;
                 break;
             }
 
@@ -148,8 +146,8 @@ void run_automated_tournament(int num_games, int depth) {
             game_moves++;
         }
 
-        if (game_moves >= 120 && result_str == "*") {
-            std::cout << "\n[RESULT] Draw by Move Limit (120 Moves)!\n";
+        if (game_moves >= 400 && result_str == "*") {
+            std::cout << "\n[RESULT] Draw by 400-Move Safety Limit!\n";
             result_str = "1/2-1/2";
             draws++;
         }
@@ -230,7 +228,7 @@ int main(int argc, char* argv[]) {
             UCI::loop();
             return 0;
         } else if (arg == "tournament") {
-            int games = (argc > 2) ? std::stoi(argv[2]) : 20;
+            int games = (argc > 2) ? std::stoi(argv[2]) : 4;
             int depth = (argc > 3) ? std::stoi(argv[3]) : 4;
             run_automated_tournament(games, depth);
             return 0;
@@ -242,7 +240,7 @@ int main(int argc, char* argv[]) {
     std::cout << "======================================================\n";
     std::cout << "Commands:\n";
     std::cout << "  uci                         - Switch to standard UCI Protocol mode\n";
-    std::cout << "  tournament [games] [depth]  - Run automated self-play tournament & save PGN\n";
+    std::cout << "  tournament [games] [depth]  - Run unlimited endgame tournament & save PGN\n";
     std::cout << "  id <depth> [time_ms]        - Run Iterative Deepening + PVS + Eval\n";
     std::cout << "  alphabeta <depth> / ab <d>  - Run Move-Ordered PVS search\n";
     std::cout << "  compare <depth>             - Compare Minimax vs Raw Alpha-Beta vs Master Search\n";
@@ -274,7 +272,7 @@ int main(int argc, char* argv[]) {
             UCI::loop();
             break;
         } else if (line.rfind("tournament", 0) == 0) {
-            int games = 20;
+            int games = 4;
             int depth = 4;
             try {
                 std::stringstream ss(line);

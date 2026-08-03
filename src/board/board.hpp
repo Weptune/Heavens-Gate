@@ -83,6 +83,7 @@ public:
     }
 
     bool is_repetition() const noexcept;
+    bool is_insufficient_material() const noexcept;
 
     // Mutators
     void set_side_to_move(Color c) noexcept { side_to_move_ = c; }

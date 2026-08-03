@@ -36,9 +36,42 @@ bool Board::is_repetition() const noexcept {
     for (int i = 1; i <= search_limit; ++i) {
         if (history_[size - i].zobrist_key == zobrist_key_) {
             count++;
-            if (count >= 1) return true; // Repeats once -> Repetition Draw!
+            if (count >= 1) return true;
         }
     }
+    return false;
+}
+
+bool Board::is_insufficient_material() const noexcept {
+    // If pawns, rooks, or queens exist, material is sufficient for checkmate
+    if (pieces(PieceType::Pawn) || pieces(PieceType::Rook) || pieces(PieceType::Queen)) {
+        return false;
+    }
+
+    int white_knights = popcount(pieces(make_piece(Color::White, PieceType::Knight)));
+    int black_knights = popcount(pieces(make_piece(Color::Black, PieceType::Knight)));
+    int white_bishops = popcount(pieces(make_piece(Color::White, PieceType::Bishop)));
+    int black_bishops = popcount(pieces(make_piece(Color::Black, PieceType::Bishop)));
+
+    int total_minors = white_knights + black_knights + white_bishops + black_bishops;
+
+    // K vs K
+    if (total_minors == 0) return true;
+
+    // K+N vs K or K+B vs K
+    if (total_minors == 1) return true;
+
+    // K+B vs K+B (bishops of same color)
+    if (white_bishops == 1 && black_bishops == 1 && white_knights == 0 && black_knights == 0) {
+        Square w_bsq = lsb(pieces(make_piece(Color::White, PieceType::Bishop)));
+        Square b_bsq = lsb(pieces(make_piece(Color::Black, PieceType::Bishop)));
+
+        bool w_is_light = (static_cast<int>(file_of(w_bsq)) + static_cast<int>(rank_of(w_bsq))) % 2 != 0;
+        bool b_is_light = (static_cast<int>(file_of(b_bsq)) + static_cast<int>(rank_of(b_bsq))) % 2 != 0;
+
+        if (w_is_light == b_is_light) return true; // Same color bishops -> Draw!
+    }
+
     return false;
 }
 
