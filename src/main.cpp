@@ -13,6 +13,13 @@
 
 using namespace heavensgate;
 
+static std::string trim(const std::string& str) {
+    size_t first = str.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) return "";
+    size_t last = str.find_last_not_of(" \t\r\n");
+    return str.substr(first, (last - first + 1));
+}
+
 void run_three_way_comparison(Board& board, int depth) {
     SearchEngine engine;
     
@@ -34,7 +41,7 @@ void run_three_way_comparison(Board& board, int depth) {
         overall_reduction = (1.0 - static_cast<double>(ab_ord_res.metrics.total_nodes) / mm_res.metrics.total_nodes) * 100.0;
     }
 
-    std::cout << "\n| Metric | Minimax (v1.0) | Raw Alpha-Beta (v2.0) | Move-Ordered Alpha-Beta (v3.0/v4.0) | Improvement |\n";
+    std::cout << "\n| Metric | Minimax (v1.0) | Raw Alpha-Beta (v2.0) | Move-Ordered Alpha-Beta (v3.0/v6.0) | Improvement |\n";
     std::cout << "| :--- | :--- | :--- | :--- | :--- |\n";
     std::cout << "| Best Move | " << move_to_uci(mm_res.best_move) << " | " << move_to_uci(ab_raw_res.best_move) << " | " << move_to_uci(ab_ord_res.best_move) << " | Identical |\n";
     std::cout << "| Eval Score | " << mm_res.best_score << " cp | " << ab_raw_res.best_score << " cp | " << ab_ord_res.best_score << " cp | Identical |\n";
@@ -62,7 +69,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "======================================================\n";
-    std::cout << "  HEAVEN'S GATE CHESS ENGINE - VERSION 5.0 (Iterative Deepening) \n";
+    std::cout << "  HEAVEN'S GATE CHESS ENGINE - VERSION 6.0 (Magic Bitboards) \n";
     std::cout << "======================================================\n";
     std::cout << "Commands:\n";
     std::cout << "  id <depth> [time_ms]        - Run Iterative Deepening search (v5.0)\n";
@@ -80,10 +87,14 @@ int main(int argc, char* argv[]) {
     FEN::parse(StartposFEN, board);
     SearchEngine search_engine;
 
-    std::string line;
+    std::string raw_line;
     while (true) {
         std::cout << "\nheavensgate> ";
-        if (!std::getline(std::cin, line) || line == "exit") break;
+        if (!std::getline(std::cin, raw_line)) break;
+
+        std::string line = trim(raw_line);
+        if (line == "exit") break;
+        if (line.empty()) continue;
 
         if (line.rfind("id", 0) == 0 || line.rfind("go", 0) == 0) {
             int d = 6;
@@ -150,13 +161,13 @@ int main(int argc, char* argv[]) {
                 if (pos != std::string::npos) d = std::stoi(line.substr(pos));
             } catch (...) {}
 
-            std::cout << "Exporting JSON game tree for depth " << d << " ...\n";
+            std::cout << "Exporting JSON search tree for depth " << d << " ...\n";
             SearchResult res = search_engine.search_alphabeta(board, d, true, true);
             bool ok = search_engine.tree_exporter().export_file("game_tree.json");
 
             std::cout << "Export " << (ok ? "SUCCESSFUL -> game_tree.json" : "FAILED") << "\n";
             std::cout << "Nodes exported: " << res.metrics.total_nodes << "\n";
-        } else if (line == "perft") {
+        } else if (line.rfind("perft", 0) == 0) {
             Perft::run_verification_suite(4);
         } else if (line == "d" || line == "display") {
             std::cout << board.to_ascii() << "\n";
