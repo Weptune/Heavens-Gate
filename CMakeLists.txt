@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(ENGINE_SOURCES
     src/board/board.cpp
     src/core/fen.cpp
+    src/movegen/magic.cpp
     src/movegen/attack_masks.cpp
     src/movegen/movegen.cpp
     src/movegen/perft.cpp
