@@ -30,7 +30,6 @@ void Board::recalculate_zobrist_key() noexcept {
 void Board::set_piece(Square sq, Piece p) {
     if (sq == Square::None) return;
 
-    // Clear existing piece if present
     Piece old_p = mailbox_[static_cast<size_t>(sq)];
     if (old_p != Piece::None) {
         remove_piece(sq);
@@ -45,11 +44,10 @@ void Board::set_piece(Square sq, Piece p) {
 
     set_bit(piece_bb_[p_idx], sq);
     set_bit(color_bb_[c_idx], sq);
-    set_bit(color_bb_[2], sq); // Combined Occupied Bitboard
+    set_bit(color_bb_[2], sq);
 
     mailbox_[s_idx] = p;
 
-    // XOR Zobrist piece key
     zobrist_key_ ^= Zobrist::PieceKeys[p_idx][s_idx];
 }
 
@@ -70,7 +68,6 @@ void Board::remove_piece(Square sq) {
 
     mailbox_[s_idx] = Piece::None;
 
-    // XOR Zobrist piece key
     zobrist_key_ ^= Zobrist::PieceKeys[p_idx][s_idx];
 }
 
@@ -102,13 +99,11 @@ void Board::make_move(Move m) {
         halfmove_clock_ = 0;
     }
 
-    // XOR out old En Passant key if active
     if (en_passant_sq_ != Square::None) {
         zobrist_key_ ^= Zobrist::EnPassantKeys[static_cast<size_t>(en_passant_sq_)];
         en_passant_sq_ = Square::None;
     }
 
-    // Handle captures
     if (captured_piece != Piece::None) {
         Square cap_sq = (type == MoveType::EnPassant)
             ? make_square(file_of(to), rank_of(from))
@@ -116,7 +111,6 @@ void Board::make_move(Move m) {
         remove_piece(cap_sq);
     }
 
-    // Move main piece
     remove_piece(from);
 
     if (m.is_promotion()) {
@@ -125,7 +119,6 @@ void Board::make_move(Move m) {
         set_piece(to, moving_piece);
     }
 
-    // Handle Special Move Types
     if (type == MoveType::DoublePawnPush) {
         Rank ep_rank = (side_to_move_ == Color::White) ? Rank::Rank3 : Rank::Rank6;
         en_passant_sq_ = make_square(file_of(from), ep_rank);
@@ -144,10 +137,8 @@ void Board::make_move(Move m) {
         set_piece(rook_to, rook);
     }
 
-    // XOR out old Castling Rights key
     zobrist_key_ ^= Zobrist::CastlingKeys[static_cast<size_t>(castling_rights_)];
 
-    // Update castling rights if King or Rook moves/captured
     if (moving_piece == Piece::WhiteKing) {
         castling_rights_ &= ~WhiteCastling;
     } else if (moving_piece == Piece::BlackKing) {
@@ -159,10 +150,8 @@ void Board::make_move(Move m) {
     if (from == Square::a8 || to == Square::a8) castling_rights_ &= ~BlackOOO;
     if (from == Square::h8 || to == Square::h8) castling_rights_ &= ~BlackOO;
 
-    // XOR in new Castling Rights key
     zobrist_key_ ^= Zobrist::CastlingKeys[static_cast<size_t>(castling_rights_)];
 
-    // Toggle Side to Move & Zobrist Side Key
     side_to_move_ = ~side_to_move_;
     zobrist_key_ ^= Zobrist::SideKey;
 }
@@ -188,7 +177,6 @@ void Board::unmake_move(Move m) {
 
     Piece moved_piece = piece_at(to);
 
-    // Revert piece on destination
     remove_piece(to);
 
     if (m.is_promotion()) {
@@ -197,7 +185,6 @@ void Board::unmake_move(Move m) {
         set_piece(from, moved_piece);
     }
 
-    // Revert captures
     if (state.captured_piece != Piece::None) {
         Square cap_sq = (type == MoveType::EnPassant)
             ? make_square(file_of(to), rank_of(from))
@@ -205,7 +192,6 @@ void Board::unmake_move(Move m) {
         set_piece(cap_sq, state.captured_piece);
     }
 
-    // Revert castling rooks
     if (type == MoveType::KingCastle) {
         Square rook_from = (side_to_move_ == Color::White) ? Square::h1 : Square::h8;
         Square rook_to   = (side_to_move_ == Color::White) ? Square::f1 : Square::f8;
@@ -220,8 +206,39 @@ void Board::unmake_move(Move m) {
         set_piece(rook_from, rook);
     }
 
-    // Restore exact saved Zobrist key from state AT THE VERY END
     zobrist_key_ = state.zobrist_key;
+}
+
+void Board::make_null_move() {
+    StateInfo state;
+    state.castling_rights = castling_rights_;
+    state.en_passant_sq   = en_passant_sq_;
+    state.halfmove_clock  = halfmove_clock_;
+    state.captured_piece  = Piece::None;
+    state.zobrist_key     = zobrist_key_;
+
+    history_.push_back(state);
+
+    if (en_passant_sq_ != Square::None) {
+        zobrist_key_ ^= Zobrist::EnPassantKeys[static_cast<size_t>(en_passant_sq_)];
+        en_passant_sq_ = Square::None;
+    }
+
+    side_to_move_ = ~side_to_move_;
+    zobrist_key_ ^= Zobrist::SideKey;
+}
+
+void Board::unmake_null_move() {
+    if (history_.empty()) return;
+
+    StateInfo state = history_.back();
+    history_.pop_back();
+
+    side_to_move_ = ~side_to_move_;
+    castling_rights_ = state.castling_rights;
+    en_passant_sq_   = state.en_passant_sq;
+    halfmove_clock_  = state.halfmove_clock;
+    zobrist_key_     = state.zobrist_key;
 }
 
 std::string Board::to_ascii() const {

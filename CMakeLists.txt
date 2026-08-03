@@ -21,6 +21,7 @@ set(ENGINE_SOURCES
     src/search/search.cpp
     src/visualization/exporter.cpp
     src/benchmark/metrics.cpp
+    src/uci/uci.cpp
 )
 
 # Main engine CLI binary

@@ -74,6 +74,14 @@ public:
         return k ? lsb(k) : Square::None;
     }
 
+    bool has_non_pawn_material(Color c) const noexcept {
+        Bitboard knights = pieces(make_piece(c, PieceType::Knight));
+        Bitboard bishops = pieces(make_piece(c, PieceType::Bishop));
+        Bitboard rooks   = pieces(make_piece(c, PieceType::Rook));
+        Bitboard queens  = pieces(make_piece(c, PieceType::Queen));
+        return (knights | bishops | rooks | queens) != EmptyBB;
+    }
+
     // Mutators
     void set_side_to_move(Color c) noexcept { side_to_move_ = c; }
     void set_castling_rights(CastlingRights cr) noexcept { castling_rights_ = cr; }

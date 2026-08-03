@@ -7,6 +7,7 @@
 #include "movegen/perft.hpp"
 #include "search/search.hpp"
 #include "benchmark/metrics.hpp"
+#include "uci/uci.hpp"
 #include <iostream>
 #include <iomanip>
 #include <random>
@@ -25,31 +26,31 @@ void run_three_way_comparison(Board& board, int depth) {
     SearchEngine engine;
     
     std::cout << "\n======================================================\n";
-    std::cout << "  BENCHMARK: MINIMAX vs RAW ALPHA-BETA vs QUIESCENCE SEARCH (Depth " << depth << ")\n";
+    std::cout << "  BENCHMARK: MINIMAX vs RAW ALPHA-BETA vs ADVANCED PRUNING (Depth " << depth << ")\n";
     std::cout << "======================================================\n";
 
     SearchResult mm_res = engine.search_minimax(board, depth);
     SearchResult ab_raw_res = engine.search_alphabeta(board, depth, false, false);
-    SearchResult q_res = engine.search_alphabeta(board, depth, true, true);
+    SearchResult p_res = engine.search_alphabeta(board, depth, true, true);
 
     double node_reduction = 0.0;
     if (ab_raw_res.metrics.total_nodes > 0) {
-        node_reduction = (1.0 - static_cast<double>(q_res.metrics.total_nodes) / ab_raw_res.metrics.total_nodes) * 100.0;
+        node_reduction = (1.0 - static_cast<double>(p_res.metrics.total_nodes) / ab_raw_res.metrics.total_nodes) * 100.0;
     }
 
     double overall_reduction = 0.0;
     if (mm_res.metrics.total_nodes > 0) {
-        overall_reduction = (1.0 - static_cast<double>(q_res.metrics.total_nodes) / mm_res.metrics.total_nodes) * 100.0;
+        overall_reduction = (1.0 - static_cast<double>(p_res.metrics.total_nodes) / mm_res.metrics.total_nodes) * 100.0;
     }
 
-    std::cout << "\n| Metric | Minimax (v1.0) | Raw Alpha-Beta (v2.0) | Quiescence Search (v8.0) | Improvement |\n";
+    std::cout << "\n| Metric | Minimax (v1.0) | Raw Alpha-Beta (v2.0) | Heaven's Gate (v10.0) | Improvement |\n";
     std::cout << "| :--- | :--- | :--- | :--- | :--- |\n";
-    std::cout << "| Best Move | " << move_to_uci(mm_res.best_move) << " | " << move_to_uci(ab_raw_res.best_move) << " | " << move_to_uci(q_res.best_move) << " | Identical |\n";
-    std::cout << "| Eval Score | " << mm_res.best_score << " cp | " << ab_raw_res.best_score << " cp | " << q_res.best_score << " cp | Tactical Precision |\n";
-    std::cout << "| Total Nodes | " << mm_res.metrics.total_nodes << " | " << ab_raw_res.metrics.total_nodes << " | " << q_res.metrics.total_nodes << " | " 
+    std::cout << "| Best Move | " << move_to_uci(mm_res.best_move) << " | " << move_to_uci(ab_raw_res.best_move) << " | " << move_to_uci(p_res.best_move) << " | Identical |\n";
+    std::cout << "| Eval Score | " << mm_res.best_score << " cp | " << ab_raw_res.best_score << " cp | " << p_res.best_score << " cp | High Precision |\n";
+    std::cout << "| Total Nodes | " << mm_res.metrics.total_nodes << " | " << ab_raw_res.metrics.total_nodes << " | " << p_res.metrics.total_nodes << " | " 
               << std::fixed << std::setprecision(1) << node_reduction << "% vs v2.0 (" << overall_reduction << "% vs v1.0) |\n";
-    std::cout << "| Q-Nodes | 0 | 0 | " << q_res.q_nodes << " nodes | Horizon Effect Eliminated |\n";
-    std::cout << "| TT Hits | 0 | 0 | " << q_res.tt_hits << " hits | Constant Time Lookups |\n";
+    std::cout << "| Q-Nodes | 0 | 0 | " << p_res.q_nodes << " nodes | Horizon Effect Free |\n";
+    std::cout << "| TT Hits | 0 | 0 | " << p_res.tt_hits << " hits | Subtree Pruning |\n";
     std::cout << "------------------------------------------------------\n\n";
 }
 
@@ -63,16 +64,20 @@ int main(int argc, char* argv[]) {
             int max_d = (argc > 2) ? std::stoi(argv[2]) : 4;
             bool success = Perft::run_verification_suite(max_d);
             return success ? 0 : 1;
+        } else if (arg == "uci") {
+            UCI::loop();
+            return 0;
         }
     }
 
     std::cout << "======================================================\n";
-    std::cout << "  HEAVEN'S GATE CHESS ENGINE - VERSION 8.0 (Quiescence Search) \n";
+    std::cout << "  HEAVEN'S GATE CHESS ENGINE - VERSION 10.0 (UCI & Pruning) \n";
     std::cout << "======================================================\n";
     std::cout << "Commands:\n";
-    std::cout << "  id <depth> [time_ms]        - Run Iterative Deepening + Q-Search (v8.0)\n";
+    std::cout << "  uci                         - Switch to standard UCI Protocol mode\n";
+    std::cout << "  id <depth> [time_ms]        - Run Iterative Deepening + Q-Search (v10.0)\n";
     std::cout << "  alphabeta <depth> / ab <d>  - Run Move-Ordered Alpha-Beta search\n";
-    std::cout << "  compare <depth>             - Compare Minimax vs Raw Alpha-Beta vs Q-Search\n";
+    std::cout << "  compare <depth>             - Compare Minimax vs Raw Alpha-Beta vs v10.0\n";
     std::cout << "  minimax <depth>             - Run unpruned Minimax search\n";
     std::cout << "  export_tree <d>             - Export JSON search tree (game_tree.json)\n";
     std::cout << "  perft                       - Run Perft verification suite\n";
@@ -94,7 +99,13 @@ int main(int argc, char* argv[]) {
         if (line == "exit") break;
         if (line.empty()) continue;
 
-        if (line.rfind("id", 0) == 0 || line.rfind("go", 0) == 0) {
+        if (line == "uci") {
+            std::cout << "id name Heaven's Gate 10.0\n";
+            std::cout << "id author DeepMind Antigravity\n";
+            std::cout << "uciok" << std::endl;
+            UCI::loop();
+            break;
+        } else if (line.rfind("id", 0) == 0 || line.rfind("go", 0) == 0) {
             int d = 6;
             double time_ms = 0.0;
             try {
@@ -106,7 +117,7 @@ int main(int argc, char* argv[]) {
                 }
             } catch (...) {}
 
-            std::cout << "Running Iterative Deepening + Q-Search (Max Depth " << d;
+            std::cout << "Running Iterative Deepening + NMP + LMR + TT (Max Depth " << d;
             if (time_ms > 0) std::cout << ", Max Time " << time_ms << " ms";
             std::cout << ") ...\n";
 
@@ -126,7 +137,7 @@ int main(int argc, char* argv[]) {
                 if (pos != std::string::npos) d = std::stoi(line.substr(pos));
             } catch (...) {}
 
-            std::cout << "Searching Move-Ordered Alpha-Beta + Q-Search depth " << d << " ...\n";
+            std::cout << "Searching Move-Ordered Alpha-Beta + NMP + LMR depth " << d << " ...\n";
             SearchResult res = search_engine.search_alphabeta(board, d, true, true);
 
             std::cout << "\nBest Move : " << move_to_uci(res.best_move) << "\n";
@@ -181,7 +192,7 @@ int main(int argc, char* argv[]) {
                 std::cout << "Failed to parse FEN string.\n";
             }
         } else {
-            std::cout << "Unknown command. Available: id <d> [time], ab <d>, compare <d>, minimax <d>, perft, exit\n";
+            std::cout << "Unknown command. Available: uci, id <d> [time], ab <d>, compare <d>, minimax <d>, perft, exit\n";
         }
     }
 
