@@ -45,13 +45,15 @@ int Evaluator::evaluate_side(const Board& board, Color side) {
     }
 
     // Master Positional Features
-    int pawn_struct = EvalFeatures::evaluate_pawn_structure(board, side);
-    int passed_pawns= EvalFeatures::evaluate_passed_pawns(board, side);
-    int king_safety = EvalFeatures::evaluate_king_safety(board, side);
-    int activity    = EvalFeatures::evaluate_piece_activity(board, side);
-    int mobility    = EvalFeatures::evaluate_mobility(board, side);
+    int pawn_struct  = EvalFeatures::evaluate_pawn_structure(board, side);
+    int passed_pawns = EvalFeatures::evaluate_passed_pawns(board, side);
+    int bad_bishops  = EvalFeatures::evaluate_bad_bishops(board, side);
+    int pin_threats  = EvalFeatures::evaluate_pin_threats(board, side);
+    int king_safety  = EvalFeatures::evaluate_king_safety(board, side);
+    int activity     = EvalFeatures::evaluate_piece_activity(board, side);
+    int mobility     = EvalFeatures::evaluate_mobility(board, side);
 
-    int pos_total = pawn_struct + passed_pawns + king_safety + activity + mobility;
+    int pos_total = pawn_struct + passed_pawns + bad_bishops + pin_threats + king_safety + activity + mobility;
 
     int knights = popcount(board.pieces(make_piece(side, PieceType::Knight)));
     int bishops = popcount(board.pieces(make_piece(side, PieceType::Bishop)));
