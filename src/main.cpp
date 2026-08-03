@@ -5,6 +5,7 @@
 #include "board/board.hpp"
 #include "movegen/movegen.hpp"
 #include "movegen/perft.hpp"
+#include "evaluation/eval.hpp"
 #include "search/search.hpp"
 #include "benchmark/metrics.hpp"
 #include "uci/uci.hpp"
@@ -26,7 +27,7 @@ void run_three_way_comparison(Board& board, int depth) {
     SearchEngine engine;
     
     std::cout << "\n======================================================\n";
-    std::cout << "  BENCHMARK: MINIMAX vs RAW ALPHA-BETA vs ADVANCED PRUNING (Depth " << depth << ")\n";
+    std::cout << "  BENCHMARK: MINIMAX vs RAW ALPHA-BETA vs MASTER SEARCH (Depth " << depth << ")\n";
     std::cout << "======================================================\n";
 
     SearchResult mm_res = engine.search_minimax(board, depth);
@@ -43,10 +44,10 @@ void run_three_way_comparison(Board& board, int depth) {
         overall_reduction = (1.0 - static_cast<double>(p_res.metrics.total_nodes) / mm_res.metrics.total_nodes) * 100.0;
     }
 
-    std::cout << "\n| Metric | Minimax (v1.0) | Raw Alpha-Beta (v2.0) | Heaven's Gate (v10.0) | Improvement |\n";
+    std::cout << "\n| Metric | Minimax (v1.0) | Raw Alpha-Beta (v2.0) | Heaven's Gate Master | Improvement |\n";
     std::cout << "| :--- | :--- | :--- | :--- | :--- |\n";
-    std::cout << "| Best Move | " << move_to_uci(mm_res.best_move) << " | " << move_to_uci(ab_raw_res.best_move) << " | " << move_to_uci(p_res.best_move) << " | Identical |\n";
-    std::cout << "| Eval Score | " << mm_res.best_score << " cp | " << ab_raw_res.best_score << " cp | " << p_res.best_score << " cp | High Precision |\n";
+    std::cout << "| Best Move | " << move_to_uci(mm_res.best_move) << " | " << move_to_uci(ab_raw_res.best_move) << " | " << move_to_uci(p_res.best_move) << " | Master Precision |\n";
+    std::cout << "| Eval Score | " << mm_res.best_score << " cp | " << ab_raw_res.best_score << " cp | " << p_res.best_score << " cp | Positional Intelligence |\n";
     std::cout << "| Total Nodes | " << mm_res.metrics.total_nodes << " | " << ab_raw_res.metrics.total_nodes << " | " << p_res.metrics.total_nodes << " | " 
               << std::fixed << std::setprecision(1) << node_reduction << "% vs v2.0 (" << overall_reduction << "% vs v1.0) |\n";
     std::cout << "| Q-Nodes | 0 | 0 | " << p_res.q_nodes << " nodes | Horizon Effect Free |\n";
@@ -57,6 +58,7 @@ void run_three_way_comparison(Board& board, int depth) {
 int main(int argc, char* argv[]) {
     Zobrist::init();
     MoveGenerator::init();
+    Evaluator::init();
 
     if (argc > 1) {
         std::string arg = argv[1];
@@ -71,13 +73,13 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "======================================================\n";
-    std::cout << "  HEAVEN'S GATE CHESS ENGINE - VERSION 10.0 (UCI & Pruning) \n";
+    std::cout << "  HEAVEN'S GATE CHESS ENGINE - MASTER EDITION (PVS & Eval)\n";
     std::cout << "======================================================\n";
     std::cout << "Commands:\n";
     std::cout << "  uci                         - Switch to standard UCI Protocol mode\n";
-    std::cout << "  id <depth> [time_ms]        - Run Iterative Deepening + Q-Search (v10.0)\n";
-    std::cout << "  alphabeta <depth> / ab <d>  - Run Move-Ordered Alpha-Beta search\n";
-    std::cout << "  compare <depth>             - Compare Minimax vs Raw Alpha-Beta vs v10.0\n";
+    std::cout << "  id <depth> [time_ms]        - Run Iterative Deepening + PVS + Eval\n";
+    std::cout << "  alphabeta <depth> / ab <d>  - Run Move-Ordered PVS search\n";
+    std::cout << "  compare <depth>             - Compare Minimax vs Raw Alpha-Beta vs Master Search\n";
     std::cout << "  minimax <depth>             - Run unpruned Minimax search\n";
     std::cout << "  export_tree <d>             - Export JSON search tree (game_tree.json)\n";
     std::cout << "  perft                       - Run Perft verification suite\n";
@@ -100,7 +102,7 @@ int main(int argc, char* argv[]) {
         if (line.empty()) continue;
 
         if (line == "uci") {
-            std::cout << "id name Heaven's Gate 10.0\n";
+            std::cout << "id name Heaven's Gate Master Edition\n";
             std::cout << "id author DeepMind Antigravity\n";
             std::cout << "uciok" << std::endl;
             UCI::loop();
@@ -117,7 +119,7 @@ int main(int argc, char* argv[]) {
                 }
             } catch (...) {}
 
-            std::cout << "Running Iterative Deepening + NMP + LMR + TT (Max Depth " << d;
+            std::cout << "Running Master Iterative Deepening + PVS + Aspiration + NMP + LMR (Max Depth " << d;
             if (time_ms > 0) std::cout << ", Max Time " << time_ms << " ms";
             std::cout << ") ...\n";
 
@@ -137,7 +139,7 @@ int main(int argc, char* argv[]) {
                 if (pos != std::string::npos) d = std::stoi(line.substr(pos));
             } catch (...) {}
 
-            std::cout << "Searching Move-Ordered Alpha-Beta + NMP + LMR depth " << d << " ...\n";
+            std::cout << "Searching Master PVS Search depth " << d << " ...\n";
             SearchResult res = search_engine.search_alphabeta(board, d, true, true);
 
             std::cout << "\nBest Move : " << move_to_uci(res.best_move) << "\n";

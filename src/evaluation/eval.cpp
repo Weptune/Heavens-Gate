@@ -1,97 +1,73 @@
 #include "eval.hpp"
+#include "pst.hpp"
+#include <algorithm>
 
 namespace heavensgate {
 
-int Evaluator::evaluate_material(const Board& board) {
-    Color us = board.side_to_move();
-    Color them = ~us;
-
-    int us_material = popcount(board.pieces(make_piece(us, PieceType::Pawn))) * PawnValue +
-                      popcount(board.pieces(make_piece(us, PieceType::Knight))) * KnightValue +
-                      popcount(board.pieces(make_piece(us, PieceType::Bishop))) * BishopValue +
-                      popcount(board.pieces(make_piece(us, PieceType::Rook))) * RookValue +
-                      popcount(board.pieces(make_piece(us, PieceType::Queen))) * QueenValue;
-
-    int them_material = popcount(board.pieces(make_piece(them, PieceType::Pawn))) * PawnValue +
-                        popcount(board.pieces(make_piece(them, PieceType::Knight))) * KnightValue +
-                        popcount(board.pieces(make_piece(them, PieceType::Bishop))) * BishopValue +
-                        popcount(board.pieces(make_piece(them, PieceType::Rook))) * RookValue +
-                        popcount(board.pieces(make_piece(them, PieceType::Queen))) * QueenValue;
-
-    return us_material - them_material;
+void Evaluator::init() {
+    PST::init();
+    EvalFeatures::init();
 }
 
-int Evaluator::calculate_game_phase(const Board& board) noexcept {
-    constexpr int KnightPhase = 1;
-    constexpr int BishopPhase = 1;
-    constexpr int RookPhase   = 2;
-    constexpr int QueenPhase  = 4;
+int Evaluator::evaluate_side(const Board& board, Color side) {
+    int mg_material = 0;
+    int eg_material = 0;
 
-    int current_phase = 0;
+    int mg_pst = 0;
+    int eg_pst = 0;
 
-    current_phase += (popcount(board.pieces(make_piece(Color::White, PieceType::Knight))) +
-                      popcount(board.pieces(make_piece(Color::Black, PieceType::Knight)))) * KnightPhase;
+    auto score_piece = [&](PieceType pt, int mg_val, int eg_val) {
+        Piece p = make_piece(side, pt);
+        Bitboard bb = board.pieces(p);
 
-    current_phase += (popcount(board.pieces(make_piece(Color::White, PieceType::Bishop))) +
-                      popcount(board.pieces(make_piece(Color::Black, PieceType::Bishop)))) * BishopPhase;
+        while (bb) {
+            Square sq = pop_lsb(bb);
+            mg_material += mg_val;
+            eg_material += eg_val;
 
-    current_phase += (popcount(board.pieces(make_piece(Color::White, PieceType::Rook))) +
-                      popcount(board.pieces(make_piece(Color::Black, PieceType::Rook)))) * RookPhase;
+            mg_pst += PST::get_mg(pt, side, sq);
+            eg_pst += PST::get_eg(pt, side, sq);
+        }
+    };
 
-    current_phase += (popcount(board.pieces(make_piece(Color::White, PieceType::Queen))) +
-                      popcount(board.pieces(make_piece(Color::Black, PieceType::Queen)))) * QueenPhase;
+    score_piece(PieceType::Pawn,   100, 120);
+    score_piece(PieceType::Knight, 320, 310);
+    score_piece(PieceType::Bishop, 330, 340);
+    score_piece(PieceType::Rook,   500, 530);
+    score_piece(PieceType::Queen,  900, 950);
+    score_piece(PieceType::King,     0,   0);
 
-    return std::min(24, current_phase);
+    // Advanced Mathematical Features
+    int pawn_struct = EvalFeatures::evaluate_pawn_structure(board, side);
+    int passed_pawns= EvalFeatures::evaluate_passed_pawns(board, side);
+    int king_safety = EvalFeatures::evaluate_king_safety(board, side);
+    int activity    = EvalFeatures::evaluate_piece_activity(board, side);
+    int mobility    = EvalFeatures::evaluate_mobility(board, side);
+
+    int pos_total = pawn_struct + passed_pawns + king_safety + activity + mobility;
+
+    // Calculate game phase phi in [0, 24]
+    int knights = popcount(board.pieces(make_piece(side, PieceType::Knight)));
+    int bishops = popcount(board.pieces(make_piece(side, PieceType::Bishop)));
+    int rooks   = popcount(board.pieces(make_piece(side, PieceType::Rook)));
+    int queens  = popcount(board.pieces(make_piece(side, PieceType::Queen)));
+    int game_phase = knights * 1 + bishops * 1 + rooks * 2 + queens * 4;
+
+    int mg_total = mg_material + mg_pst + pos_total;
+    int eg_total = eg_material + eg_pst + pos_total;
+
+    int mg_weight = std::min(game_phase, 24);
+    int eg_weight = 24 - mg_weight;
+
+    return (mg_total * mg_weight + eg_total * eg_weight) / 24;
 }
 
 int Evaluator::evaluate(const Board& board) {
-    Color us = board.side_to_move();
-    Color them = ~us;
+    int white_score = evaluate_side(board, Color::White);
+    int black_score = evaluate_side(board, Color::Black);
 
-    int mg_score = 0;
-    int eg_score = 0;
-
-    // Evaluate both colors for material + PST
-    auto eval_color = [&](Color c) {
-        int color_mg = 0;
-        int color_eg = 0;
-
-        for (int pt_i = 0; pt_i < 6; ++pt_i) {
-            PieceType pt = static_cast<PieceType>(pt_i);
-            Piece p = make_piece(c, pt);
-            Bitboard bb = board.pieces(p);
-
-            int piece_val = 0;
-            switch (pt) {
-                case PieceType::Pawn:   piece_val = PawnValue; break;
-                case PieceType::Knight: piece_val = KnightValue; break;
-                case PieceType::Bishop: piece_val = BishopValue; break;
-                case PieceType::Rook:   piece_val = RookValue; break;
-                case PieceType::Queen:  piece_val = QueenValue; break;
-                default: break;
-            }
-
-            while (bb) {
-                Square sq = pop_lsb(bb);
-                color_mg += piece_val + PieceSquareTables::get_pst_value(pt, c, sq, false);
-                color_eg += piece_val + PieceSquareTables::get_pst_value(pt, c, sq, true);
-            }
-        }
-        return std::make_pair(color_mg, color_eg);
-    };
-
-    auto us_scores = eval_color(us);
-    auto them_scores = eval_color(them);
-
-    mg_score = us_scores.first - them_scores.first;
-    eg_score = us_scores.second - them_scores.second;
-
-    int phase = calculate_game_phase(board);
-
-    // Tapered evaluation interpolation
-    int final_eval = (mg_score * phase + eg_score * (24 - phase)) / 24;
-
-    return final_eval;
+    int relative_score = white_score - black_score;
+    return (board.side_to_move() == Color::White) ? relative_score : -relative_score;
 }
 
 } // namespace heavensgate

@@ -8,6 +8,10 @@
 
 namespace heavensgate {
 
+constexpr int ScoreInfinity = 30000;
+constexpr int ScoreMate     = 25000;
+constexpr int ScoreDraw     = 0;
+
 // Colors
 enum class Color : uint8_t {
     White = 0,
@@ -119,9 +123,6 @@ enum class MoveType : uint8_t {
 };
 
 // Move Structure (16-bit compact layout)
-// Bits 0-5:   From square (0-63)
-// Bits 6-11:  To square (0-63)
-// Bits 12-15: Move type (0-15)
 class Move {
 private:
     uint16_t data_{0};

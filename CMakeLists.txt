@@ -15,6 +15,7 @@ set(ENGINE_SOURCES
     src/movegen/movegen.cpp
     src/movegen/perft.cpp
     src/evaluation/pst.cpp
+    src/evaluation/eval_features.cpp
     src/evaluation/eval.cpp
     src/search/move_picker.cpp
     src/search/tt.cpp

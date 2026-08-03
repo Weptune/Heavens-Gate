@@ -127,7 +127,7 @@ int SearchEngine::negamax_minimax(Board& board, int depth, int ply, TreeNodeJSON
     return best_score;
 }
 
-int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move, TreeNodeJSON* json_node) {
+int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move, Move prev_move, TreeNodeJSON* json_node) {
     metrics_tracker_.add_nodes(1);
 
     if (is_time_up()) return 0;
@@ -173,12 +173,22 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     Color us = board.side_to_move();
     bool in_chk = MoveGenerator::in_check(board, us);
 
-    // 2. Null Move Pruning (NMP)
+    // 2. Reverse Futility Pruning (Static Null Move Pruning)
+    if (depth <= 3 && !in_chk && std::abs(beta) < ScoreMate - 1000) {
+        int eval = Evaluator::evaluate(board);
+        int margin = 120 * depth;
+        if (eval - margin >= beta) {
+            metrics_tracker_.add_cut();
+            return eval - margin; // Static fail-high cutoff
+        }
+    }
+
+    // 3. Null Move Pruning (NMP)
     if (depth >= 3 && !in_chk && board.has_non_pawn_material(us)) {
         constexpr int R = 2; // Reduction factor
         board.make_null_move();
 
-        int null_score = -negamax_alphabeta(board, depth - 1 - R, ply + 1, -beta, -beta + 1, use_move_ordering, use_tt, Move(), nullptr);
+        int null_score = -negamax_alphabeta(board, depth - 1 - R, ply + 1, -beta, -beta + 1, use_move_ordering, use_tt, Move(), Move(), nullptr);
 
         board.unmake_null_move();
 
@@ -206,7 +216,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     }
 
     if (use_move_ordering) {
-        move_picker_.score_and_sort_moves(board, moves, ply, tt_move);
+        move_picker_.score_and_sort_moves(board, moves, ply, tt_move, prev_move);
     }
 
     int best_score = -ScoreInfinity;
@@ -228,19 +238,27 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         int score = 0;
 
-        // 3. Late Move Reductions (LMR)
-        if (i >= 4 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk) {
-            int reduction = 1 + static_cast<int>(std::log(depth) * std::log(i + 1) / 2.5);
-            int reduced_depth = std::max(1, depth - 1 - reduction);
-
-            score = -negamax_alphabeta(board, reduced_depth, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), child_node);
-
-            // Re-search at full depth if reduced search raised alpha
-            if (score > alpha) {
-                score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), child_node);
-            }
+        // 4. Principal Variation Search (PVS / NegaScout) & LMR
+        if (i == 0) {
+            // Full window search for first move (PV move)
+            score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
         } else {
-            score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), child_node);
+            // Late Move Reductions (LMR) for quiet moves
+            if (i >= 4 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk) {
+                int reduction = 1 + static_cast<int>(std::log(depth) * std::log(i + 1) / 2.5);
+                int reduced_depth = std::max(1, depth - 1 - reduction);
+
+                // Zero-window search at reduced depth
+                score = -negamax_alphabeta(board, reduced_depth, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
+            } else {
+                // Zero-window search at full depth
+                score = -negamax_alphabeta(board, depth - 1, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
+            }
+
+            // If zero-window search raised alpha, re-search with full [alpha, beta] window!
+            if (score > alpha && score < beta) {
+                score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
+            }
         }
 
         board.unmake_move(m);
@@ -257,6 +275,9 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             if (use_move_ordering && !m.is_capture()) {
                 move_picker_.add_killer_move(ply, m);
                 move_picker_.add_history_score(board.side_to_move(), m, depth);
+                if (static_cast<bool>(prev_move)) {
+                    move_picker_.add_countermove(prev_move, m);
+                }
             }
             if (use_tt) {
                 tt_.store(board.zobrist_key(), m, beta, depth, TTBound::Lower, ply);
@@ -354,7 +375,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     q_nodes_ = 0;
 
     metrics_tracker_.start_timer();
-    metrics_tracker_.set_version("v9.0 (NMP + LMR Advanced Pruning)");
+    metrics_tracker_.set_version("v10.0 (PVS + Aspiration + NMP + LMR)");
     metrics_tracker_.set_depth(depth);
 
     time_stop_flag_ = false;
@@ -400,7 +421,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
             child_json->ply = 1;
         }
 
-        int score = -negamax_alphabeta(board, depth - 1, 1, -beta, -alpha, use_move_ordering, use_tt, Move(), child_json);
+        int score = -negamax_alphabeta(board, depth - 1, 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_json);
 
         board.unmake_move(m);
 
@@ -439,10 +460,11 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
     time_stop_flag_ = false;
 
     metrics_tracker_.start_timer();
-    metrics_tracker_.set_version("v9.0 (Iterative Deepening + NMP + LMR)");
+    metrics_tracker_.set_version("v10.0 (Master Search Architecture)");
 
     SearchResult final_result;
     Move best_pv_move = Move();
+    int last_score = 0;
 
     for (int d = 1; d <= max_depth; ++d) {
         metrics_tracker_.set_depth(d);
@@ -454,34 +476,56 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 
         move_picker_.score_and_sort_moves(board, moves, 0, best_pv_move);
 
+        // Aspiration Windows Setup (d >= 4)
         int alpha = -ScoreInfinity;
         int beta  =  ScoreInfinity;
+        constexpr int WindowDelta = 25;
+
+        if (d >= 4 && std::abs(last_score) < ScoreMate - 1000) {
+            alpha = last_score - WindowDelta;
+            beta  = last_score + WindowDelta;
+        }
+
         int current_best_score = -ScoreInfinity;
         Move current_best_move = moves[0];
-
         bool interrupted = false;
 
-        for (const auto& m : moves) {
-            board.make_move(m);
+        while (true) {
+            current_best_score = -ScoreInfinity;
 
-            int score = -negamax_alphabeta(board, d - 1, 1, -beta, -alpha, true, true, Move(), nullptr);
+            for (const auto& m : moves) {
+                board.make_move(m);
 
-            board.unmake_move(m);
+                int score = -negamax_alphabeta(board, d - 1, 1, -beta, -alpha, true, true, Move(), m, nullptr);
 
-            if (time_stop_flag_) {
-                interrupted = true;
-                break;
+                board.unmake_move(m);
+
+                if (time_stop_flag_) {
+                    interrupted = true;
+                    break;
+                }
+
+                if (score > current_best_score) {
+                    current_best_score = score;
+                    current_best_move = m;
+                }
+
+                if (score > alpha) {
+                    alpha = score;
+                    pv_table_.set_move(0, m);
+                    pv_table_.update(0, m);
+                }
             }
 
-            if (score > current_best_score) {
-                current_best_score = score;
-                current_best_move = m;
-            }
+            if (interrupted) break;
 
-            if (score > alpha) {
-                alpha = score;
-                pv_table_.set_move(0, m);
-                pv_table_.update(0, m);
+            // Check Aspiration Fail Low / Fail High
+            if (current_best_score <= alpha) {
+                alpha = -ScoreInfinity; // Fail low -> widen alpha
+            } else if (current_best_score >= beta) {
+                beta = ScoreInfinity;  // Fail high -> widen beta
+            } else {
+                break; // Score within aspiration window -> search complete for depth d
             }
         }
 
@@ -490,6 +534,8 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
         }
 
         best_pv_move = current_best_move;
+        last_score   = current_best_score;
+
         final_result.best_move = current_best_move;
         final_result.best_score = current_best_score;
         final_result.pv = pv_table_.get_pv(d);

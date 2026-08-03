@@ -49,7 +49,7 @@ private:
 
     int quiescence_search(Board& board, int alpha, int beta, int ply);
     int negamax_minimax(Board& board, int depth, int ply, TreeNodeJSON* json_node);
-    int negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move, TreeNodeJSON* json_node);
+    int negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move, Move prev_move, TreeNodeJSON* json_node);
 
 public:
     SearchResult search_minimax(Board& board, int depth, bool export_tree = false);
