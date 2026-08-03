@@ -27,20 +27,60 @@ static std::string trim(const std::string& str) {
 
 const std::vector<std::string> TournamentOpenings = {
     std::string(StartposFEN),                                             // 1. Initial Position
-    "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2",     // 2. Sicilian Defense
-    "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3", // 3. Ruy Lopez
-    "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",     // 4. French Defense
-    "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2",     // 5. Queen's Gambit
-    "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP2BPPP/R1BQK2R b KQ - 1 6",  // 6. King's Indian Defense
-    "rnbqkbnr/pp2pppp/2p5/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",     // 7. Caro-Kann Defense
-    "r1bqkb1r/pppp1ppp/2n2n2/4p3/4P3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4",// 8. Four Knights Game
-    "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4", // 9. Italian Game
-    "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3"   // 10. Petrov Defense
+    "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2",     // 2. Sicilian Defense: Open
+    "rnbqkb1r/pp2pppp/3p1n2/8/3NP3/8/PPP2PPP/RNBQKB1R w KQkq - 0 5",      // 3. Sicilian Defense: Najdorf
+    "r1bqkb1r/pp1ppp1p/2n2np1/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",  // 4. Sicilian Defense: Dragon
+    "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3", // 5. Ruy Lopez: Main Line
+    "r1bqkb1r/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",  // 6. Ruy Lopez: Berlin
+    "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",     // 7. French Defense: Advance
+    "rnbqk1nr/pppp1ppp/4p3/8/3PP3/2b5/PPP2PPP/R1BQKBNR w KQkq - 0 4",     // 8. French Defense: Winawer
+    "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2",     // 9. Queen's Gambit Declined
+    "rnbqkbnr/ppp1pppp/8/8/2pP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3",         // 10. Queen's Gambit Accepted
+    "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP2BPPP/R1BQK2R b KQ - 1 6",  // 11. King's Indian: Classical
+    "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2P2/PP2G1PP/R1BQKBNR w KQ - 0 6",   // 12. King's Indian: Samisch
+    "rnbqkbnr/pp2pppp/2p5/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",     // 13. Caro-Kann: Main Line
+    "rnbqkbnr/pp2pppp/2p5/3P4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 3",         // 14. Caro-Kann: Advance
+    "r1bqkb1r/pppp1ppp/2n2n2/4p3/4P3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4",// 15. Four Knights Game
+    "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4", // 16. Italian Game: Giuoco Piano
+    "r1bqk1nr/pppp1ppp/2n5/2b1p3/1PB1P3/5N2/P1PP1PPP/RNBQK2R b KQkq b3 0 4",// 17. Italian Game: Evans Gambit
+    "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",  // 18. Petrov Defense
+    "rnbqkbnr/ppp2ppp/4p3/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq d6 0 3",    // 19. QGD Exchange
+    "rnbqk2r/ppp1bppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5",  // 20. QGD Tartakower
+    "rnbqkb1r/ppp1pp1p/5np1/3p4/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 0 4",  // 21. Grünfeld Defense
+    "rnbqk2r/pppp1ppp/4pn2/8/2PP4/2P5/P3PPPP/R1BQKBNR w KQkq - 0 4",     // 22. Nimzo-Indian Defense
+    "rnbqkbnr/pppppp1p/6p1/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",      // 23. Modern Defense
+    "rnbqkbnr/pppp1ppp/8/4p3/2P5/8/PP1PPPPPR/RNBQKBNR b KQkq c3 0 2",     // 24. English Opening
+    "rnbqkbnr/ppp1p1pp/8/3p1p2/2PP4/8/PP2PPPP/RNBQKBNR w KQkq f6 0 3",    // 25. Dutch Defense
+    "rnbqkbnr/pp1ppppp/8/3P4/8/8/PPP1PPPP/RNBQKBNR b KQkq - 0 2",         // 26. Benoni Defense
+    "r1bqk2r/pp2bppp/2n1pn2/2pp4/2PP4/2N1PN2/PP2BPPP/R1BQ1RK1 w kq - 4 8", // 27. Tarrasch Defense
+    "rnbqkbnr/pppp1ppp/8/4p3/4P3/2N5/PPPP1PPP/R1BQKBNR b KQkq - 1 2",     // 28. Vienna Game
+    "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2",     // 29. Scandinavian Defense
+    "rnbqkb1r/pppppppp/5n2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 1 2",      // 30. Alekhine Defense
+    "rnbqkbnr/pp2pppp/2p5/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3",     // 31. Slav Defense
+    "rnbqk2r/pp2bppp/2p1pn2/3p4/2PP4/2N1PN2/PP3PPP/R1BQKB1R w KQkq - 0 6", // 32. Semi-Slav Defense
+    "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq f3 0 2",     // 33. King's Gambit
+    "rnbqkbnr/ppp1pppp/3p4/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",      // 34. Pirc Defense
+    "rnbqkbnr/ppp1pppp/3p4/8/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2",     // 35. Philidor Defense
+    "r1bqkbnr/pppp1ppp/2n5/3Pp3/4P3/5N2/PPP2PPP/RNBQK2R b KQkq - 0 3",     // 36. Scotch Game
+    "rnbqkbnr/pppp1ppp/8/8/3pP3/2P5/PP3PPP/RNBQKBNR b KQkq - 0 3",         // 37. Danish Gambit
+    "rnbqkbnr/pppppppp/8/8/5P2/8/PPPPP1PP/RNBQKBNR b KQkq f3 0 1",         // 38. Bird's Opening
+    "rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq - 1 1",         // 39. Réti Opening
+    "rnbqkb1r/pppp1ppp/4pn2/8/2PP4/6P1/PP2PP1P/RNBQKBNR b KQkq - 0 3",     // 40. Catalan Opening
+    "rnbqkb1r/p2ppppp/5n2/1ppP4/2P5/8/PP2PPPP/RNBQKBNR w KQkq b6 0 4",     // 41. Benko Gambit
+    "rnbqkb1r/pppp1ppp/5n2/4p3/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 1 3",      // 42. Budapest Gambit
+    "r1bqkbnr/ppp1pppp/2n5/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 1 3",     // 43. Chigorin Defense
+    "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2",     // 44. Albin Countergambit
+    "rnbqkbnr/pppppppp/8/8/4P3/2N5/PPPP1PPP/R1BQKBNR b KQkq - 1 1",      // 45. Nimzowitsch Defense
+    "rnbqkbnr/pppp1ppp/8/4p3/3PP3/8/PPP2PPP/RNBQKBNR b KQkq d3 0 2",     // 46. Center Game
+    "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",     // 47. King's Indian Attack
+    "rnbqkbnr/pppp1ppp/4p3/8/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2",     // 48. English Defense
+    "rnbqkbnr/pppp1ppp/1p6/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",      // 49. Owen's Defense
+    "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1"       // 50. King's Pawn Game
 };
 
 void run_automated_tournament(int num_games, int depth) {
     std::cout << "\n======================================================\n";
-    std::cout << "  HEAVEN'S GATE UNLIMITED ENDGAME TOURNAMENT (" << num_games << " Games @ Depth " << depth << ")\n";
+    std::cout << "  HEAVEN'S GATE 50-GAME GRANDMASTER TOURNAMENT (" << num_games << " Games @ Depth " << depth << ")\n";
     std::cout << "  Engine A: Master Edition (Advanced Positional Eval + PVS)\n";
     std::cout << "  Engine B: Baseline Engine (Raw Material + Basic PST)\n";
     std::cout << "======================================================\n\n";
@@ -62,7 +102,7 @@ void run_automated_tournament(int num_games, int depth) {
         bool a_is_white = (g % 2 != 0);
         int game_moves = 0;
 
-        pgn_file << "[Event \"Heaven's Gate Unlimited Endgame Tournament\"]\n";
+        pgn_file << "[Event \"Heaven's Gate 50-Game Grandmaster Tournament\"]\n";
         pgn_file << "[Site \"Localhost\"]\n";
         pgn_file << "[Date \"2026.08.03\"]\n";
         pgn_file << "[Round \"" << g << "\"]\n";
@@ -76,7 +116,6 @@ void run_automated_tournament(int num_games, int depth) {
 
         std::string result_str = "*";
 
-        // Unlimited game move loop (safety cap 400 moves)
         while (game_moves < 400) {
             MoveList legal_moves;
             MoveGenerator::generate_legal_moves(board, legal_moves);
@@ -228,7 +267,7 @@ int main(int argc, char* argv[]) {
             UCI::loop();
             return 0;
         } else if (arg == "tournament") {
-            int games = (argc > 2) ? std::stoi(argv[2]) : 4;
+            int games = (argc > 2) ? std::stoi(argv[2]) : 50;
             int depth = (argc > 3) ? std::stoi(argv[3]) : 4;
             run_automated_tournament(games, depth);
             return 0;
@@ -240,7 +279,7 @@ int main(int argc, char* argv[]) {
     std::cout << "======================================================\n";
     std::cout << "Commands:\n";
     std::cout << "  uci                         - Switch to standard UCI Protocol mode\n";
-    std::cout << "  tournament [games] [depth]  - Run unlimited endgame tournament & save PGN\n";
+    std::cout << "  tournament [games] [depth]  - Run 50-game grandmaster tournament & save PGN\n";
     std::cout << "  id <depth> [time_ms]        - Run Iterative Deepening + PVS + Eval\n";
     std::cout << "  alphabeta <depth> / ab <d>  - Run Move-Ordered PVS search\n";
     std::cout << "  compare <depth>             - Compare Minimax vs Raw Alpha-Beta vs Master Search\n";
@@ -272,7 +311,7 @@ int main(int argc, char* argv[]) {
             UCI::loop();
             break;
         } else if (line.rfind("tournament", 0) == 0) {
-            int games = 4;
+            int games = 50;
             int depth = 4;
             try {
                 std::stringstream ss(line);
