@@ -66,8 +66,10 @@ int SearchEngine::negamax_minimax(Board& board, int depth, int ply, TreeNodeJSON
     return best_score;
 }
 
-int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, TreeNodeJSON* json_node) {
+int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, Move pv_move, TreeNodeJSON* json_node) {
     metrics_tracker_.add_nodes(1);
+
+    if (is_time_up()) return 0;
 
     if (depth <= 0) {
         int eval = Evaluator::evaluate(board);
@@ -95,9 +97,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         return score;
     }
 
-    // Apply Move Ordering (MVV-LVA, Killer, History)
     if (use_move_ordering) {
-        move_picker_.score_and_sort_moves(board, moves, ply);
+        move_picker_.score_and_sort_moves(board, moves, ply, pv_move);
     }
 
     int best_score = -ScoreInfinity;
@@ -115,9 +116,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             child_node->ply = ply + 1;
         }
 
-        int score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, child_node);
+        int score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, Move(), child_node);
 
         board.unmake_move(m);
+
+        if (time_stop_flag_) return 0;
 
         if (score > best_score) {
             best_score = score;
@@ -132,7 +135,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             if (child_node) {
                 child_node->is_pruned = true;
             }
-            return beta; // Fail-high cutoff
+            return beta;
         }
 
         if (score > alpha) {
@@ -214,8 +217,11 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     pv_table_.clear();
     move_picker_.clear();
     metrics_tracker_.start_timer();
-    metrics_tracker_.set_version(use_move_ordering ? "v3.0 (Alpha-Beta + MoveOrdering)" : "v2.0 (Alpha-Beta Raw)");
+    metrics_tracker_.set_version(use_move_ordering ? "v4.0 (PST Positional Eval)" : "v2.0 (Alpha-Beta Raw)");
     metrics_tracker_.set_depth(depth);
+
+    time_stop_flag_ = false;
+    max_time_ms_ = 0.0;
 
     if (export_tree) {
         exporter_.reset(board);
@@ -257,7 +263,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
             child_json->ply = 1;
         }
 
-        int score = -negamax_alphabeta(board, depth - 1, 1, -beta, -alpha, use_move_ordering, child_json);
+        int score = -negamax_alphabeta(board, depth - 1, 1, -beta, -alpha, use_move_ordering, Move(), child_json);
 
         board.unmake_move(m);
 
@@ -281,6 +287,80 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     result.metrics = metrics_tracker_.get_metrics();
 
     return result;
+}
+
+SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_depth, double max_time_ms) {
+    pv_table_.clear();
+    move_picker_.clear();
+
+    search_start_time_ = std::chrono::high_resolution_clock::now();
+    max_time_ms_ = max_time_ms;
+    time_stop_flag_ = false;
+
+    metrics_tracker_.start_timer();
+    metrics_tracker_.set_version("v5.0 (Iterative Deepening)");
+
+    SearchResult final_result;
+    Move best_pv_move = Move();
+
+    for (int d = 1; d <= max_depth; ++d) {
+        metrics_tracker_.set_depth(d);
+
+        MoveList moves;
+        MoveGenerator::generate_legal_moves(board, moves);
+
+        if (moves.empty()) break;
+
+        move_picker_.score_and_sort_moves(board, moves, 0, best_pv_move);
+
+        int alpha = -ScoreInfinity;
+        int beta  =  ScoreInfinity;
+        int current_best_score = -ScoreInfinity;
+        Move current_best_move = moves[0];
+
+        bool interrupted = false;
+
+        for (const auto& m : moves) {
+            board.make_move(m);
+
+            int score = -negamax_alphabeta(board, d - 1, 1, -beta, -alpha, true, Move(), nullptr);
+
+            board.unmake_move(m);
+
+            if (time_stop_flag_) {
+                interrupted = true;
+                break;
+            }
+
+            if (score > current_best_score) {
+                current_best_score = score;
+                current_best_move = m;
+            }
+
+            if (score > alpha) {
+                alpha = score;
+                pv_table_.set_move(0, m);
+                pv_table_.update(0, m);
+            }
+        }
+
+        if (interrupted && d > 1) {
+            break; // Stop and return best result from previous completed iteration
+        }
+
+        best_pv_move = current_best_move;
+        final_result.best_move = current_best_move;
+        final_result.best_score = current_best_score;
+        final_result.pv = pv_table_.get_pv(d);
+        final_result.completed_depth = d;
+
+        if (is_time_up()) break;
+    }
+
+    metrics_tracker_.stop_timer();
+    final_result.metrics = metrics_tracker_.get_metrics();
+
+    return final_result;
 }
 
 } // namespace heavensgate

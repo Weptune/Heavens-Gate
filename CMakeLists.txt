@@ -12,6 +12,7 @@ set(ENGINE_SOURCES
     src/movegen/attack_masks.cpp
     src/movegen/movegen.cpp
     src/movegen/perft.cpp
+    src/evaluation/pst.cpp
     src/evaluation/eval.cpp
     src/search/move_picker.cpp
     src/search/search.cpp

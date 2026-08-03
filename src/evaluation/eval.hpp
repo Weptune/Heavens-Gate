@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../board/board.hpp"
+#include "pst.hpp"
 #include <cstdint>
 
 namespace heavensgate {
@@ -19,11 +20,14 @@ constexpr int KingValue   = 20000;
 
 class Evaluator {
 public:
-    // Returns evaluation score in centipawns relative to side to move
+    // Tapered evaluation combining material, PSTs, mobility, and pawn structure
     static int evaluate(const Board& board);
 
-    // Pure material counting relative to side to move
+    // Material counting only
     static int evaluate_material(const Board& board);
+
+    // Game phase calculation (24 = Midgame, 0 = Endgame)
+    static int calculate_game_phase(const Board& board) noexcept;
 };
 
 } // namespace heavensgate

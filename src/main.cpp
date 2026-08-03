@@ -34,7 +34,7 @@ void run_three_way_comparison(Board& board, int depth) {
         overall_reduction = (1.0 - static_cast<double>(ab_ord_res.metrics.total_nodes) / mm_res.metrics.total_nodes) * 100.0;
     }
 
-    std::cout << "\n| Metric | Minimax (v1.0) | Raw Alpha-Beta (v2.0) | Move-Ordered Alpha-Beta (v3.0) | Improvement |\n";
+    std::cout << "\n| Metric | Minimax (v1.0) | Raw Alpha-Beta (v2.0) | Move-Ordered Alpha-Beta (v3.0/v4.0) | Improvement |\n";
     std::cout << "| :--- | :--- | :--- | :--- | :--- |\n";
     std::cout << "| Best Move | " << move_to_uci(mm_res.best_move) << " | " << move_to_uci(ab_raw_res.best_move) << " | " << move_to_uci(ab_ord_res.best_move) << " | Identical |\n";
     std::cout << "| Eval Score | " << mm_res.best_score << " cp | " << ab_raw_res.best_score << " cp | " << ab_ord_res.best_score << " cp | Identical |\n";
@@ -62,9 +62,10 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "======================================================\n";
-    std::cout << "  HEAVEN'S GATE CHESS ENGINE - VERSION 3.0 (Move Ordering) \n";
+    std::cout << "  HEAVEN'S GATE CHESS ENGINE - VERSION 5.0 (Iterative Deepening) \n";
     std::cout << "======================================================\n";
     std::cout << "Commands:\n";
+    std::cout << "  id <depth> [time_ms]        - Run Iterative Deepening search (v5.0)\n";
     std::cout << "  alphabeta <depth> / ab <d>  - Run Move-Ordered Alpha-Beta search\n";
     std::cout << "  compare <depth>             - Compare Minimax vs Raw Alpha-Beta vs Move-Ordered\n";
     std::cout << "  minimax <depth>             - Run unpruned Minimax search\n";
@@ -84,7 +85,30 @@ int main(int argc, char* argv[]) {
         std::cout << "\nheavensgate> ";
         if (!std::getline(std::cin, line) || line == "exit") break;
 
-        if (line.rfind("alphabeta", 0) == 0 || line.rfind("ab ", 0) == 0 || line == "ab") {
+        if (line.rfind("id", 0) == 0 || line.rfind("go", 0) == 0) {
+            int d = 6;
+            double time_ms = 0.0;
+            try {
+                std::stringstream ss(line);
+                std::string cmd;
+                ss >> cmd;
+                if (ss >> d) {
+                    ss >> time_ms;
+                }
+            } catch (...) {}
+
+            std::cout << "Running Iterative Deepening (Max Depth " << d;
+            if (time_ms > 0) std::cout << ", Max Time " << time_ms << " ms";
+            std::cout << ") ...\n";
+
+            SearchResult res = search_engine.search_iterative_deepening(board, d, time_ms);
+
+            std::cout << "\nCompleted Depth : " << res.completed_depth << "\n";
+            std::cout << "Best Move       : " << move_to_uci(res.best_move) << "\n";
+            std::cout << "Eval            : " << res.best_score << " cp\n";
+            std::cout << "PV              : " << res.pv.to_string() << "\n";
+            std::cout << res.metrics.report_markdown() << "\n";
+        } else if (line.rfind("alphabeta", 0) == 0 || line.rfind("ab ", 0) == 0 || line == "ab") {
             int d = 5;
             try {
                 size_t pos = line.find_first_of("0123456789");
@@ -126,7 +150,7 @@ int main(int argc, char* argv[]) {
                 if (pos != std::string::npos) d = std::stoi(line.substr(pos));
             } catch (...) {}
 
-            std::cout << "Exporting JSON game tree with Move Ordering for depth " << d << " ...\n";
+            std::cout << "Exporting JSON game tree for depth " << d << " ...\n";
             SearchResult res = search_engine.search_alphabeta(board, d, true, true);
             bool ok = search_engine.tree_exporter().export_file("game_tree.json");
 
@@ -144,7 +168,7 @@ int main(int argc, char* argv[]) {
                 std::cout << "Failed to parse FEN string.\n";
             }
         } else {
-            std::cout << "Unknown command. Available: alphabeta <d>, compare <d>, minimax <d>, export_tree <d>, perft, exit\n";
+            std::cout << "Unknown command. Available: id <d> [time], ab <d>, compare <d>, minimax <d>, perft, exit\n";
         }
     }
 

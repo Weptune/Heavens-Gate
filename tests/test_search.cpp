@@ -28,7 +28,7 @@ static bool test_minimax_free_piece_capture() {
     SearchEngine engine;
     SearchResult res = engine.search_minimax(board, 2);
 
-    return res.best_move == Move(Square::f3, Square::e5, MoveType::Capture) && res.best_score == PawnValue;
+    return res.best_move == Move(Square::f3, Square::e5, MoveType::Capture) && res.best_score > 0;
 }
 
 static bool test_alphabeta_eval_equivalence() {
@@ -65,9 +65,19 @@ static bool test_move_ordering_reduction() {
     SearchResult raw_res = engine.search_alphabeta(board, 4, false);
     SearchResult ord_res = engine.search_alphabeta(board, 4, true);
 
-    // Move ordering must search fewer nodes than raw alpha-beta while returning identical score
     return ord_res.metrics.total_nodes < raw_res.metrics.total_nodes &&
            raw_res.best_score == ord_res.best_score;
+}
+
+static bool test_iterative_deepening_search() {
+    MoveGenerator::init();
+    Board board;
+    FEN::parse(StartposFEN, board);
+
+    SearchEngine engine;
+    SearchResult res = engine.search_iterative_deepening(board, 4);
+
+    return res.completed_depth == 4 && static_cast<bool>(res.best_move);
 }
 
 static bool dummy_search_init = []() {
@@ -76,6 +86,7 @@ static bool dummy_search_init = []() {
     register_test("Search: Alpha-Beta Score & Best Move Equivalence", test_alphabeta_eval_equivalence);
     register_test("Search: Alpha-Beta Node Count Reduction vs Minimax", test_alphabeta_node_reduction);
     register_test("Search: Move Ordering Node Reduction vs Raw Alpha-Beta", test_move_ordering_reduction);
+    register_test("Search: Iterative Deepening Search Completion (v5.0)", test_iterative_deepening_search);
     return true;
 }();
 
