@@ -169,11 +169,11 @@ void run_automated_tournament(int num_games, int depth) {
 
             SearchResult res;
             if (current_is_master) {
-                Evaluator::set_mode(EvalMode::MasterPositional);
+                Evaluator::set_mode(EvalMode::SpectralTropical);
                 res = master_engine.search_alphabeta(board, depth, true, true);
             } else {
-                Evaluator::set_mode(EvalMode::MaterialOnly);
-                res = baseline_engine.search_alphabeta(board, depth, false, false);
+                Evaluator::set_mode(EvalMode::MasterPositional);
+                res = baseline_engine.search_alphabeta(board, depth, true, true);
             }
 
             if (!res.best_move) {
@@ -267,6 +267,16 @@ int main(int argc, char* argv[]) {
     Zobrist::init();
     MoveGenerator::init();
     Evaluator::init();
+
+    if (argc > 1) {
+        std::string cmd = argv[1];
+        if (cmd == "tournament") {
+            int games = (argc > 2) ? std::stoi(argv[2]) : 50;
+            int depth = (argc > 3) ? std::stoi(argv[3]) : 3;
+            run_automated_tournament(games, depth);
+            return 0;
+        }
+    }
 
     if (argc > 1) {
         std::string arg = argv[1];

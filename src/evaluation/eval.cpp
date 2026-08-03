@@ -3,6 +3,9 @@
 #include "nnue.hpp"
 #include "tensor_eval.hpp"
 #include "tensor_quant.hpp"
+#include "tensor_nnue.hpp"
+#include "spectral_graph.hpp"
+#include "tropical_eval.hpp"
 #include <algorithm>
 
 namespace heavensgate {
@@ -13,7 +16,10 @@ void Evaluator::init() {
     PST::init();
     EvalFeatures::init();
     NNUEEvaluator::init();
-    current_mode_ = EvalMode::NNUE;
+    TensorMPS::instance().load_weights("heavensgate.tnw");
+    TensorMPSQuantized::instance().quantize_from(TensorMPS::instance());
+    TensorNNUE::instance().load_weights("heavensgate_tnnue.nnue");
+    TropicalEvaluator::instance().load_weights("heavensgate_tropical.trm");
 }
 
 int Evaluator::evaluate_side(const Board& board, Color side) {
@@ -78,7 +84,11 @@ int Evaluator::evaluate(const Board& board) {
     }
 
     if (current_mode_ == EvalMode::TensorNetwork) {
-        return TensorMPSQuantized::instance().evaluate(board);
+        return TensorNNUE::instance().evaluate(board);
+    }
+
+    if (current_mode_ == EvalMode::SpectralTropical) {
+        return TropicalEvaluator::instance().evaluate(board);
     }
 
     int white_score = evaluate_side(board, Color::White);
@@ -88,7 +98,7 @@ int Evaluator::evaluate(const Board& board) {
     return (board.side_to_move() == Color::White) ? relative_score : -relative_score;
 }
 
-static constexpr int MAX_SEARCH_PLY = 128;
+static constexpr int MAX_SEARCH_PLY = 256;
 static TensorMPSQuantized::QuantizedEnvironment s_quant_env[MAX_SEARCH_PLY];
 
 void Evaluator::reset_incremental_cache() {

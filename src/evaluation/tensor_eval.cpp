@@ -132,22 +132,41 @@ void TensorMPS::initialize_random(uint32_t seed) {
 // =============================================================================
 
 int TensorMPS::evaluate(const Board& board) const {
+    // 1. Calculate Base Material Score
+    int white_mat = 0;
+    int black_mat = 0;
+    for (int sq = 0; sq < 64; sq++) {
+        Piece p = board.piece_at(static_cast<Square>(sq));
+        switch (p) {
+            case Piece::WhitePawn:   white_mat += 100; break;
+            case Piece::WhiteKnight: white_mat += 320; break;
+            case Piece::WhiteBishop: white_mat += 330; break;
+            case Piece::WhiteRook:   white_mat += 500; break;
+            case Piece::WhiteQueen:  white_mat += 900; break;
+            case Piece::BlackPawn:   black_mat += 100; break;
+            case Piece::BlackKnight: black_mat += 320; break;
+            case Piece::BlackBishop: black_mat += 330; break;
+            case Piece::BlackRook:   black_mat += 500; break;
+            case Piece::BlackQueen:  black_mat += 900; break;
+            default: break;
+        }
+    }
+    int material_cp = (board.side_to_move() == Color::White) ? (white_mat - black_mat) : (black_mat - white_mat);
+
     const auto& hilbert = HilbertCurve::order();
 
-    // 1. Initialize running vector from side-to-move
+    // 2. Initialize running vector from side-to-move
     int stm_idx = (board.side_to_move() == Color::White) ? 0 : 1;
     const float* stm_vec = stm_vector(stm_idx);
 
-    // Working vectors (stack-allocated for speed)
-    float v[128]; // Max bond dimension we'll support
+    float v[128];
     float v_new[128];
 
-    // Copy left boundary vector
     for (int j = 0; j < D_; j++) {
         v[j] = stm_vec[j];
     }
 
-    // 2. Contract through 63 bulk sites (chain positions 0 through 62)
+    // 3. Contract through 63 bulk sites with per-site L2 normalization
     for (int site = 0; site < NUM_BULK; site++) {
         Square sq = static_cast<Square>(hilbert[site]);
         Piece p = board.piece_at(sq);
@@ -155,20 +174,28 @@ int TensorMPS::evaluate(const Board& board) const {
 
         const float* mat = bulk_matrix(site, local_idx);
 
-        // v_new[j] = sum_k v[k] * mat[k * D + j]
+        float norm_sq = 0.0f;
         for (int j = 0; j < D_; j++) {
             float sum = 0.0f;
             for (int k = 0; k < D_; k++) {
                 sum += v[k] * mat[k * D_ + j];
             }
             v_new[j] = sum;
+            norm_sq += sum * sum;
         }
 
-        // Swap v and v_new
+        float norm = std::sqrt(norm_sq);
+        if (norm > 1e-6f) {
+            float inv_norm = 1.0f / norm;
+            for (int j = 0; j < D_; j++) {
+                v_new[j] *= inv_norm;
+            }
+        }
+
         std::memcpy(v, v_new, D_ * sizeof(float));
     }
 
-    // 3. Contract with right boundary (last square, chain position 63)
+    // 4. Contract with right boundary
     Square last_sq = static_cast<Square>(hilbert[63]);
     Piece last_p = board.piece_at(last_sq);
     int last_idx = piece_to_local_index(last_p);
@@ -179,11 +206,11 @@ int TensorMPS::evaluate(const Board& board) const {
         raw_output += v[j] * rv[j];
     }
 
-    // 4. Scale and clamp to centipawns
-    float eval_cp = raw_output * scale_;
-    eval_cp = std::max(-30000.0f, std::min(30000.0f, eval_cp));
+    // 5. Combine Base Material + Tensor MPS Residual Positional Correlation
+    float mps_residual = std::max(-400.0f, std::min(400.0f, raw_output * scale_));
+    float final_eval = static_cast<float>(material_cp) + mps_residual;
 
-    return static_cast<int>(eval_cp);
+    return static_cast<int>(std::max(-30000.0f, std::min(30000.0f, final_eval)));
 }
 
 // =============================================================================
@@ -192,23 +219,39 @@ int TensorMPS::evaluate(const Board& board) const {
 
 int TensorMPS::evaluate_incremental(const Board& board, Environment& env) const {
     if (env.L.size() != static_cast<size_t>(NUM_SITES * D_)) {
-        env.L.resize(NUM_SITES * D_);
+        env.L.resize(NUM_SITES * D_, 0.0f);
         env.valid_up_to = -1;
     }
 
-    const auto& hilbert = HilbertCurve::order();
+    int white_mat = 0;
+    int black_mat = 0;
+    for (int sq = 0; sq < 64; sq++) {
+        Piece p = board.piece_at(static_cast<Square>(sq));
+        switch (p) {
+            case Piece::WhitePawn:   white_mat += 100; break;
+            case Piece::WhiteKnight: white_mat += 320; break;
+            case Piece::WhiteBishop: white_mat += 330; break;
+            case Piece::WhiteRook:   white_mat += 500; break;
+            case Piece::WhiteQueen:  white_mat += 900; break;
+            case Piece::BlackPawn:   black_mat += 100; break;
+            case Piece::BlackKnight: black_mat += 320; break;
+            case Piece::BlackBishop: black_mat += 330; break;
+            case Piece::BlackRook:   black_mat += 500; break;
+            case Piece::BlackQueen:  black_mat += 900; break;
+            default: break;
+        }
+    }
+    int material_cp = (board.side_to_move() == Color::White) ? (white_mat - black_mat) : (black_mat - white_mat);
 
+    const auto& hilbert = HilbertCurve::order();
     int start_site = std::max(0, env.valid_up_to);
 
-    // If starting from site 0, initialize left boundary from side-to-move
     if (start_site == 0) {
         int stm_idx = (board.side_to_move() == Color::White) ? 0 : 1;
         const float* stm_vec = stm_vector(stm_idx);
         std::memcpy(&env.L[0], stm_vec, D_ * sizeof(float));
     }
 
-    // Contract remaining bulk sites
-    float v_new[128];
     for (int site = start_site; site < NUM_BULK; site++) {
         Square sq = static_cast<Square>(hilbert[site]);
         Piece p = board.piece_at(sq);
@@ -218,18 +261,27 @@ int TensorMPS::evaluate_incremental(const Board& board, Environment& env) const 
         const float* v_curr = &env.L[site * D_];
         float* v_next = &env.L[(site + 1) * D_];
 
+        float norm_sq = 0.0f;
         for (int j = 0; j < D_; j++) {
             float sum = 0.0f;
             for (int k = 0; k < D_; k++) {
                 sum += v_curr[k] * mat[k * D_ + j];
             }
             v_next[j] = sum;
+            norm_sq += sum * sum;
+        }
+
+        float norm = std::sqrt(norm_sq);
+        if (norm > 1e-6f) {
+            float inv_norm = 1.0f / norm;
+            for (int j = 0; j < D_; j++) {
+                v_next[j] *= inv_norm;
+            }
         }
     }
 
     env.valid_up_to = NUM_BULK;
 
-    // Contract with right boundary
     Square last_sq = static_cast<Square>(hilbert[63]);
     Piece last_p = board.piece_at(last_sq);
     int last_idx = piece_to_local_index(last_p);
@@ -242,10 +294,10 @@ int TensorMPS::evaluate_incremental(const Board& board, Environment& env) const 
         raw_output += v_final[j] * rv[j];
     }
 
-    float eval_cp = raw_output * scale_;
-    eval_cp = std::max(-30000.0f, std::min(30000.0f, eval_cp));
+    float mps_residual = std::max(-400.0f, std::min(400.0f, raw_output * scale_));
+    float final_eval = static_cast<float>(material_cp) + mps_residual;
 
-    return static_cast<int>(eval_cp);
+    return static_cast<int>(std::max(-30000.0f, std::min(30000.0f, final_eval)));
 }
 
 // =============================================================================

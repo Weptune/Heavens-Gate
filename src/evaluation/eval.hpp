@@ -18,7 +18,8 @@ enum class EvalMode {
     MaterialOnly,
     MasterPositional,
     NNUE,
-    TensorNetwork
+    TensorNetwork,
+    SpectralTropical
 };
 
 class Evaluator {
