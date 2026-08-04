@@ -1,37 +1,55 @@
-# Phase 10: Universal Chess Interface Protocol (Version 10.0)
+# Phase 10: UCI Protocol & Real-time Telemetry (Version 10.0)
 
 ---
 
-## 1. Universal Chess Interface (UCI) Standard
+## 1. The Mathematical Problem
 
-The Universal Chess Interface (UCI) is an open communication standard that allows chess engines to connect seamlessly to graphical interfaces (GUIs) such as Cute Chess, Arena, Lichess, and ChessBase.
+A chess engine cannot exist in isolation. To interface with graphical user interfaces (GUIs like ChessBase, Arena, CuteChess, Lichess, and Lichess Bot API), it must implement a standard communication protocol: the **Universal Chess Interface (UCI)**.
 
-### Supported UCI Commands:
-- `uci`: Engine identification (`id name Heaven's Gate 10.0`, `id author DeepMind Antigravity`, `uciok`).
-- `isready`: Responds with `readyok` to confirm engine synchronization.
-- `ucinewgame`: Clears Transposition Table and search history for a fresh game.
-- `position startpos moves ...` / `position fen <str> moves ...`: Sets current board state.
-- `go wtime <ms> btime <ms> winc <ms> binc <ms> depth <d> movetime <ms>`: Triggers search and returns `bestmove <uci>`.
-- `quit`: Terminates engine process cleanly.
+Furthermore, analyzing engine behavior requires **real-time telemetry**: per-move evaluation scores, search time, node counts, and Nodes Per Second (NPS).
 
 ---
 
-## 2. Benchmark Summary Across All 10 Phases
+## 2. UCI Command Interface Specification (`src/uci/uci.cpp`)
 
-| Version | Feature Added | Depth 4 Startpos Nodes | Speedup / Reduction |
-| :--- | :--- | :--- | :--- |
-| **v1.0** | Raw Minimax Search | 206,603 nodes | Baseline (1.0x) |
-| **v2.0** | Alpha-Beta Pruning | 2,056 nodes | 99.0% Reduction |
-| **v3.0** | Move Ordering (MVV-LVA, Killer, History) | 1,469 nodes | 99.3% Reduction |
-| **v6.0** | Magic Bitboards $O(1)$ Attacks | 1,469 nodes | 2.1x Perft Speedup |
-| **v7.0** | Transposition Table (64MB) | 1,052 nodes | 99.5% Reduction |
-| **v9.0** | NMP + LMR Advanced Pruning | 412 nodes | **99.8% Reduction vs Minimax** |
+Heaven's Gate implements the complete standard UCI command set:
+
+| Command | Engine Action | Response / Output |
+|:---|:---|:---|
+| `uci` | Initializes engine metadata and options. | `id name Heaven's Gate 2.0`<br>`id author DeepMind AGY Team`<br>`uciok` |
+| `isready` | Synchronizes GUI and engine state. | `readyok` |
+| `ucinewgame` | Clears Transposition Tables and resets evaluation caches. | None |
+| `position [startpos \| fen <FEN>] moves <move1> ...` | Sets up board position and plays move history. | Internal board state update |
+| `go wtime <ms> btime <ms> winc <ms> binc <ms>` | Launches time-allocated iterative deepening search. | `info depth ... score cp ... nodes ... nps ... pv ...`<br>`bestmove <move>` |
+| `stop` | Signals the running search engine to abort immediately. | `bestmove <current_best_move>` |
+| `quit` | Terminates the engine process cleanly. | Exit 0 |
 
 ---
 
-## 3. YouTube Finale: *"From Math to Grandmaster Engine"*
+## 3. Dynamic UCI Time Control Allocator
 
-1. **GUI Tournament Showcase**:
-   - Screen recording of Heaven's Gate connected to Cute Chess playing against human / standard engines.
-2. **Complete Algorithmic Roadmap**:
-   - Animated sitemap showing all 10 mathematical layers: Bitboards -> Minimax -> Alpha-Beta -> Move Ordering -> Positional Eval -> Iterative Deepening -> Magic Bitboards -> Zobrist Hash -> Quiescence -> NMP/LMR.
+When receiving clock state (`wtime`, `btime`, `winc`, `binc`), the engine calculates a dynamic move time budget:
+
+$$\text{TargetTimeMs} = \frac{\text{RemainingTime}}{35.0} + 0.8 \times \text{Increment}$$
+
+This ensures the engine distributes clock time safely across 40–60 move games without running into time forfeits.
+
+---
+
+## 4. Real-time Telemetry & PGN UCI Annotations (`src/main.cpp`)
+
+During tournaments and self-play, Heaven's Gate prints per-move telemetry to the console and exports PGN files with standard UCI annotations:
+
+### 4.1 Console Telemetry Output
+```text
+1. d2d3 (-1cp, 165.1ms, 12502 nodes, 75702 nps) b8a6 (9cp, 8.3ms, 12464 nodes, 1506223 nps)
+```
+
+### 4.2 Standard PGN Annotation Format (`tournament_results.pgn`)
+```pgn
+1. e2e4 { [%eval 15] [%clk 0:03:00] [%nodes 32100] [%nps 710177] } 1... c7c5 { [%eval -12] [%clk 0:03:00] [%nodes 28400] [%nps 1420100] }
+```
+- `[%eval <cp>]`: Evaluation score in centipawns.
+- `[%clk <h:m:s>]`: Remaining clock time.
+- `[%nodes <N>]`: Total search nodes evaluated for the move.
+- `[%nps <rate>]`: Search speed in Nodes Per Second.
