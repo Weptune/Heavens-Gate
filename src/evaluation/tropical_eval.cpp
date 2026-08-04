@@ -111,25 +111,39 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     int pst_diff      = (us == Color::White) ? (white_pst - black_pst) : (black_pst - white_pst);
     int passed_diff   = (us == Color::White) ? (white_passed - black_passed) : (black_passed - white_passed);
 
+    // Lazy Spectral Evaluation: skip expensive Laplacian eigensolver when material is decisive (> 1200 cp = Queen advantage)
+    if (std::abs(material_diff) > 1200) {
+        std::array<float, NUM_FEATURES> x{};
+        x[0] = static_cast<float>(material_diff);
+        x[4] = static_cast<float>(pst_diff);
+        x[13] = static_cast<float>(passed_diff) * 30.0f;
+        return x;
+    }
+
     SpectralFeatures feat = SpectralGraph::compute_spectrum(board);
 
-    // Construct 14-Dimensional Spectral-Tropical Feature Vector
-    // x[0] and x[4] are Material and PST — passed through raw, NOT into tropical sectors
+    float our_shield   = (us == Color::White) ? feat.king_shield_us : feat.king_shield_them;
+    float their_shield = (us == Color::White) ? feat.king_shield_them : feat.king_shield_us;
+    float our_pressure = (us == Color::White) ? feat.king_pressure_us : feat.king_pressure_them;
+
+    // Construct 16-Dimensional Spectral-Tropical Feature Vector
     std::array<float, NUM_FEATURES> x;
     x[0]  = static_cast<float>(material_diff);                                     // Material diff (RAW pass-through)
     x[1]  = (feat.fiedler_us - feat.fiedler_them) * 15.0f;                         // Relative Fiedler (per-side)
     x[2]  = (feat.cohesion_us - feat.cohesion_them) * 5.0f;                        // Relative Subgraph Cohesion
     x[3]  = feat.spectral_gap * 2.0f;                                              // Global Control Bottleneck
-    x[4]  = static_cast<float>(pst_diff);                                          // Relative PST (RAW pass-through)
+    x[4]  = static_cast<float>(pst_diff);                                          // Relative PST
     x[5]  = (feat.king_pressure_us - feat.king_pressure_them) * 10.0f;             // Relative King Attack Pressure
     x[6]  = (feat.battery_energy_us - feat.battery_energy_them) * 8.0f;            // Relative Ray Alignment Battery
     x[7]  = (feat.pawn_cohesion_us - feat.pawn_cohesion_them) * 12.0f;             // Relative Pawn Structure
     x[8]  = feat.laplacian_trace / 10.0f;                                          // Total Energy Density
     x[9]  = (feat.mobility_us - feat.mobility_them) * 3.0f;                        // Relative Mobility
     x[10] = (feat.center_control_us - feat.center_control_them) * 8.0f;            // Relative Center Control
-    x[11] = feat.game_phase * 50.0f;                                               // Game Phase (RESTORED)
+    x[11] = feat.game_phase * 50.0f;                                               // Game Phase
     x[12] = (feat.king_shield_us - feat.king_shield_them) * 10.0f;                 // King Shield Energy
     x[13] = static_cast<float>(passed_diff) * 30.0f;                               // Passed Pawn Advantage
+    x[14] = static_cast<float>(passed_diff) * (1.0f - feat.game_phase) * 40.0f;    // Cross-Term 1: Endgame Passed Pawn Multiplier
+    x[15] = (our_pressure / (their_shield + 1.0f)) * 15.0f;                        // Cross-Term 2: Unshielded King Attack Ratio
 
     return x;
 }

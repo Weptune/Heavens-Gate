@@ -151,7 +151,7 @@ int main(int argc, char* argv[]) {
     Zobrist::init();
     MoveGenerator::init();
     Evaluator::init();
-    Evaluator::set_mode(EvalMode::MasterPositional);
+    Evaluator::set_mode(EvalMode::SpectralTropical);
 
     SearchEngine search_engine;
     std::vector<Sample> dataset;
