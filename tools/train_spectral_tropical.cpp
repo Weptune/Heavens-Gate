@@ -229,7 +229,13 @@ int main(int argc, char* argv[]) {
             for (size_t idx = 5; idx < history.size(); idx++) {
                 const auto& item = history[idx];
                 float outcome_cp = result_score * 600.0f;
-                float target = 0.70f * item.second + 0.30f * outcome_cp;
+                // Evaluate position using MasterPositional ground truth to break self-play echo chamber
+                Evaluator::set_mode(EvalMode::MasterPositional);
+                float master_score = static_cast<float>(Evaluator::evaluate(item.first));
+                Evaluator::set_mode(EvalMode::SpectralTropical);
+
+                // Target is a 50/50 blend of MasterPositional ground truth and actual game outcome
+                float target = 0.50f * master_score + 0.50f * outcome_cp;
                 local_samples.push_back({item.first, target});
             }
 

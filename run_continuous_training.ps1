@@ -25,9 +25,9 @@ while ($true) {
         continue
     }
 
-    # 3. Simulate 500 Games at Depth 5 and Train 300 Adam Epochs (Warm-Started)
-    Write-Host "[2/4] Simulating 500 Games at Depth 5 and Training 300 Adam Epochs..." -ForegroundColor Yellow
-    .\train_spectral_tropical.exe 500 5 300 0.002
+    # 3. Simulate 500 Games at Depth 5 and Train 80 Adam Epochs (Warm-Started)
+    Write-Host "[2/4] Simulating 500 Games at Depth 5 and Training 80 Adam Epochs..." -ForegroundColor Yellow
+    .\train_spectral_tropical.exe 500 5 80 0.002
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "[ERROR] Training failed! Retrying in 10s..." -ForegroundColor Red
