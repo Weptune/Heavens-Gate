@@ -43,6 +43,12 @@ public:
     // Evaluates board position (returns score in centipawns relative to side_to_move)
     int evaluate(const Board& board) const;
 
+    // Training support: extract 12D spectral-tropical feature vector from board
+    std::array<float, NUM_FEATURES> extract_features(const Board& board) const;
+
+    // Training support: evaluate and return (score, winning_sector_index)
+    std::pair<int, size_t> evaluate_with_sector(const Board& board) const;
+
     // Weight management
     void initialize_weights(uint32_t seed = 42);
     bool save_weights(const std::string& path) const;

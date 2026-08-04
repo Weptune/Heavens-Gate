@@ -39,6 +39,11 @@ struct SpectralFeatures {
     float battery_energy_them; // Ray alignment energy for opponent
     float pawn_cohesion_us;    // Pawn chain Laplacian cohesion
     float pawn_cohesion_them;  // Pawn chain Laplacian cohesion for opponent
+    float mobility_us;         // Attack-degree mobility for side to move
+    float mobility_them;       // Attack-degree mobility for opponent
+    float center_control_us;   // Pieces near center (e4/d4/e5/d5) for side to move
+    float center_control_them; // Pieces near center for opponent
+    float game_phase;          // Normalized game phase (1.0=full pieces, 0.0=endgame)
 };
 
 class SpectralGraph {
@@ -48,8 +53,7 @@ public:
     // Constructs dynamic piece attack graph and computes Laplacian spectrum
     static SpectralFeatures compute_spectrum(const Board& board);
 
-private:
-    // Helper: Compute attack/defense weight between two pieces
+    // Helper: Compute attack/defense weight between two pieces (public for per-side Fiedler)
     static float compute_edge_weight(Piece p1, Square sq1, Piece p2, Square sq2);
 };
 

@@ -51,6 +51,94 @@ float SpectralGraph::compute_edge_weight(Piece p1, Square sq1, Piece p2, Square 
     return weight;
 }
 
+// =============================================================================
+// Helper: Compute Fiedler value (λ₂) for a subgraph of same-color pieces
+// =============================================================================
+static float compute_side_fiedler(
+    const std::vector<std::pair<Piece, Square>>& side_nodes
+) {
+    int N = static_cast<int>(side_nodes.size());
+    if (N < 2) return 0.0f;
+
+    // Build adjacency and degree for this side's subgraph
+    std::vector<float> A(N * N, 0.0f);
+    std::vector<float> deg(N, 0.0f);
+
+    for (int i = 0; i < N; i++) {
+        for (int j = i + 1; j < N; j++) {
+            float w = SpectralGraph::compute_edge_weight(
+                side_nodes[i].first, side_nodes[i].second,
+                side_nodes[j].first, side_nodes[j].second
+            );
+            A[i * N + j] = w;
+            A[j * N + i] = w;
+            deg[i] += w;
+            deg[j] += w;
+        }
+    }
+
+    // Build Laplacian L = D - A
+    std::vector<float> L(N * N, 0.0f);
+    for (int i = 0; i < N; i++) {
+        L[i * N + i] = deg[i];
+        for (int j = 0; j < N; j++) {
+            if (i != j) L[i * N + j] = -A[i * N + j];
+        }
+    }
+
+    // Power Iteration for max eigenvalue λ_N
+    std::vector<float> v(N, 1.0f / std::sqrt(static_cast<float>(N)));
+    std::vector<float> v_next(N, 0.0f);
+    float max_lambda = 0.0f;
+
+    for (int iter = 0; iter < 12; iter++) {
+        float norm_sq = 0.0f;
+        for (int i = 0; i < N; i++) {
+            float sum = 0.0f;
+            for (int j = 0; j < N; j++) sum += L[i * N + j] * v[j];
+            v_next[i] = sum;
+            norm_sq += sum * sum;
+        }
+        float norm = std::sqrt(norm_sq);
+        max_lambda = norm;
+        if (norm > 1e-6f) {
+            for (int i = 0; i < N; i++) v[i] = v_next[i] / norm;
+        }
+    }
+
+    if (max_lambda < 1e-6f) return 0.0f;
+
+    // Inverse Power Iteration for Fiedler value λ₂
+    // Iterate on M = (max_lambda * I - L), deflating the constant eigenvector
+    std::vector<float> u(N);
+    for (int i = 0; i < N; i++) u[i] = (i % 2 == 0) ? 1.0f : -1.0f;
+
+    float fiedler = 0.0f;
+    for (int iter = 0; iter < 15; iter++) {
+        // Project orthogonal to constant eigenvector
+        float mean = 0.0f;
+        for (int i = 0; i < N; i++) mean += u[i];
+        mean /= static_cast<float>(N);
+        for (int i = 0; i < N; i++) u[i] -= mean;
+
+        // Multiply by M = (max_lambda * I - L)
+        float norm_sq = 0.0f;
+        for (int i = 0; i < N; i++) {
+            float sum = max_lambda * u[i];
+            for (int j = 0; j < N; j++) sum -= L[i * N + j] * u[j];
+            v_next[i] = sum;
+            norm_sq += sum * sum;
+        }
+        float norm = std::sqrt(norm_sq);
+        fiedler = max_lambda - norm;
+        if (norm > 1e-6f) {
+            for (int i = 0; i < N; i++) u[i] = v_next[i] / norm;
+        }
+    }
+
+    return std::max(0.0f, fiedler);
+}
+
 SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     SpectralFeatures feat{};
 
@@ -73,7 +161,9 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     int N = static_cast<int>(nodes.size());
     if (N < 2) return feat;
 
-    // Construct Adjacency Matrix A [N x N] and Degree Matrix D [N x N]
+    // =========================================================================
+    // Global Laplacian for spectral_gap and laplacian_trace
+    // =========================================================================
     std::vector<float> A(N * N, 0.0f);
     std::vector<float> deg(N, 0.0f);
 
@@ -126,21 +216,17 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
         }
     }
 
-    // Power Iteration for Fiedler Value λ₂ (Algebraic Connectivity)
-    // We iterate on matrix M = (max_lambda * I - L) and deflate the constant eigenvector 1
+    // Global Fiedler value for spectral_gap computation
     std::vector<float> u(N);
     for (int i = 0; i < N; i++) u[i] = (i % 2 == 0) ? 1.0f : -1.0f;
 
-    float fiedler_lambda = 0.0f;
-
+    float global_fiedler = 0.0f;
     for (int iter = 0; iter < 20; iter++) {
-        // Project orthogonal to constant eigenvector 1
         float mean = 0.0f;
         for (int i = 0; i < N; i++) mean += u[i];
         mean /= static_cast<float>(N);
         for (int i = 0; i < N; i++) u[i] -= mean;
 
-        // Multiply by M = (max_lambda * I - L)
         float norm_sq = 0.0f;
         for (int i = 0; i < N; i++) {
             float sum = max_lambda * u[i];
@@ -152,19 +238,41 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
         }
 
         float norm = std::sqrt(norm_sq);
-        fiedler_lambda = max_lambda - norm;
+        global_fiedler = max_lambda - norm;
         if (norm > 1e-6f) {
             for (int i = 0; i < N; i++) u[i] = v_next[i] / norm;
         }
     }
 
-    feat.fiedler_val = std::max(0.0f, fiedler_lambda);
+    feat.fiedler_val = std::max(0.0f, global_fiedler);
     feat.spectral_gap = std::max(0.0f, max_lambda - feat.fiedler_val);
 
-    // Subgraph cohesion, King pressure, Battery energy, Pawn structure for Us vs Them
+    // =========================================================================
+    // Per-Side Fiedler Values (separate subgraph Laplacians)
+    // =========================================================================
     Color us = board.side_to_move();
     Color them = ~us;
 
+    std::vector<std::pair<Piece, Square>> us_nodes, them_nodes;
+    us_nodes.reserve(16);
+    them_nodes.reserve(16);
+
+    for (int i = 0; i < N; i++) {
+        Color c = color_of(nodes[i].piece);
+        if (c == us) {
+            us_nodes.push_back({nodes[i].piece, nodes[i].sq});
+        } else {
+            them_nodes.push_back({nodes[i].piece, nodes[i].sq});
+        }
+    }
+
+    feat.fiedler_us = compute_side_fiedler(us_nodes);
+    feat.fiedler_them = compute_side_fiedler(them_nodes);
+
+    // =========================================================================
+    // Per-Side Features: Cohesion, King Pressure, Battery, Pawn Structure,
+    //                    Mobility, Center Control, Game Phase
+    // =========================================================================
     Piece us_king = (us == Color::White) ? Piece::WhiteKing : Piece::BlackKing;
     Piece them_king = (them == Color::White) ? Piece::WhiteKing : Piece::BlackKing;
     Square us_king_sq = board.pieces(us_king) ? lsb(board.pieces(us_king)) : Square::None;
@@ -174,6 +282,12 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     float us_king_press = 0.0f, them_king_press = 0.0f;
     float us_battery = 0.0f, them_battery = 0.0f;
     float us_pawn_coh = 0.0f, them_pawn_coh = 0.0f;
+    float us_mobility = 0.0f, them_mobility = 0.0f;
+    float us_center = 0.0f, them_center = 0.0f;
+    float phase_material = 0.0f;
+
+    // Center squares: e4=28, d4=27, e5=36, d5=35
+    static constexpr int center_squares[4] = {27, 28, 35, 36};
 
     for (int i = 0; i < N; i++) {
         Color c = color_of(nodes[i].piece);
@@ -182,6 +296,40 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
 
         if (c == us) us_deg_sum += deg[i];
         else them_deg_sum += deg[i];
+
+        // Mobility: count edges (attack/defense interactions) per side
+        float piece_edges = 0.0f;
+        for (int j = 0; j < N; j++) {
+            if (i != j) piece_edges += (A[i * N + j] > 0.0f) ? 1.0f : 0.0f;
+        }
+        if (c == us) us_mobility += piece_edges;
+        else them_mobility += piece_edges;
+
+        // Center control: Chebyshev distance to center squares
+        int sq_rank = static_cast<int>(rank_of(sq));
+        int sq_file = static_cast<int>(file_of(sq));
+        for (int cs = 0; cs < 4; cs++) {
+            int cr = center_squares[cs] / 8;
+            int cf = center_squares[cs] % 8;
+            int cdist = std::max(std::abs(sq_rank - cr), std::abs(sq_file - cf));
+            if (cdist <= 1) {
+                if (c == us) us_center += 1.0f;
+                else them_center += 1.0f;
+            }
+        }
+
+        // Game phase material (exclude kings and pawns)
+        if (pt != PieceType::King && pt != PieceType::Pawn) {
+            float pval = 0.0f;
+            switch (pt) {
+                case PieceType::Knight: pval = 320.0f; break;
+                case PieceType::Bishop: pval = 330.0f; break;
+                case PieceType::Rook:   pval = 500.0f; break;
+                case PieceType::Queen:  pval = 900.0f; break;
+                default: break;
+            }
+            phase_material += pval;
+        }
 
         // King pressure energy targeting opponent King
         if (c == us && them_king_sq != Square::None) {
@@ -230,14 +378,20 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
 
     feat.cohesion_us = us_deg_sum;
     feat.cohesion_them = them_deg_sum;
-    feat.fiedler_us = feat.fiedler_val;
-    feat.fiedler_them = feat.fiedler_val;
     feat.king_pressure_us = us_king_press;
     feat.king_pressure_them = them_king_press;
     feat.battery_energy_us = us_battery;
     feat.battery_energy_them = them_battery;
     feat.pawn_cohesion_us = us_pawn_coh;
     feat.pawn_cohesion_them = them_pawn_coh;
+    feat.mobility_us = us_mobility;
+    feat.mobility_them = them_mobility;
+    feat.center_control_us = us_center;
+    feat.center_control_them = them_center;
+
+    // Game phase: 1.0 = all pieces present, 0.0 = endgame (pawns + kings only)
+    // Full material (both sides) = 2*(320+330+500+900) + 2*(320+330+500+900) = 8200
+    feat.game_phase = std::min(1.0f, phase_material / 8200.0f);
 
     return feat;
 }
