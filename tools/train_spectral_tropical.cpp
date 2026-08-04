@@ -229,7 +229,8 @@ int main(int argc, char* argv[]) {
             std::vector<Sample> local_samples;
             for (size_t idx = 5; idx < history.size(); idx++) {
                 const auto& item = history[idx];
-                float outcome_cp = result_score * 600.0f;
+                float side_outcome = (item.first.side_to_move() == Color::White) ? static_cast<float>(result_score) : -static_cast<float>(result_score);
+                float outcome_cp = side_outcome * 600.0f;
                 // Evaluate position using MasterPositional ground truth to break self-play echo chamber
                 Evaluator::set_mode(EvalMode::MasterPositional);
                 float master_score = static_cast<float>(Evaluator::evaluate(item.first));
