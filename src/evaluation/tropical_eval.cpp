@@ -57,6 +57,13 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     int white_pst = 0, black_pst = 0;
     int white_passed = 0, black_passed = 0;
 
+    int knights = popcount(board.pieces(make_piece(Color::White, PieceType::Knight))) + popcount(board.pieces(make_piece(Color::Black, PieceType::Knight)));
+    int bishops = popcount(board.pieces(make_piece(Color::White, PieceType::Bishop))) + popcount(board.pieces(make_piece(Color::Black, PieceType::Bishop)));
+    int rooks   = popcount(board.pieces(make_piece(Color::White, PieceType::Rook)))   + popcount(board.pieces(make_piece(Color::Black, PieceType::Rook)));
+    int queens  = popcount(board.pieces(make_piece(Color::White, PieceType::Queen)))  + popcount(board.pieces(make_piece(Color::Black, PieceType::Queen)));
+    int raw_phase = knights * 1 + bishops * 1 + rooks * 2 + queens * 4;
+    int phase_weight = std::min(raw_phase, 24);
+
     for (int sq = 0; sq < 64; sq++) {
         Square s = static_cast<Square>(sq);
         Piece p = board.piece_at(s);
@@ -75,12 +82,16 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
             default: break;
         }
 
+        int mg_pst = PST::get_mg(pt, c, s);
+        int eg_pst = PST::get_eg(pt, c, s);
+        int interpolated_pst = (mg_pst * phase_weight + eg_pst * (24 - phase_weight)) / 24;
+
         if (c == Color::White) {
             white_mat += val;
-            white_pst += PST::get_mg(pt, Color::White, s);
+            white_pst += interpolated_pst;
         } else {
             black_mat += val;
-            black_pst += PST::get_mg(pt, Color::Black, s);
+            black_pst += interpolated_pst;
         }
 
         // Passed pawn detection (simplified: no enemy pawn on same or adjacent files ahead)

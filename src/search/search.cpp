@@ -146,6 +146,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     if (is_time_up()) return 0;
 
     if (ply > 0 && board.is_repetition()) {
+        // Winning Repetition Penalty: Avoid accidental draws when significantly winning (>150 cp)
+        if (alpha > 150) return -100;
         return ScoreDraw;
     }
 
@@ -205,9 +207,9 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
     }
 
-    // 3. Null Move Pruning (NMP)
+    // 3. Adaptive Null Move Pruning (NMP) (R=2 for shallow depth, R=3 for depth >= 6)
     if (depth >= 3 && !in_chk && board.has_non_pawn_material(us)) {
-        constexpr int R = 2; // Reduction factor
+        int R = (depth >= 6) ? 3 : 2;
         board.make_null_move();
 
         int null_score = -negamax_alphabeta(board, depth - 1 - R, ply + 1, -beta, -beta + 1, use_move_ordering, use_tt, Move(), Move(), nullptr);

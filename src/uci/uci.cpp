@@ -61,7 +61,9 @@ void UCI::handle_go(const std::string& line, Board& board, SearchEngine& engine)
     } else if (wtime > 0 || btime > 0) {
         int my_time = (board.side_to_move() == Color::White) ? wtime : btime;
         int my_inc  = (board.side_to_move() == Color::White) ? winc  : binc;
-        time_ms = (my_time / 30.0) + (my_inc / 2.0);
+        // Allocate time per move: time/35 + 80% increment, capped at 80% of remaining clock
+        double alloc = (my_time / 35.0) + (my_inc * 0.8);
+        time_ms = std::min(alloc, my_time * 0.8);
     }
 
     SearchResult res = engine.search_iterative_deepening(board, depth, time_ms);
@@ -77,8 +79,8 @@ void UCI::loop() {
     std::string line;
     while (std::getline(std::cin, line)) {
         if (line == "uci") {
-            std::cout << "id name Heaven's Gate 10.0 (NNUE Edition)\n";
-            std::cout << "id author DeepMind Antigravity\n";
+            std::cout << "id name Heaven's Gate 16D (Spectral-Tropical Edition)\n";
+            std::cout << "id author Antigravity Math Team\n";
             std::cout << "uciok" << std::endl;
         } else if (line == "isready") {
             std::cout << "readyok" << std::endl;
