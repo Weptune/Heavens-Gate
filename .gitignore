@@ -2,27 +2,43 @@
 *.exe
 *.o
 *.obj
+*.dll
+*.so
+*.dylib
 build/
 heavensgate
 heavensgate.exe
 heavensgate_tests.exe
+train_spectral_tropical.exe
 train_tensor_net.exe
+train_tensor_nnue.exe
 
-# Model weight files
+# Large Binary Weight & Model Files
+*.nnue
 *.tnw
 *.qtnw
+heavensgate_tnnue.nnue
+heavensgate.tnw
+heavensgate.qtnw
 
-# Dev tools
+# Temporary Dev Scripts & Scratch Files
+scratch/
+15
+
+# Dev tools & Toolchains
 tools/w64devkit/
+w64devkit.exe
 
-# Local data & tournament outputs
+# Local Data & Tournament Logs
 tournament_results.pgn
+tournament_telemetry.json
 game_tree.json
 *.log
 *.pgn
 
-# IDE & OS files
+# IDE & System Files
 .vscode/
 .idea/
 *.swp
 *.DS_Store
+Thumbs.db
