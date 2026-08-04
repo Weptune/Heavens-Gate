@@ -17,7 +17,7 @@ Without a Transposition Table (TT), Alpha-Beta evaluates the entire subtree belo
 Albert Zobrist (1970) proved that assigning 64-bit pseudo-random numbers to every board element creates a unique, collision-free position key:
 
 $$
-H(S) = \bigoplus_{(p, sq) \in S} Z_P(p, sq) \oplus Z_{\text{side}} \oplus Z_{\text{castle}}(\text{rights}) \oplus Z_{\text{EP}}(\text{ep\_sq})
+H(S) = \bigoplus_{(p, sq) \in S} Z_P(p, sq) \oplus Z_{\text{side}} \oplus Z_{\text{castle}}(\text{rights}) \oplus Z_{\text{EP}}(\text{ep\\_sq})
 $$
 
 ### Incremental XOR Updating

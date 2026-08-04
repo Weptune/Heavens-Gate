@@ -25,8 +25,8 @@ For depth $d$, the value of position $S$ is defined recursively:
 
 $$
 V(S, d) = \begin{cases}
-f(S) & \text{if } d = 0 \text{ or } \text{IsTerminal}(S) \\
-\max_{m \in \text{Moves}(S)} \Big\{ -V(\text{MakeMove}(S, m), d - 1) \Big\} & \text{if } d > 0
+f(S) \& \text{if } d = 0 \text{ or } \text{IsTerminal}(S) \\
+\max_{m \in \text{Moves}(S)} \Big\{ -V(\text{MakeMove}(S, m), d - 1) \Big\} \& \text{if } d > 0
 \end{cases}
 $$
 

@@ -20,17 +20,17 @@ When regular search reaches `depth <= 0`, it transitions into a **Quiescence Sea
 Before searching any captures, the engine evaluates the static position:
 
 $$
-\text{stand\_pat} = \text{Evaluator::evaluate}(S)
+\text{stand\\_pat} = \text{Evaluator::evaluate}(S)
 $$
 
-- If $\text{stand\_pat} \ge \beta$: Return $\beta$ (Fail-high cutoff! Side to move can simply opt not to make any further captures).
-- If $\text{stand\_pat} > \alpha$: $\alpha = \text{stand\_pat}$.
+- If $\text{stand\\_pat} \ge \beta$: Return $\beta$ (Fail-high cutoff! Side to move can simply opt not to make any further captures).
+- If $\text{stand\\_pat} > \alpha$: $\alpha = \text{stand\\_pat}$.
 
 ### B. Delta Pruning
 If a capture cannot possibly raise $\alpha$ even assuming the captured piece is a Queen ($+900$ cp plus a 200 cp safety buffer):
 
 $$
-\text{stand\_pat} + \text{VictimValue} + 200 < \alpha \implies \text{Prune Capture!}
+\text{stand\\_pat} + \text{VictimValue} + 200 < \alpha \implies \text{Prune Capture!}
 $$
 
 ### C. Tactical Recaptures Only

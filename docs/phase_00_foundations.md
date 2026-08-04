@@ -20,7 +20,7 @@ $$
 \mathcal{B} = \{a1, b1, \dots, h8\} \cong \{0, 1, 2, \dots, 63\}
 $$
 
-Instead of storing an array of 64 object pointers, modern engine design represents piece presence using **Bitboards**—64-bit unsigned integers ($\text{uint64\_t}$):
+Instead of storing an array of 64 object pointers, modern engine design represents piece presence using **Bitboards**—64-bit unsigned integers (`uint64_t`):
 
 $$
 B \in \{0, 1\}^{64}
@@ -34,8 +34,8 @@ Each bit index $i \in [0, 63]$ represents the presence ($1$) or absence ($0$) of
 - **Difference** (Empty Squares): $B_{\text{Empty}} = \neg B_{\text{Occupied}} \equiv \sim B_{\text{Occupied}}$
 
 ### Bit Manipulation Primitives
-- **Population Count** ($\text{popcount}(B)$): Computes $\sum_{i=0}^{63} b_i$, returning the exact piece count in 1 CPU instruction.
-- **Least Significant Bit** ($\text{lsb}(B)$): Finds the lowest set bit index $\min \{i \mid b_i = 1\} \equiv \text{countr\_zero}(B)$.
+- **Population Count** (`popcount(B)`): Computes $\sum_{i=0}^{63} b_i$, returning the exact piece count in 1 CPU instruction.
+- **Least Significant Bit** (`lsb(B)`): Finds the lowest set bit index $\min \{i \mid b_i = 1\} \equiv `countr_zero(B)`$.
 - **Bit Clearing** ($B \leftarrow B \& (B - 1)$): Resets the lowest set bit in $O(1)$ time.
 
 ---

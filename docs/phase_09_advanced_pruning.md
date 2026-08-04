@@ -14,10 +14,10 @@ To search exponentially deeper within millisecond time limits, we introduce two 
 - **Pruning Condition**:
   
 $$
-\text{depth} \ge 3 \ \&\& \ !\text{in\_check} \ \&\& \ \text{has\_non\_pawn\_material} \implies \text{search with } (d - 1 - R)
+\text{depth} \ge 3 \ \&\& \ !\text{in\\_check} \ \&\& \ \text{has\\_non\\_pawn\\_material} \implies \text{search with } (d - 1 - R)
 $$
 
-  If $\text{null\_score} \ge \beta \implies \text{Return } \beta$.
+  If $\text{null\\_score} \ge \beta \implies \text{Return } \beta$.
 
 ### B. Late Move Reductions (LMR)
 - **Probability Distribution of Best Move**: Because MVV-LVA, Killer Moves, and History Tables put the best candidate move in index 0 or 1 over $90\%$ of the time, moves at index $i \ge 4$ are statistically unlikely to raise $\alpha$.
