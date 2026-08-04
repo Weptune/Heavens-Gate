@@ -43,6 +43,8 @@ struct SpectralFeatures {
     float mobility_them;       // Attack-degree mobility for opponent
     float center_control_us;   // Pieces near center (e4/d4/e5/d5) for side to move
     float center_control_them; // Pieces near center for opponent
+    float king_shield_us;      // Defending pawn/piece Laplacian energy around our King
+    float king_shield_them;    // Defending pawn/piece Laplacian energy around opponent King
     float game_phase;          // Normalized game phase (1.0=full pieces, 0.0=endgame)
 };
 

@@ -271,7 +271,7 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
 
     // =========================================================================
     // Per-Side Features: Cohesion, King Pressure, Battery, Pawn Structure,
-    //                    Mobility, Center Control, Game Phase
+    //                    Mobility, Center Control, King Shield, Game Phase
     // =========================================================================
     Piece us_king = (us == Color::White) ? Piece::WhiteKing : Piece::BlackKing;
     Piece them_king = (them == Color::White) ? Piece::WhiteKing : Piece::BlackKing;
@@ -284,6 +284,7 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     float us_pawn_coh = 0.0f, them_pawn_coh = 0.0f;
     float us_mobility = 0.0f, them_mobility = 0.0f;
     float us_center = 0.0f, them_center = 0.0f;
+    float us_king_shield = 0.0f, them_king_shield = 0.0f;
     float phase_material = 0.0f;
 
     // Center squares: e4=28, d4=27, e5=36, d5=35
@@ -296,6 +297,21 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
 
         if (c == us) us_deg_sum += deg[i];
         else them_deg_sum += deg[i];
+
+        // King Shield Laplacian energy: friendly pawns/pieces within 1-hop ring of King
+        if (c == us && us_king_sq != Square::None) {
+            int kdist = std::max(std::abs(static_cast<int>(rank_of(sq)) - static_cast<int>(rank_of(us_king_sq))),
+                                 std::abs(static_cast<int>(file_of(sq)) - static_cast<int>(file_of(us_king_sq))));
+            if (kdist == 1) {
+                us_king_shield += (pt == PieceType::Pawn) ? 2.5f : 1.0f;
+            }
+        } else if (c == them && them_king_sq != Square::None) {
+            int kdist = std::max(std::abs(static_cast<int>(rank_of(sq)) - static_cast<int>(rank_of(them_king_sq))),
+                                 std::abs(static_cast<int>(file_of(sq)) - static_cast<int>(file_of(them_king_sq))));
+            if (kdist == 1) {
+                them_king_shield += (pt == PieceType::Pawn) ? 2.5f : 1.0f;
+            }
+        }
 
         // Mobility: count edges (attack/defense interactions) per side
         float piece_edges = 0.0f;
@@ -388,9 +404,10 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     feat.mobility_them = them_mobility;
     feat.center_control_us = us_center;
     feat.center_control_them = them_center;
+    feat.king_shield_us = us_king_shield;
+    feat.king_shield_them = them_king_shield;
 
     // Game phase: 1.0 = all pieces present, 0.0 = endgame (pawns + kings only)
-    // Full material (both sides) = 2*(320+330+500+900) + 2*(320+330+500+900) = 8200
     feat.game_phase = std::min(1.0f, phase_material / 8200.0f);
 
     return feat;

@@ -102,7 +102,7 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     x[8]  = feat.laplacian_trace / 10.0f;                                          // Total Energy Density
     x[9]  = (feat.mobility_us - feat.mobility_them) * 3.0f;                        // Relative Mobility
     x[10] = (feat.center_control_us - feat.center_control_them) * 8.0f;            // Relative Center Control
-    x[11] = feat.game_phase * 50.0f;                                               // Game Phase (scaled)
+    x[11] = (feat.king_shield_us - feat.king_shield_them) * 10.0f;                  // Relative King Shield Energy
 
     return x;
 }
