@@ -198,14 +198,10 @@ int main(int argc, char* argv[]) {
                 }
 
                 SearchResult res = search_engine.search_alphabeta(board, depth, true, true);
+                // Use engine best move from depth-5 search (51-position opening book handles opening diversity)
+                // Remove uniform random blunders so games are always sound 60-120 move battles
                 Move chosen_move = res.best_move;
                 if (!static_cast<bool>(chosen_move)) chosen_move = legal_moves[0];
-
-                // Randomize first 6 moves for opening diversity
-                if (moves_count < 6 && legal_moves.size() > 1) {
-                    std::uniform_int_distribution<size_t> dist(0, legal_moves.size() - 1);
-                    chosen_move = legal_moves[dist(rng)];
-                }
 
                 history.push_back({board, static_cast<float>(res.best_score)});
                 board.make_move(chosen_move);
