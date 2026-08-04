@@ -137,9 +137,20 @@ static float compute_side_fiedler(
     }
 
     return std::max(0.0f, fiedler);
-}
+struct SpectralCacheEntry {
+    uint64_t key{0};
+    SpectralFeatures features{};
+};
+
+static thread_local SpectralCacheEntry s_spectral_cache[2048];
 
 SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
+    uint64_t key = board.zobrist_key();
+    size_t cache_idx = static_cast<size_t>(key & 2047);
+    if (s_spectral_cache[cache_idx].key == key && key != 0) {
+        return s_spectral_cache[cache_idx].features;
+    }
+
     SpectralFeatures feat{};
 
     // Collect active pieces
@@ -411,6 +422,10 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
 
     // Game phase: 1.0 = all pieces present, 0.0 = endgame (pawns + kings only)
     feat.game_phase = std::min(1.0f, phase_material / 8200.0f);
+
+    if (key != 0) {
+        s_spectral_cache[cache_idx] = {key, feat};
+    }
 
     return feat;
 }
