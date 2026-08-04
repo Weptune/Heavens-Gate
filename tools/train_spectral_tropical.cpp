@@ -317,6 +317,7 @@ int main(int argc, char* argv[]) {
             // 4. Adam update on winning sector's positional weights
             //    Skip x[0] (Material) — it is raw pass-through only
             for (size_t i = 1; i < TropicalEvaluator::NUM_FEATURES; i++) {
+                if (i == 4) continue; // Skip x[4] (PST) — raw pass-through
                 float grad = (error * features[i]) / 100.0f + weight_decay * sec.w[i];
                 grad = std::max(-50.0f, std::min(50.0f, grad));
 

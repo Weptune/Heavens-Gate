@@ -187,6 +187,7 @@ std::pair<int, size_t> TropicalEvaluator::evaluate_with_sector(const Board& boar
         float sector_val = sec.b;
         // Evaluate positional features (indices 1..13, skip x[0] raw material)
         for (size_t i = 1; i < NUM_FEATURES; i++) {
+            if (i == 4) continue; // Skip x[4] (PST) — it is added as a raw pass-through term below to prevent double-counting
             sector_val += sec.w[i] * x[i];
         }
         if (sector_val > max_positional_sector) {
