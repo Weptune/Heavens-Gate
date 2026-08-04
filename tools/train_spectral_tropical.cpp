@@ -15,6 +15,8 @@
 #include <random>
 #include <cmath>
 #include <numeric>
+#include <omp.h>
+#include <mutex>
 
 using namespace heavensgate;
 
@@ -157,90 +159,101 @@ int main(int argc, char* argv[]) {
     std::vector<Sample> dataset;
 
     std::cout << "[SpectralTropical] Simulating " << num_games << " Self-Play Games @ Depth " << depth << "...\n";
-    std::cout << "[SpectralTropical] Opening Book: " << OpeningsBook.size() << " positions\n\n";
-
     int white_wins = 0, black_wins = 0, draws = 0;
     auto t_start = std::chrono::steady_clock::now();
 
-    for (int g = 0; g < num_games; g++) {
-        std::string fen = OpeningsBook[g % OpeningsBook.size()];
-        Board board;
-        if (!FEN::parse(fen, board)) board.reset();
+    int num_threads = omp_get_max_threads();
+    std::cout << "[SpectralTropical] Parallelizing dataset generation across " << num_threads << " CPU threads...\n\n";
 
-        std::vector<std::pair<Board, float>> history;
-        int moves_count = 0;
-        int result_score = 0;
+    std::mutex dataset_mutex;
+    int completed_games = 0;
 
-        std::mt19937 rng(42 + g);
+    #pragma omp parallel
+    {
+        SearchEngine search_engine;
 
-        while (moves_count < 120) {
-            MoveList legal_moves;
-            MoveGenerator::generate_legal_moves(board, legal_moves);
+        #pragma omp for schedule(dynamic) reduction(+:white_wins,black_wins,draws)
+        for (int g = 0; g < num_games; g++) {
+            std::string fen = OpeningsBook[g % OpeningsBook.size()];
+            Board board;
+            if (!FEN::parse(fen, board)) board.reset();
 
-            if (legal_moves.empty()) {
-                if (MoveGenerator::in_check(board, board.side_to_move())) {
-                    result_score = (board.side_to_move() == Color::White) ? -1 : 1;
-                } else {
-                    result_score = 0;
+            std::vector<std::pair<Board, float>> history;
+            int moves_count = 0;
+            int result_score = 0;
+
+            std::mt19937 rng(42 + g);
+
+            while (moves_count < 120) {
+                MoveList legal_moves;
+                MoveGenerator::generate_legal_moves(board, legal_moves);
+
+                if (legal_moves.empty()) {
+                    if (MoveGenerator::in_check(board, board.side_to_move())) {
+                        result_score = (board.side_to_move() == Color::White) ? -1 : 1;
+                    } else {
+                        result_score = 0;
+                    }
+                    break;
                 }
-                break;
+
+                SearchResult res = search_engine.search_alphabeta(board, depth, true, true);
+                Move chosen_move = res.best_move;
+                if (!static_cast<bool>(chosen_move)) chosen_move = legal_moves[0];
+
+                // Randomize first 6 moves for opening diversity
+                if (moves_count < 6 && legal_moves.size() > 1) {
+                    std::uniform_int_distribution<size_t> dist(0, legal_moves.size() - 1);
+                    chosen_move = legal_moves[dist(rng)];
+                }
+
+                history.push_back({board, static_cast<float>(res.best_score)});
+                board.make_move(chosen_move);
+                moves_count++;
+
+                if (res.best_score > 900) {
+                    result_score = (board.side_to_move() == Color::White) ? 1 : -1;
+                    break;
+                } else if (res.best_score < -900) {
+                    result_score = (board.side_to_move() == Color::White) ? -1 : 1;
+                    break;
+                }
+
+                if (board.halfmove_clock() >= 100 || board.is_repetition()) {
+                    result_score = 0;
+                    break;
+                }
             }
 
-            SearchResult res = search_engine.search_alphabeta(board, depth, true, true);
-            Move chosen_move = res.best_move;
-            if (!static_cast<bool>(chosen_move)) chosen_move = legal_moves[0];
+            if (result_score > 0) white_wins++;
+            else if (result_score < 0) black_wins++;
+            else draws++;
 
-            // Randomize first 6 moves for opening diversity
-            if (moves_count < 6 && legal_moves.size() > 1) {
-                std::uniform_int_distribution<size_t> dist(0, legal_moves.size() - 1);
-                chosen_move = legal_moves[dist(rng)];
+            std::vector<Sample> local_samples;
+            for (size_t idx = 5; idx < history.size(); idx++) {
+                const auto& item = history[idx];
+                float outcome_cp = result_score * 600.0f;
+                float target = 0.70f * item.second + 0.30f * outcome_cp;
+                local_samples.push_back({item.first, target});
             }
 
-            history.push_back({board, static_cast<float>(res.best_score)});
-            board.make_move(chosen_move);
-            moves_count++;
-
-            // Higher termination threshold for longer, more informative games
-            if (res.best_score > 900) {
-                result_score = (board.side_to_move() == Color::White) ? 1 : -1;
-                break;
-            } else if (res.best_score < -900) {
-                result_score = (board.side_to_move() == Color::White) ? -1 : 1;
-                break;
+            {
+                std::lock_guard<std::mutex> lock(dataset_mutex);
+                dataset.insert(dataset.end(), local_samples.begin(), local_samples.end());
+                completed_games++;
+                if (completed_games % 10 == 0 || completed_games == 1 || completed_games == num_games) {
+                    auto t_now = std::chrono::steady_clock::now();
+                    float elapsed = std::chrono::duration<float>(t_now - t_start).count();
+                    std::cout << "  Game " << std::setw(3) << completed_games << "/" << num_games
+                              << " | Dataset: " << std::setw(6) << dataset.size()
+                              << " | Time: " << std::fixed << std::setprecision(1) << elapsed << "s\n";
+                    std::cout << std::flush;
+                }
             }
-
-            if (board.halfmove_clock() >= 100 || board.is_repetition()) {
-                result_score = 0;
-                break;
-            }
-        }
-
-        if (result_score > 0) white_wins++;
-        else if (result_score < 0) black_wins++;
-        else draws++;
-
-        // Skip near-opening positions (first 5 moves) — they're bookish, not evaluatable
-        for (size_t idx = 5; idx < history.size(); idx++) {
-            const auto& item = history[idx];
-            // Blend search score with game outcome (more conservative)
-            float outcome_cp = result_score * 600.0f;
-            float target = 0.70f * item.second + 0.30f * outcome_cp;
-            dataset.push_back({item.first, target});
-        }
-
-        if ((g + 1) % 10 == 0 || g == 0) {
-            auto t_now = std::chrono::steady_clock::now();
-            float elapsed = std::chrono::duration<float>(t_now - t_start).count();
-            std::cout << "  Game " << std::setw(3) << (g + 1) << "/" << num_games
-                      << " | Moves: " << std::setw(3) << moves_count
-                      << " | " << (result_score > 0 ? "W" : (result_score < 0 ? "B" : "D"))
-                      << " | Dataset: " << std::setw(6) << dataset.size()
-                      << " | " << std::fixed << std::setprecision(1) << elapsed << "s\n";
-            std::cout << std::flush;
         }
     }
 
-    std::cout << "\n[SpectralTropical] Dataset Generation Complete: " << dataset.size() << " position samples\n";
+    std::cout << "\n[SpectralTropical] Parallel Dataset Generation Complete: " << dataset.size() << " position samples\n";
     std::cout << "  Outcomes: " << white_wins << " White Wins, " << black_wins << " Black Wins, " << draws << " Draws\n\n";
 
     // =========================================================================
