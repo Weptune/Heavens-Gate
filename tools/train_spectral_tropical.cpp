@@ -388,6 +388,30 @@ int main(int argc, char* argv[]) {
     std::string model_path = "heavensgate_tropical.trm";
     if (model.save_weights(model_path)) {
         std::cout << "\n[SUCCESS] Saved Spectral-Tropical weights to " << model_path << "\n";
+
+        // Feature Weight Telemetry Summary
+        static const char* feat_names[16] = {
+            "Material", "Fiedler", "Cohesion", "Gap", "PST", "KingPress",
+            "Battery", "PawnCoh", "Trace", "Mobility", "Center", "Phase",
+            "Shield", "Passed", "EG_Passed", "Attack_Ratio"
+        };
+        std::cout << "\n======================================================\n";
+        std::cout << "  LEARNED FEATURE WEIGHT TELEMETRY (320 SECTORS)\n";
+        std::cout << "======================================================\n";
+        for (size_t f = 0; f < TropicalEvaluator::NUM_FEATURES; f++) {
+            float sum_w = 0.0f, min_w = 1e9f, max_w = -1e9f;
+            for (const auto& sec : model.sectors()) {
+                float w = sec.w[f];
+                sum_w += w;
+                min_w = std::min(min_w, w);
+                max_w = std::max(max_w, w);
+            }
+            float avg_w = sum_w / static_cast<float>(TropicalEvaluator::TOTAL_SECTORS);
+            std::cout << "  x[" << std::setw(2) << f << "] (" << std::setw(12) << feat_names[f]
+                      << "): Avg=" << std::fixed << std::setprecision(4) << std::showpos << avg_w
+                      << " | Range=[" << std::noshowpos << min_w << ", " << max_w << "]\n";
+        }
+        std::cout << "======================================================\n\n";
     }
 
     return 0;

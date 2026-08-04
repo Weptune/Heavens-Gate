@@ -43,8 +43,11 @@ while ($true) {
     Write-Host "[4/4] Running 100-Game Depth 5 Grandmaster Tournament..." -ForegroundColor Yellow
     .\heavensgate.exe tournament 100 5
 
+    # Archive PGN per round
+    Copy-Item -Path "tournament_results.pgn" -Destination ("tournament_round_" + $round_num + ".pgn") -Force
+
     # 6. Commit and Push to GitHub
-    $commit_msg = "Continuous Training Round " + $round_num + " - 500 D5 Games, 300 Adam Epochs, 100 D5 Tournament"
+    $commit_msg = "Continuous Training Round " + $round_num + " - 500 D5 Games, 80 Adam Epochs, 100 D5 Tournament"
     Write-Host "`n[GitHub] Committing and Pushing Round $round_num results..." -ForegroundColor Cyan
     git add .
     git commit -m $commit_msg
