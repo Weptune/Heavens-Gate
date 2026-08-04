@@ -91,7 +91,7 @@ static float compute_side_fiedler(
     std::vector<float> v_next(N, 0.0f);
     float max_lambda = 0.0f;
 
-    for (int iter = 0; iter < 12; iter++) {
+    for (int iter = 0; iter < 6; iter++) {
         float norm_sq = 0.0f;
         for (int i = 0; i < N; i++) {
             float sum = 0.0f;
@@ -114,7 +114,7 @@ static float compute_side_fiedler(
     for (int i = 0; i < N; i++) u[i] = (i % 2 == 0) ? 1.0f : -1.0f;
 
     float fiedler = 0.0f;
-    for (int iter = 0; iter < 15; iter++) {
+    for (int iter = 0; iter < 8; iter++) {
         // Project orthogonal to constant eigenvector
         float mean = 0.0f;
         for (int i = 0; i < N; i++) mean += u[i];
@@ -198,7 +198,7 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     std::vector<float> v_next(N, 0.0f);
     float max_lambda = 0.0f;
 
-    for (int iter = 0; iter < 15; iter++) {
+    for (int iter = 0; iter < 6; iter++) {
         float norm_sq = 0.0f;
         for (int i = 0; i < N; i++) {
             float sum = 0.0f;
@@ -221,7 +221,7 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     for (int i = 0; i < N; i++) u[i] = (i % 2 == 0) ? 1.0f : -1.0f;
 
     float global_fiedler = 0.0f;
-    for (int iter = 0; iter < 20; iter++) {
+    for (int iter = 0; iter < 8; iter++) {
         float mean = 0.0f;
         for (int i = 0; i < N; i++) mean += u[i];
         mean /= static_cast<float>(N);
