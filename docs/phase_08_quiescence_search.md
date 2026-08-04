@@ -1,7 +1,5 @@
 # Phase 8: Quiescence Search & Horizon Effect Elimination (Version 8.0)
 
-> **YouTube Episode Concept**: *"Quiescence Search: Ending Search Blindness at the Tactical Horizon"*
-
 ---
 
 ## 1. The Mathematical Problem: The Horizon Effect
@@ -20,20 +18,23 @@ When regular search reaches `depth <= 0`, it transitions into a **Quiescence Sea
 
 ### A. Stand-Pat Threshold
 Before searching any captures, the engine evaluates the static position:
-\[
+
+$$
 \text{stand\_pat} = \text{Evaluator::evaluate}(S)
-\]
-- If \(\text{stand\_pat} \ge \beta\): Return \(\beta\) (Fail-high cutoff! Side to move can simply opt not to make any further captures).
-- If \(\text{stand\_pat} > \alpha\): \(\alpha = \text{stand\_pat}\).
+$$
+
+- If $\text{stand\_pat} \ge \beta$: Return $\beta$ (Fail-high cutoff! Side to move can simply opt not to make any further captures).
+- If $\text{stand\_pat} > \alpha$: $\alpha = \text{stand\_pat}$.
 
 ### B. Delta Pruning
-If a capture cannot possibly raise \(\alpha\) even assuming the captured piece is a Queen (\(+900\) cp plus a 200 cp safety buffer):
-\[
+If a capture cannot possibly raise $\alpha$ even assuming the captured piece is a Queen ($+900$ cp plus a 200 cp safety buffer):
+
+$$
 \text{stand\_pat} + \text{VictimValue} + 200 < \alpha \implies \text{Prune Capture!}
-\]
+$$
 
 ### C. Tactical Recaptures Only
-\(Q\)-Search generates **only capture moves** (`MoveType::Capture`, `MoveType::EnPassant`, `PromoCapture`), ensuring the search tree terminates quickly as the board settles into a quiet, non-tactical state.
+$Q$-Search generates **only capture moves** (`MoveType::Capture`, `MoveType::EnPassant`, `PromoCapture`), ensuring the search tree terminates quickly as the board settles into a quiet, non-tactical state.
 
 ---
 

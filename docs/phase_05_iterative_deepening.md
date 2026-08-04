@@ -1,7 +1,5 @@
 # Phase 5: Iterative Deepening & Dynamic Time Management (Version 5.0)
 
-> **YouTube Episode Concept**: *"Iterative Deepening: The Mathematics of Time Allocation"*
-
 ---
 
 ## 1. The Mathematical Problem
@@ -16,24 +14,28 @@ If the engine is allocated 2 seconds per move, a fixed-depth search will either 
 
 ## 2. Iterative Deepening & Mathematical Proof of Bounded Overhead
 
-Instead of searching directly to depth \(D\), **Iterative Deepening** searches progressively:
-\[
+Instead of searching directly to depth $D$, **Iterative Deepening** searches progressively:
+
+$$
 \text{depth} = 1, 2, 3, \dots, D
-\]
+$$
 
 ### Proof of Geometric Bounded Overhead
-Since the total nodes at depth \(d\) grow exponentially \(N(d) = b^d\):
-\[
+Since the total nodes at depth $d$ grow exponentially $N(d) = b^d$:
+
+$$
 \sum_{k=1}^{D-1} b^k = \frac{b^D - b}{b - 1} \approx \frac{1}{b - 1} N(D)
-\]
-For an Effective Branching Factor \(b \approx 6.2\):
-\[
+$$
+
+For an Effective Branching Factor $b \approx 6.2$:
+
+$$
 \frac{1}{6.2 - 1} \approx 0.192 \implies \mathbf{19.2\% \text{ overhead}}
-\]
+$$
 
 ### Why 19.2% Overhead Gains Massive Net Performance
-1. **Optimal PV Move Feeding**: The best move found at iteration \(d-1\) is fed as the initial candidate move for iteration \(d\). This produces immediate \(\beta\)-cutoffs on move 1 of root nodes, reducing total search tree size by far more than 19.2%!
-2. **Instant Time Control Cutoff**: If the search timer expires mid-iteration, the engine immediately aborts and returns the complete, verified principal variation from iteration \(d-1\).
+1. **Optimal PV Move Feeding**: The best move found at iteration $d-1$ is fed as the initial candidate move for iteration $d$. This produces immediate $\beta$-cutoffs on move 1 of root nodes, reducing total search tree size by far more than 19.2%!
+2. **Instant Time Control Cutoff**: If the search timer expires mid-iteration, the engine immediately aborts and returns the complete, verified principal variation from iteration $d-1$.
 
 ---
 

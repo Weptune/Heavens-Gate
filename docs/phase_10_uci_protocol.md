@@ -1,7 +1,5 @@
 # Phase 10: Universal Chess Interface Protocol (Version 10.0)
 
-> **YouTube Episode Concept**: *"Connecting Heaven's Gate to the World: The UCI Protocol Standard"*
-
 ---
 
 ## 1. Universal Chess Interface (UCI) Standard
