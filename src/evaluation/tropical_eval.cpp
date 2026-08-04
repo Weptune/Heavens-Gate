@@ -177,17 +177,16 @@ std::pair<int, size_t> TropicalEvaluator::evaluate_with_sector(const Board& boar
     float pst_diff = x[4];
 
     // Tropical (max, +) Semiring Minimax Surface for Positional Correlations
-    // ONLY positional features go through sectors. x[0] (Material) and x[4] (PST)
-    // are raw pass-through terms to prevent double-counting.
+    // Positional & PST features (indices 1..15) evaluate through sectors.
+    // x[0] (Material) remains a raw pass-through term.
     float max_positional_sector = -1e9f;
     size_t winning_sector = 0;
 
     for (size_t j = 0; j < NUM_SECTORS; j++) {
         const auto& sec = sectors_[j];
         float sector_val = sec.b;
-        // Evaluate positional features (indices 1..13, skip x[0] raw material)
+        // Evaluate positional & PST features (indices 1..15, skip x[0] raw material)
         for (size_t i = 1; i < NUM_FEATURES; i++) {
-            if (i == 4) continue; // Skip x[4] (PST) — it is added as a raw pass-through term below to prevent double-counting
             sector_val += sec.w[i] * x[i];
         }
         if (sector_val > max_positional_sector) {
@@ -196,11 +195,10 @@ std::pair<int, size_t> TropicalEvaluator::evaluate_with_sector(const Board& boar
         }
     }
 
-    // Material Dominance Principle: Positional bonuses are clamped to [-250 cp, +250 cp]
-    // so tactical blunders (losing Queen/Rook) can NEVER be offset by positional cohesion.
-    float clamped_positional = std::max(-250.0f, std::min(250.0f, max_positional_sector));
+    // Unclamped Positional Range [-600 cp, +600 cp] to match MasterPositional target scale
+    float clamped_positional = std::max(-600.0f, std::min(600.0f, max_positional_sector));
 
-    float total_eval = material_diff + clamped_positional + pst_diff;
+    float total_eval = material_diff + clamped_positional;
 
     int score = static_cast<int>(std::max(-30000.0f, std::min(30000.0f, total_eval)));
     return {score, winning_sector};
