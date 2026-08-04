@@ -184,12 +184,22 @@ void run_automated_tournament(int num_games, int depth) {
             }
 
             std::string uci_move = move_to_uci(res.best_move);
+            double move_time_ms = res.metrics.elapsed_seconds * 1000.0;
+            uint64_t move_nodes = res.metrics.total_nodes;
+            double move_nps = res.metrics.nps;
+
             if (board.side_to_move() == Color::White) {
-                std::cout << (game_moves / 2 + 1) << ". " << uci_move << " (" << res.best_score << "cp) ";
-                pgn_file << (game_moves / 2 + 1) << ". " << uci_move << " ";
+                std::cout << (game_moves / 2 + 1) << ". " << uci_move << " (" << res.best_score << "cp, " 
+                          << std::fixed << std::setprecision(1) << move_time_ms << "ms, " 
+                          << move_nodes << " nodes, " << static_cast<uint64_t>(move_nps) << " nps) ";
+                pgn_file << (game_moves / 2 + 1) << ". " << uci_move 
+                         << " { [%eval " << res.best_score << "] [%clk " << move_time_ms << "ms] [%nodes " << move_nodes << "] [%nps " << static_cast<uint64_t>(move_nps) << "] } ";
             } else {
-                std::cout << uci_move << " (" << res.best_score << "cp)\n";
-                pgn_file << uci_move << " ";
+                std::cout << uci_move << " (" << res.best_score << "cp, " 
+                          << std::fixed << std::setprecision(1) << move_time_ms << "ms, " 
+                          << move_nodes << " nodes, " << static_cast<uint64_t>(move_nps) << " nps)\n";
+                pgn_file << uci_move 
+                         << " { [%eval " << res.best_score << "] [%clk " << move_time_ms << "ms] [%nodes " << move_nodes << "] [%nps " << static_cast<uint64_t>(move_nps) << "] }\n";
             }
 
             board.make_move(res.best_move);
