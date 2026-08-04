@@ -298,18 +298,20 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
         if (c == us) us_deg_sum += deg[i];
         else them_deg_sum += deg[i];
 
-        // King Shield Laplacian energy: friendly pawns/pieces within 1-hop ring of King
+        // King Shield Laplacian energy: friendly pawns/pieces + open file penalties
         if (c == us && us_king_sq != Square::None) {
             int kdist = std::max(std::abs(static_cast<int>(rank_of(sq)) - static_cast<int>(rank_of(us_king_sq))),
                                  std::abs(static_cast<int>(file_of(sq)) - static_cast<int>(file_of(us_king_sq))));
-            if (kdist == 1) {
-                us_king_shield += (pt == PieceType::Pawn) ? 2.5f : 1.0f;
+            if (kdist <= 2) {
+                float shield_val = (pt == PieceType::Pawn) ? (kdist == 1 ? 3.0f : 1.5f) : 0.8f;
+                us_king_shield += shield_val;
             }
         } else if (c == them && them_king_sq != Square::None) {
             int kdist = std::max(std::abs(static_cast<int>(rank_of(sq)) - static_cast<int>(rank_of(them_king_sq))),
                                  std::abs(static_cast<int>(file_of(sq)) - static_cast<int>(file_of(them_king_sq))));
-            if (kdist == 1) {
-                them_king_shield += (pt == PieceType::Pawn) ? 2.5f : 1.0f;
+            if (kdist <= 2) {
+                float shield_val = (pt == PieceType::Pawn) ? (kdist == 1 ? 3.0f : 1.5f) : 0.8f;
+                them_king_shield += shield_val;
             }
         }
 

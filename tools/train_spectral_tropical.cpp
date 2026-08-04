@@ -253,7 +253,12 @@ int main(int argc, char* argv[]) {
     // =========================================================================
 
     TropicalEvaluator model;
-    model.initialize_weights(42);
+    if (model.load_weights("heavensgate_tropical.trm")) {
+        std::cout << "[SpectralTropical] Loaded existing checkpoint 'heavensgate_tropical.trm' (Warm-Start Training)\n";
+    } else {
+        std::cout << "[SpectralTropical] Initialized new weights (Seed 42)\n";
+        model.initialize_weights(42);
+    }
 
     struct SectorAdam {
         std::array<float, TropicalEvaluator::NUM_FEATURES> m_w{};
@@ -289,7 +294,7 @@ int main(int argc, char* argv[]) {
             // 1. Extract feature vector
             auto features = model.extract_features(sample.board);
 
-            // 2. Forward pass: get prediction and winning sector
+            // 2. Forward pass: hard-max (MUST match inference exactly)
             auto [prediction, winning_j] = model.evaluate_with_sector(sample.board);
 
             // 3. Compute error (clamped for stability)
@@ -300,11 +305,11 @@ int main(int argc, char* argv[]) {
             auto& sec = model.sectors()[winning_j];
             auto& adam = adam_state[winning_j];
 
-            // 4. Adam update for positional feature weights
+            // 4. Adam update on winning sector's positional weights
+            //    Skip x[0] (Material) — it is raw pass-through only
             for (size_t i = 1; i < TropicalEvaluator::NUM_FEATURES; i++) {
-                // Gradient w.r.t. w_i = error * features[i] / 100.0f (scaled)
                 float grad = (error * features[i]) / 100.0f + weight_decay * sec.w[i];
-                grad = std::max(-50.0f, std::min(50.0f, grad)); // Gradient clipping
+                grad = std::max(-50.0f, std::min(50.0f, grad));
 
                 adam.m_w[i] = beta1 * adam.m_w[i] + (1.0f - beta1) * grad;
                 adam.v_w[i] = beta2 * adam.v_w[i] + (1.0f - beta2) * (grad * grad);
@@ -313,7 +318,6 @@ int main(int argc, char* argv[]) {
                 float v_hat = adam.v_w[i] / (1.0f - std::pow(beta2, std::min(timestep, 1000)));
 
                 sec.w[i] -= (lr * m_hat) / (std::sqrt(v_hat) + eps);
-                // Clamp weights to prevent extreme values
                 sec.w[i] = std::max(-5.0f, std::min(5.0f, sec.w[i]));
             }
 

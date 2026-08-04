@@ -50,11 +50,12 @@ void TropicalEvaluator::initialize_weights(uint32_t /*seed*/) {
 }
 
 // =============================================================================
-// Extract the 12-dimensional spectral-tropical feature vector from a position
+// Extract the 14-dimensional spectral-tropical feature vector from a position
 // =============================================================================
 std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_features(const Board& board) const {
     int white_mat = 0, black_mat = 0;
     int white_pst = 0, black_pst = 0;
+    int white_passed = 0, black_passed = 0;
 
     for (int sq = 0; sq < 64; sq++) {
         Square s = static_cast<Square>(sq);
@@ -81,28 +82,54 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
             black_mat += val;
             black_pst += PST::get_mg(pt, Color::Black, s);
         }
+
+        // Passed pawn detection (simplified: no enemy pawn on same or adjacent files ahead)
+        if (pt == PieceType::Pawn) {
+            int file = static_cast<int>(file_of(s));
+            int rank = static_cast<int>(rank_of(s));
+            bool passed = true;
+            for (int sq2 = 0; sq2 < 64 && passed; sq2++) {
+                Piece p2 = board.piece_at(static_cast<Square>(sq2));
+                if (p2 == Piece::None || piece_type_of(p2) != PieceType::Pawn) continue;
+                if (color_of(p2) == c) continue; // Same color pawn, skip
+                int f2 = sq2 % 8;
+                int r2 = sq2 / 8;
+                if (std::abs(file - f2) <= 1) {
+                    if (c == Color::White && r2 > rank) passed = false;
+                    if (c == Color::Black && r2 < rank) passed = false;
+                }
+            }
+            if (passed) {
+                if (c == Color::White) white_passed++;
+                else black_passed++;
+            }
+        }
     }
 
     Color us = board.side_to_move();
     int material_diff = (us == Color::White) ? (white_mat - black_mat) : (black_mat - white_mat);
     int pst_diff      = (us == Color::White) ? (white_pst - black_pst) : (black_pst - white_pst);
+    int passed_diff   = (us == Color::White) ? (white_passed - black_passed) : (black_passed - white_passed);
 
     SpectralFeatures feat = SpectralGraph::compute_spectrum(board);
 
-    // Construct 12-Dimensional Spectral-Tropical Feature Vector
+    // Construct 14-Dimensional Spectral-Tropical Feature Vector
+    // x[0] and x[4] are Material and PST — passed through raw, NOT into tropical sectors
     std::array<float, NUM_FEATURES> x;
-    x[0]  = static_cast<float>(material_diff);                                     // Material diff
+    x[0]  = static_cast<float>(material_diff);                                     // Material diff (RAW pass-through)
     x[1]  = (feat.fiedler_us - feat.fiedler_them) * 15.0f;                         // Relative Fiedler (per-side)
     x[2]  = (feat.cohesion_us - feat.cohesion_them) * 5.0f;                        // Relative Subgraph Cohesion
     x[3]  = feat.spectral_gap * 2.0f;                                              // Global Control Bottleneck
-    x[4]  = static_cast<float>(pst_diff);                                          // Relative PST
+    x[4]  = static_cast<float>(pst_diff);                                          // Relative PST (RAW pass-through)
     x[5]  = (feat.king_pressure_us - feat.king_pressure_them) * 10.0f;             // Relative King Attack Pressure
     x[6]  = (feat.battery_energy_us - feat.battery_energy_them) * 8.0f;            // Relative Ray Alignment Battery
     x[7]  = (feat.pawn_cohesion_us - feat.pawn_cohesion_them) * 12.0f;             // Relative Pawn Structure
     x[8]  = feat.laplacian_trace / 10.0f;                                          // Total Energy Density
     x[9]  = (feat.mobility_us - feat.mobility_them) * 3.0f;                        // Relative Mobility
     x[10] = (feat.center_control_us - feat.center_control_them) * 8.0f;            // Relative Center Control
-    x[11] = (feat.king_shield_us - feat.king_shield_them) * 10.0f;                  // Relative King Shield Energy
+    x[11] = feat.game_phase * 50.0f;                                               // Game Phase (RESTORED)
+    x[12] = (feat.king_shield_us - feat.king_shield_them) * 10.0f;                 // King Shield Energy
+    x[13] = static_cast<float>(passed_diff) * 30.0f;                               // Passed Pawn Advantage
 
     return x;
 }
@@ -125,13 +152,15 @@ std::pair<int, size_t> TropicalEvaluator::evaluate_with_sector(const Board& boar
     float pst_diff = x[4];
 
     // Tropical (max, +) Semiring Minimax Surface for Positional Correlations
+    // ONLY positional features go through sectors. x[0] (Material) and x[4] (PST)
+    // are raw pass-through terms to prevent double-counting.
     float max_positional_sector = -1e9f;
     size_t winning_sector = 0;
 
     for (size_t j = 0; j < NUM_SECTORS; j++) {
         const auto& sec = sectors_[j];
         float sector_val = sec.b;
-        // Evaluate positional terms (indices 1..11, omitting raw material index 0)
+        // Evaluate positional features (indices 1..13, skip x[0] raw material)
         for (size_t i = 1; i < NUM_FEATURES; i++) {
             sector_val += sec.w[i] * x[i];
         }
