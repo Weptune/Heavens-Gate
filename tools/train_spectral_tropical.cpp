@@ -207,10 +207,10 @@ int main(int argc, char* argv[]) {
                 board.make_move(chosen_move);
                 moves_count++;
 
-                if (res.best_score > 900) {
+                if (res.best_score > 2500) {
                     result_score = (board.side_to_move() == Color::White) ? 1 : -1;
                     break;
-                } else if (res.best_score < -900) {
+                } else if (res.best_score < -2500) {
                     result_score = (board.side_to_move() == Color::White) ? -1 : 1;
                     break;
                 }
