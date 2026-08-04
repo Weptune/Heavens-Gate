@@ -8,7 +8,7 @@
 #include "pv.hpp"
 #include "move_picker.hpp"
 #include "tt.hpp"
-#include "../visualization/exporter.cpp"
+#include "../visualization/exporter.hpp"
 #include "../benchmark/metrics.hpp"
 #include <chrono>
 #include <vector>
