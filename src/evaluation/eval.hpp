@@ -35,7 +35,7 @@ public:
 private:
     static int evaluate_side(const Board& board, Color side);
 
-    static EvalMode current_mode_;
+    static thread_local EvalMode current_mode_;
 };
 
 } // namespace heavensgate

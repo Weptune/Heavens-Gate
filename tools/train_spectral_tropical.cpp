@@ -171,6 +171,7 @@ int main(int argc, char* argv[]) {
     #pragma omp parallel
     {
         SearchEngine search_engine;
+        Evaluator::set_mode(EvalMode::SpectralTropical);
 
         #pragma omp for schedule(dynamic) reduction(+:white_wins,black_wins,draws)
         for (int g = 0; g < num_games; g++) {

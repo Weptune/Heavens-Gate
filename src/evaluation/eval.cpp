@@ -10,7 +10,7 @@
 
 namespace heavensgate {
 
-EvalMode Evaluator::current_mode_ = EvalMode::NNUE;
+thread_local EvalMode Evaluator::current_mode_ = EvalMode::NNUE;
 
 void Evaluator::init() {
     PST::init();
