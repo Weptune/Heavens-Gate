@@ -137,6 +137,8 @@ static float compute_side_fiedler(
     }
 
     return std::max(0.0f, fiedler);
+}
+
 struct SpectralCacheEntry {
     uint64_t key{0};
     SpectralFeatures features{};
