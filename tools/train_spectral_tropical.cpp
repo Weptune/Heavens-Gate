@@ -244,7 +244,7 @@ int main(int argc, char* argv[]) {
                 std::lock_guard<std::mutex> lock(dataset_mutex);
                 dataset.insert(dataset.end(), local_samples.begin(), local_samples.end());
                 completed_games++;
-                if (completed_games % 10 == 0 || completed_games == 1 || completed_games == num_games) {
+                if (completed_games % 2 == 0 || completed_games <= 10 || completed_games == num_games) {
                     auto t_now = std::chrono::steady_clock::now();
                     float elapsed = std::chrono::duration<float>(t_now - t_start).count();
                     std::cout << "  Game " << std::setw(3) << completed_games << "/" << num_games
