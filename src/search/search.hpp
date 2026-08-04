@@ -1,26 +1,29 @@
 #pragma once
 
 #include "../core/types.hpp"
+#include "../core/polyglot.hpp"
 #include "../board/board.hpp"
 #include "../movegen/movegen.hpp"
 #include "../evaluation/eval.hpp"
 #include "pv.hpp"
 #include "move_picker.hpp"
 #include "tt.hpp"
-#include "../visualization/exporter.hpp"
+#include "../visualization/exporter.cpp"
 #include "../benchmark/metrics.hpp"
 #include <chrono>
+#include <vector>
 
 namespace heavensgate {
 
 struct SearchResult {
     Move best_move;
     int best_score = 0;
-    std::vector<Move> pv;
+    int depth = 0;
     int completed_depth = 0;
     EngineMetrics metrics;
     uint64_t tt_hits = 0;
     uint64_t q_nodes = 0;
+    std::vector<Move> pv;
 };
 
 class SearchEngine {
@@ -36,6 +39,8 @@ public:
     GameTreeExporter& tree_exporter() { return exporter_; }
     TranspositionTable& tt() { return tt_; }
     const TranspositionTable& tt() const { return tt_; }
+    PolyGlotBook& polyglot_book() { return polyglot_book_; }
+    const PolyGlotBook& polyglot_book() const { return polyglot_book_; }
     void stop() { time_stop_flag_ = true; }
 
 private:
@@ -56,6 +61,7 @@ private:
         return false;
     }
 
+    PolyGlotBook polyglot_book_;
     PVTable pv_table_;
     MovePicker move_picker_;
     TranspositionTable tt_;

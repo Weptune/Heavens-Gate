@@ -410,6 +410,16 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     MoveGenerator::generate_legal_moves(board, moves);
 
     SearchResult result;
+
+    if (polyglot_book_.is_loaded()) {
+        Move book_move = polyglot_book_.probe(board);
+        if (static_cast<bool>(book_move)) {
+            result.best_move = book_move;
+            result.best_score = 0;
+            return result;
+        }
+    }
+
     if (moves.empty()) {
         result.best_move = Move();
         result.best_score = MoveGenerator::in_check(board, board.side_to_move()) ? -ScoreMate : ScoreDraw;
