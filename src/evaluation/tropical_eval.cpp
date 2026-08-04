@@ -9,7 +9,7 @@
 namespace heavensgate {
 
 TropicalEvaluator::TropicalEvaluator() {
-    sectors_.resize(NUM_SECTORS);
+    sectors_.resize(TOTAL_SECTORS);
     initialize_weights(42);
 }
 
@@ -23,39 +23,69 @@ TropicalEvaluator& TropicalEvaluator::instance() {
     return inst;
 }
 
+int TropicalEvaluator::get_king_bucket(Square opp_king_sq, Color us) {
+    if (opp_king_sq == Square::None) return (us == Color::White) ? 0 : 5;
+
+    int rank = static_cast<int>(rank_of(opp_king_sq));
+    int file = static_cast<int>(file_of(opp_king_sq));
+
+    // Normalize Black's perspective to White's (vertical flip)
+    if (us == Color::Black) {
+        rank = 7 - rank;
+    }
+
+    // Apply horizontal symmetry (mirror files e-h onto files d-a)
+    if (file > 3) {
+        file = 7 - file;
+    }
+
+    // Map (rank, file) into 5 White buckets (0..4)
+    int base_bucket = 0;
+    if (rank <= 1) {
+        base_bucket = (file <= 1) ? 0 : 1; // 0: Flank Back-Rank, 1: Central Back-Rank
+    } else if (rank <= 3) {
+        base_bucket = (file <= 1) ? 2 : 3; // 2: Flank Midgame, 3: Central Midgame
+    } else {
+        base_bucket = 4;                   // 4: Enemy Infiltration
+    }
+
+    return (us == Color::White) ? base_bucket : (5 + base_bucket);
+}
+
 void TropicalEvaluator::initialize_weights(uint32_t /*seed*/) {
-    sectors_.resize(NUM_SECTORS);
-    for (size_t j = 0; j < NUM_SECTORS; j++) {
-        auto& sec = sectors_[j];
-        float jf = static_cast<float>(j);
+    sectors_.resize(TOTAL_SECTORS);
+    for (size_t b = 0; b < NUM_KING_BUCKETS; b++) {
+        for (size_t j = 0; j < NUM_SECTORS_PER_BUCKET; j++) {
+            size_t sec_idx = b * NUM_SECTORS_PER_BUCKET + j;
+            auto& sec = sectors_[sec_idx];
+            float jf = static_cast<float>(j);
+            float bf = static_cast<float>(b);
 
-        // Spread sector biases across the feature space for diverse coverage
-        sec.b = -5.0f + 0.3f * jf;
+            // Diverse sector biases per bucket
+            sec.b = -10.0f + 0.3f * jf + 0.5f * bf;
 
-        // Material weight = 0 (material is added separately, not through tropical surface)
-        sec.w[0]  = 0.0f;
-        // Positive positional weights ensuring every sector starts with positive feature guidance
-        sec.w[1]  = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.5f));   // Fiedler Cohesion
-        sec.w[2]  = 0.4f  + 0.15f * std::fabs(std::cos(jf * 0.7f));   // Subgraph Cohesion
-        sec.w[3]  = 0.3f  + 0.1f  * std::fabs(std::sin(jf * 1.1f));   // Spectral Gap
-        sec.w[4]  = 0.8f  + 0.2f  * std::fabs(std::cos(jf * 0.3f));   // PST
-        sec.w[5]  = 1.0f  + 0.3f  * std::fabs(std::sin(jf * 0.9f));   // King Pressure
-        sec.w[6]  = 0.7f  + 0.2f  * std::fabs(std::cos(jf * 1.3f));   // Battery Energy
-        sec.w[7]  = 0.6f  + 0.15f * std::fabs(std::sin(jf * 0.6f));   // Pawn Cohesion
-        sec.w[8]  = 0.3f  + 0.1f  * std::fabs(std::cos(jf * 0.4f));   // Trace Energy
-        sec.w[9]  = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.8f));   // Mobility
-        sec.w[10] = 0.6f  + 0.2f  * std::fabs(std::cos(jf * 1.0f));   // Center Control
-        sec.w[11] = 0.3f  + 0.1f  * std::fabs(std::sin(jf * 1.2f));   // Game Phase
-        sec.w[12] = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.7f));   // King Shield
-        sec.w[13] = 0.8f  + 0.2f  * std::fabs(std::cos(jf * 0.5f));   // Passed Pawns
-        sec.w[14] = 0.9f  + 0.2f  * std::fabs(std::sin(jf * 0.4f));   // EG Passed Pawns
-        sec.w[15] = 0.7f  + 0.2f  * std::fabs(std::cos(jf * 0.8f));   // Attack Ratio
+            // Material weight = 1.0 (learned inside sectors, bounded [0.8, 1.2])
+            sec.w[0]  = 1.0f;
+            // Positive positional weights ensuring every sector starts with positive feature guidance
+            sec.w[1]  = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.5f + bf));   // Fiedler Cohesion
+            sec.w[2]  = 0.4f  + 0.15f * std::fabs(std::cos(jf * 0.7f + bf));   // Subgraph Cohesion
+            sec.w[3]  = 0.3f  + 0.1f  * std::fabs(std::sin(jf * 1.1f));        // Spectral Gap
+            sec.w[4]  = 0.8f  + 0.2f  * std::fabs(std::cos(jf * 0.3f));        // PST
+            sec.w[5]  = 1.0f  + 0.3f  * std::fabs(std::sin(jf * 0.9f));        // King Pressure
+            sec.w[6]  = 0.7f  + 0.2f  * std::fabs(std::cos(jf * 1.3f));        // Battery Energy
+            sec.w[7]  = 0.6f  + 0.15f * std::fabs(std::sin(jf * 0.6f));        // Pawn Cohesion
+            sec.w[8]  = 0.3f  + 0.1f  * std::fabs(std::cos(jf * 0.4f));        // Trace Energy
+            sec.w[9]  = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.8f));        // Mobility
+            sec.w[10] = 0.6f  + 0.2f  * std::fabs(std::cos(jf * 1.0f));        // Center Control
+            sec.w[11] = 0.3f  + 0.1f  * std::fabs(std::sin(jf * 1.2f));        // Game Phase
+            sec.w[12] = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.7f));        // King Shield
+            sec.w[13] = 0.8f  + 0.2f  * std::fabs(std::cos(jf * 0.5f));        // Passed Pawns
+            sec.w[14] = 0.9f  + 0.2f  * std::fabs(std::sin(jf * 0.4f));        // EG Passed Pawns
+            sec.w[15] = 0.7f  + 0.2f  * std::fabs(std::cos(jf * 0.8f));        // Attack Ratio
+        }
     }
 }
 
-// =============================================================================
-// Extract the 14-dimensional spectral-tropical feature vector from a position
-// =============================================================================
 std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_features(const Board& board) const {
     int white_mat = 0, black_mat = 0;
     int white_pst = 0, black_pst = 0;
@@ -73,8 +103,8 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
         Piece p = board.piece_at(s);
         if (p == Piece::None) continue;
 
-        Color c = color_of(p);
         PieceType pt = piece_type_of(p);
+        Color c = color_of(p);
 
         int val = 100;
         switch (pt) {
@@ -98,7 +128,6 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
             black_pst += interpolated_pst;
         }
 
-        // Passed pawn detection (simplified: no enemy pawn on same or adjacent files ahead)
         if (pt == PieceType::Pawn) {
             int file = static_cast<int>(file_of(s));
             int rank = static_cast<int>(rank_of(s));
@@ -106,7 +135,7 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
             for (int sq2 = 0; sq2 < 64 && passed; sq2++) {
                 Piece p2 = board.piece_at(static_cast<Square>(sq2));
                 if (p2 == Piece::None || piece_type_of(p2) != PieceType::Pawn) continue;
-                if (color_of(p2) == c) continue; // Same color pawn, skip
+                if (color_of(p2) == c) continue;
                 int f2 = sq2 % 8;
                 int r2 = sq2 / 8;
                 if (std::abs(file - f2) <= 1) {
@@ -126,7 +155,7 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     int pst_diff      = (us == Color::White) ? (white_pst - black_pst) : (black_pst - white_pst);
     int passed_diff   = (us == Color::White) ? (white_passed - black_passed) : (black_passed - white_passed);
 
-    // Lazy Spectral Evaluation: skip expensive Laplacian eigensolver when material is decisive (> 1200 cp = Queen advantage)
+    // Lazy Spectral Evaluation: skip expensive Laplacian eigensolver when material is decisive (> 1200 cp)
     if (std::abs(material_diff) > 1200) {
         std::array<float, NUM_FEATURES> x{};
         x[0] = static_cast<float>(material_diff);
@@ -141,78 +170,88 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     float their_shield = (us == Color::White) ? feat.king_shield_them : feat.king_shield_us;
     float our_pressure = (us == Color::White) ? feat.king_pressure_us : feat.king_pressure_them;
 
-    // Construct 16-Dimensional Spectral-Tropical Feature Vector
     std::array<float, NUM_FEATURES> x;
-    x[0]  = static_cast<float>(material_diff);                                     // Material diff (RAW pass-through)
-    x[1]  = (feat.fiedler_us - feat.fiedler_them) * 15.0f;                         // Relative Fiedler (per-side)
-    x[2]  = (feat.cohesion_us - feat.cohesion_them) * 5.0f;                        // Relative Subgraph Cohesion
-    x[3]  = feat.spectral_gap * 2.0f;                                              // Global Control Bottleneck
-    x[4]  = static_cast<float>(pst_diff);                                          // Relative PST
-    x[5]  = (feat.king_pressure_us - feat.king_pressure_them) * 10.0f;             // Relative King Attack Pressure
-    x[6]  = (feat.battery_energy_us - feat.battery_energy_them) * 8.0f;            // Relative Ray Alignment Battery
-    x[7]  = (feat.pawn_cohesion_us - feat.pawn_cohesion_them) * 12.0f;             // Relative Pawn Structure
-    x[8]  = feat.laplacian_trace / 10.0f;                                          // Total Energy Density
-    x[9]  = (feat.mobility_us - feat.mobility_them) * 3.0f;                        // Relative Mobility
-    x[10] = (feat.center_control_us - feat.center_control_them) * 8.0f;            // Relative Center Control
-    x[11] = feat.game_phase * 50.0f;                                               // Game Phase
-    x[12] = (feat.king_shield_us - feat.king_shield_them) * 10.0f;                 // King Shield Energy
-    x[13] = static_cast<float>(passed_diff) * 30.0f;                               // Passed Pawn Advantage
-    x[14] = static_cast<float>(passed_diff) * (1.0f - feat.game_phase) * 40.0f;    // Cross-Term 1: Endgame Passed Pawn Multiplier
-    x[15] = (our_pressure / (their_shield + 1.0f)) * 15.0f;                        // Cross-Term 2: Unshielded King Attack Ratio
+    x[0]  = static_cast<float>(material_diff);
+    x[1]  = (feat.fiedler_us - feat.fiedler_them) * 15.0f;
+    x[2]  = (feat.cohesion_us - feat.cohesion_them) * 5.0f;
+    x[3]  = feat.spectral_gap * 2.0f;
+    x[4]  = static_cast<float>(pst_diff);
+    x[5]  = (feat.king_pressure_us - feat.king_pressure_them) * 10.0f;
+    x[6]  = (feat.battery_energy_us - feat.battery_energy_them) * 8.0f;
+    x[7]  = (feat.pawn_cohesion_us - feat.pawn_cohesion_them) * 12.0f;
+    x[8]  = feat.laplacian_trace / 10.0f;
+    x[9]  = (feat.mobility_us - feat.mobility_them) * 3.0f;
+    x[10] = (feat.center_control_us - feat.center_control_them) * 8.0f;
+    x[11] = feat.game_phase * 50.0f;
+    x[12] = (feat.king_shield_us - feat.king_shield_them) * 10.0f;
+    x[13] = static_cast<float>(passed_diff) * 30.0f;
+    x[14] = static_cast<float>(passed_diff) * (1.0f - feat.game_phase) * 40.0f;
+    x[15] = (our_pressure / (their_shield + 1.0f)) * 15.0f;
 
     return x;
 }
 
-// =============================================================================
-// Evaluate position using the Tropical (max, +) Minimax Surface
-// =============================================================================
 int TropicalEvaluator::evaluate(const Board& board) const {
-    auto [score, _sector] = evaluate_with_sector(board);
-    return score;
+    auto res = evaluate_detailed(board);
+    return res.score;
 }
 
-// =============================================================================
-// Evaluate and return both score and winning sector index (for training)
-// =============================================================================
-std::pair<int, size_t> TropicalEvaluator::evaluate_with_sector(const Board& board) const {
+TropicalEvaluator::EvalResult TropicalEvaluator::evaluate_detailed(const Board& board) const {
+    Color us = board.side_to_move();
+    Color them = ~us;
+    Piece opp_king = (them == Color::White) ? Piece::WhiteKing : Piece::BlackKing;
+    Square opp_king_sq = board.pieces(opp_king) ? lsb(board.pieces(opp_king)) : Square::None;
+
+    int bucket = get_king_bucket(opp_king_sq, us);
+    size_t base_sec_idx = static_cast<size_t>(bucket) * NUM_SECTORS_PER_BUCKET;
+
     std::array<float, NUM_FEATURES> x = extract_features(board);
 
-    float material_diff = x[0];
-    float pst_diff = x[4];
-
-    // Tropical (max, +) Semiring Minimax Surface for Positional Correlations
-    // Positional & PST features (indices 1..15) evaluate through sectors.
-    // x[0] (Material) remains a raw pass-through term.
-    float max_positional_sector = -1e9f;
+    std::array<float, NUM_SECTORS_PER_BUCKET> sector_vals;
+    float max_val = -1e9f;
     size_t winning_sector = 0;
 
-    for (size_t j = 0; j < NUM_SECTORS; j++) {
-        const auto& sec = sectors_[j];
-        float sector_val = sec.b;
-        // Evaluate positional & PST features (indices 1..15, skip x[0] raw material)
-        for (size_t i = 1; i < NUM_FEATURES; i++) {
-            sector_val += sec.w[i] * x[i];
+    for (size_t j = 0; j < NUM_SECTORS_PER_BUCKET; j++) {
+        const auto& sec = sectors_[base_sec_idx + j];
+        float val = sec.b;
+        for (size_t i = 0; i < NUM_FEATURES; i++) {
+            val += sec.w[i] * x[i];
         }
-        if (sector_val > max_positional_sector) {
-            max_positional_sector = sector_val;
+        sector_vals[j] = val;
+        if (val > max_val) {
+            max_val = val;
             winning_sector = j;
         }
     }
 
-    // Unclamped Positional Range [-600 cp, +600 cp] to match MasterPositional target scale
-    float clamped_positional = std::max(-600.0f, std::min(600.0f, max_positional_sector));
+    // Smooth Log-Sum-Exp Tropical Semiring Evaluation
+    float sum_exp = 0.0f;
+    std::array<float, NUM_SECTORS_PER_BUCKET> softmax_probs{};
+    for (size_t j = 0; j < NUM_SECTORS_PER_BUCKET; j++) {
+        float exp_val = std::exp((sector_vals[j] - max_val) / SMOOTH_TAU);
+        softmax_probs[j] = exp_val;
+        sum_exp += exp_val;
+    }
+    for (size_t j = 0; j < NUM_SECTORS_PER_BUCKET; j++) {
+        softmax_probs[j] /= sum_exp;
+    }
 
-    float total_eval = material_diff + clamped_positional;
+    float smooth_eval = max_val + SMOOTH_TAU * std::log(sum_exp);
+    int score = static_cast<int>(std::max(-30000.0f, std::min(30000.0f, smooth_eval)));
 
-    int score = static_cast<int>(std::max(-30000.0f, std::min(30000.0f, total_eval)));
-    return {score, winning_sector};
+    return {score, bucket, base_sec_idx + winning_sector, softmax_probs};
+}
+
+std::pair<int, size_t> TropicalEvaluator::evaluate_with_sector(const Board& board) const {
+    auto res = evaluate_detailed(board);
+    return {res.score, res.winning_sector};
 }
 
 bool TropicalEvaluator::save_weights(const std::string& path) const {
     std::ofstream out(path, std::ios::binary);
     if (!out.is_open()) return false;
 
-    uint32_t num_sec = static_cast<uint32_t>(NUM_SECTORS);
+    uint32_t num_sec = static_cast<uint32_t>(TOTAL_SECTORS);
     uint32_t num_feat = static_cast<uint32_t>(NUM_FEATURES);
 
     out.write(reinterpret_cast<const char*>(&num_sec), sizeof(num_sec));
@@ -234,9 +273,9 @@ bool TropicalEvaluator::load_weights(const std::string& path) {
     in.read(reinterpret_cast<char*>(&num_sec), sizeof(num_sec));
     in.read(reinterpret_cast<char*>(&num_feat), sizeof(num_feat));
 
-    if (num_sec != NUM_SECTORS || num_feat != NUM_FEATURES) return false;
+    if (num_sec != TOTAL_SECTORS || num_feat != NUM_FEATURES) return false;
 
-    sectors_.resize(NUM_SECTORS);
+    sectors_.resize(TOTAL_SECTORS);
     for (auto& sec : sectors_) {
         in.read(reinterpret_cast<char*>(sec.w.data()), NUM_FEATURES * sizeof(float));
         in.read(reinterpret_cast<char*>(&sec.b), sizeof(sec.b));

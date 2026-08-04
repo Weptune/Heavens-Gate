@@ -30,8 +30,11 @@ class Board; // Forward declaration
 
 class TropicalEvaluator {
 public:
-    static constexpr size_t NUM_SECTORS  = 32;
-    static constexpr size_t NUM_FEATURES = 16;
+    static constexpr size_t NUM_KING_BUCKETS       = 10;
+    static constexpr size_t NUM_SECTORS_PER_BUCKET = 32;
+    static constexpr size_t TOTAL_SECTORS          = NUM_KING_BUCKETS * NUM_SECTORS_PER_BUCKET; // 320 sectors
+    static constexpr size_t NUM_FEATURES           = 16;
+    static constexpr float  SMOOTH_TAU             = 30.0f; // Log-Sum-Exp smoothing temperature in centipawns
 
     struct SectorWeights {
         std::array<float, NUM_FEATURES> w;
@@ -40,13 +43,23 @@ public:
 
     explicit TropicalEvaluator();
 
+    // King-Bucket spatial partitioning lookup (0..9) with horizontal symmetry
+    static int get_king_bucket(Square opp_king_sq, Color us);
+
     // Evaluates board position (returns score in centipawns relative to side_to_move)
     int evaluate(const Board& board) const;
 
-    // Training support: extract 12D spectral-tropical feature vector from board
+    // Training support: extract 16D spectral-tropical feature vector from board
     std::array<float, NUM_FEATURES> extract_features(const Board& board) const;
 
-    // Training support: evaluate and return (score, winning_sector_index)
+    // Training support: evaluate with smooth Log-Sum-Exp max and return (score, bucket_index, winning_sector_index, sector_softmax_probs)
+    struct EvalResult {
+        int score;
+        int bucket;
+        size_t winning_sector;
+        std::array<float, NUM_SECTORS_PER_BUCKET> softmax_probs;
+    };
+    EvalResult evaluate_detailed(const Board& board) const;
     std::pair<int, size_t> evaluate_with_sector(const Board& board) const;
 
     // Weight management
@@ -54,14 +67,14 @@ public:
     bool save_weights(const std::string& path) const;
     bool load_weights(const std::string& path);
 
-    // Accessors for training
+    // Accessors for training (320 sectors = 10 buckets * 32 sectors)
     std::vector<SectorWeights>& sectors() { return sectors_; }
     const std::vector<SectorWeights>& sectors() const { return sectors_; }
 
     static TropicalEvaluator& instance();
 
 private:
-    std::vector<SectorWeights> sectors_;
+    std::vector<SectorWeights> sectors_; // 320 sectors (5,440 parameters)
 };
 
 } // namespace heavensgate

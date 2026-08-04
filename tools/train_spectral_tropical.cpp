@@ -283,7 +283,7 @@ int main(int argc, char* argv[]) {
         float m_b = 0.0f;
         float v_b = 0.0f;
     };
-    std::vector<SectorAdam> adam_state(TropicalEvaluator::NUM_SECTORS);
+    std::vector<SectorAdam> adam_state(TropicalEvaluator::TOTAL_SECTORS);
 
     float beta1 = 0.9f;
     float beta2 = 0.999f;
@@ -308,48 +308,68 @@ int main(int argc, char* argv[]) {
             const auto& sample = dataset[idx];
             timestep++;
 
-            // 1. Extract feature vector
+            // 1. Extract feature vector & smooth Log-Sum-Exp evaluation
             auto features = model.extract_features(sample.board);
+            auto eval_res = model.evaluate_detailed(sample.board);
 
-            // 2. Forward pass: hard-max (MUST match inference exactly)
-            auto [prediction, winning_j] = model.evaluate_with_sector(sample.board);
-
-            // 3. Compute error (clamped for stability)
-            float error = std::max(-1000.0f, std::min(1000.0f, static_cast<float>(prediction) - sample.target));
+            // 2. Compute prediction error
+            float error = std::max(-1000.0f, std::min(1000.0f, static_cast<float>(eval_res.score) - sample.target));
             total_loss += error * error;
             count++;
 
-            auto& sec = model.sectors()[winning_j];
-            auto& adam = adam_state[winning_j];
+            size_t base_sec_idx = static_cast<size_t>(eval_res.bucket) * TropicalEvaluator::NUM_SECTORS_PER_BUCKET;
 
-            // 4. Adam update on winning sector's positional & PST weights
-            //    Skip x[0] (Material) — it is raw pass-through only
-            for (size_t i = 1; i < TropicalEvaluator::NUM_FEATURES; i++) {
-                float grad = (error * features[i]) / 100.0f + weight_decay * sec.w[i];
-                grad = std::max(-50.0f, std::min(50.0f, grad));
+            // 3. Softmax-Weighted Gradient Distribution across ALL 32 sectors of active King Bucket
+            for (size_t j = 0; j < TropicalEvaluator::NUM_SECTORS_PER_BUCKET; j++) {
+                size_t sec_idx = base_sec_idx + j;
+                float prob = eval_res.softmax_probs[j];
+                if (prob < 1e-4f) continue; // Skip negligible sector activations
 
-                adam.m_w[i] = beta1 * adam.m_w[i] + (1.0f - beta1) * grad;
-                adam.v_w[i] = beta2 * adam.v_w[i] + (1.0f - beta2) * (grad * grad);
+                auto& sec = model.sectors()[sec_idx];
+                auto& adam = adam_state[sec_idx];
 
-                float m_hat = adam.m_w[i] / (1.0f - std::pow(beta1, std::min(timestep, 1000)));
-                float v_hat = adam.v_w[i] / (1.0f - std::pow(beta2, std::min(timestep, 1000)));
+                float sector_error = error * prob;
 
-                sec.w[i] -= (lr * m_hat) / (std::sqrt(v_hat) + eps);
-                sec.w[i] = std::max(0.0f, std::min(5.0f, sec.w[i]));
+                // Material weight w[0] (learned inside sectors, bounded [0.8, 1.2])
+                {
+                    float grad0 = (sector_error * features[0]) / 100.0f + weight_decay * (sec.w[0] - 1.0f);
+                    grad0 = std::max(-50.0f, std::min(50.0f, grad0));
+                    adam.m_w[0] = beta1 * adam.m_w[0] + (1.0f - beta1) * grad0;
+                    adam.v_w[0] = beta2 * adam.v_w[0] + (1.0f - beta2) * (grad0 * grad0);
+                    float m_hat0 = adam.m_w[0] / (1.0f - std::pow(beta1, std::min(timestep, 1000)));
+                    float v_hat0 = adam.v_w[0] / (1.0f - std::pow(beta2, std::min(timestep, 1000)));
+                    sec.w[0] -= (lr * m_hat0) / (std::sqrt(v_hat0) + eps);
+                    sec.w[0] = std::max(0.8f, std::min(1.2f, sec.w[0]));
+                }
+
+                // Positional weights w[1..15] (non-negative bounds [0.0, 5.0])
+                for (size_t i = 1; i < TropicalEvaluator::NUM_FEATURES; i++) {
+                    float grad = (sector_error * features[i]) / 100.0f + weight_decay * sec.w[i];
+                    grad = std::max(-50.0f, std::min(50.0f, grad));
+
+                    adam.m_w[i] = beta1 * adam.m_w[i] + (1.0f - beta1) * grad;
+                    adam.v_w[i] = beta2 * adam.v_w[i] + (1.0f - beta2) * (grad * grad);
+
+                    float m_hat = adam.m_w[i] / (1.0f - std::pow(beta1, std::min(timestep, 1000)));
+                    float v_hat = adam.v_w[i] / (1.0f - std::pow(beta2, std::min(timestep, 1000)));
+
+                    sec.w[i] -= (lr * m_hat) / (std::sqrt(v_hat) + eps);
+                    sec.w[i] = std::max(0.0f, std::min(5.0f, sec.w[i]));
+                }
+
+                // Sector bias
+                float grad_b = sector_error / 10.0f;
+                grad_b = std::max(-50.0f, std::min(50.0f, grad_b));
+
+                adam.m_b = beta1 * adam.m_b + (1.0f - beta1) * grad_b;
+                adam.v_b = beta2 * adam.v_b + (1.0f - beta2) * (grad_b * grad_b);
+
+                float m_hat_b = adam.m_b / (1.0f - std::pow(beta1, std::min(timestep, 1000)));
+                float v_hat_b = adam.v_b / (1.0f - std::pow(beta2, std::min(timestep, 1000)));
+
+                sec.b -= (lr * m_hat_b) / (std::sqrt(v_hat_b) + eps);
+                sec.b = std::max(-250.0f, std::min(250.0f, sec.b));
             }
-
-            // 5. Adam update for sector bias
-            float grad_b = error / 10.0f;
-            grad_b = std::max(-50.0f, std::min(50.0f, grad_b));
-
-            adam.m_b = beta1 * adam.m_b + (1.0f - beta1) * grad_b;
-            adam.v_b = beta2 * adam.v_b + (1.0f - beta2) * (grad_b * grad_b);
-
-            float m_hat_b = adam.m_b / (1.0f - std::pow(beta1, std::min(timestep, 1000)));
-            float v_hat_b = adam.v_b / (1.0f - std::pow(beta2, std::min(timestep, 1000)));
-
-            sec.b -= (lr * m_hat_b) / (std::sqrt(v_hat_b) + eps);
-            sec.b = std::max(-250.0f, std::min(250.0f, sec.b));
         }
 
         float rmse = std::sqrt(total_loss / count);
