@@ -335,7 +335,7 @@ int main(int argc, char* argv[]) {
                 float v_hat = adam.v_w[i] / (1.0f - std::pow(beta2, std::min(timestep, 1000)));
 
                 sec.w[i] -= (lr * m_hat) / (std::sqrt(v_hat) + eps);
-                sec.w[i] = std::max(-5.0f, std::min(5.0f, sec.w[i]));
+                sec.w[i] = std::max(0.0f, std::min(5.0f, sec.w[i]));
             }
 
             // 5. Adam update for sector bias

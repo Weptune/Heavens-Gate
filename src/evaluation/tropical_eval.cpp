@@ -34,18 +34,22 @@ void TropicalEvaluator::initialize_weights(uint32_t /*seed*/) {
 
         // Material weight = 0 (material is added separately, not through tropical surface)
         sec.w[0]  = 0.0f;
-        // Diversified positional weights using trig functions for sector specialization
-        sec.w[1]  = 0.5f  + 0.3f  * std::sin(jf * 0.5f);   // Fiedler
-        sec.w[2]  = 0.4f  + 0.2f  * std::cos(jf * 0.7f);   // Cohesion
-        sec.w[3]  = 0.3f  + 0.15f * std::sin(jf * 1.1f);   // Spectral Gap
-        sec.w[4]  = 0.8f  + 0.3f  * std::cos(jf * 0.3f);   // PST
-        sec.w[5]  = 1.0f  + 0.4f  * std::sin(jf * 0.9f);   // King Pressure
-        sec.w[6]  = 0.7f  + 0.25f * std::cos(jf * 1.3f);   // Battery Energy
-        sec.w[7]  = 0.6f  + 0.2f  * std::sin(jf * 0.6f);   // Pawn Cohesion
-        sec.w[8]  = 0.3f  + 0.1f  * std::cos(jf * 0.4f);   // Trace Energy
-        sec.w[9]  = 0.5f  + 0.2f  * std::sin(jf * 0.8f);   // Mobility
-        sec.w[10] = 0.4f  + 0.15f * std::cos(jf * 1.0f);   // Center Control
-        sec.w[11] = 0.3f  + 0.1f  * std::sin(jf * 1.2f);   // Game Phase
+        // Positive positional weights ensuring every sector starts with positive feature guidance
+        sec.w[1]  = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.5f));   // Fiedler Cohesion
+        sec.w[2]  = 0.4f  + 0.15f * std::fabs(std::cos(jf * 0.7f));   // Subgraph Cohesion
+        sec.w[3]  = 0.3f  + 0.1f  * std::fabs(std::sin(jf * 1.1f));   // Spectral Gap
+        sec.w[4]  = 0.8f  + 0.2f  * std::fabs(std::cos(jf * 0.3f));   // PST
+        sec.w[5]  = 1.0f  + 0.3f  * std::fabs(std::sin(jf * 0.9f));   // King Pressure
+        sec.w[6]  = 0.7f  + 0.2f  * std::fabs(std::cos(jf * 1.3f));   // Battery Energy
+        sec.w[7]  = 0.6f  + 0.15f * std::fabs(std::sin(jf * 0.6f));   // Pawn Cohesion
+        sec.w[8]  = 0.3f  + 0.1f  * std::fabs(std::cos(jf * 0.4f));   // Trace Energy
+        sec.w[9]  = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.8f));   // Mobility
+        sec.w[10] = 0.6f  + 0.2f  * std::fabs(std::cos(jf * 1.0f));   // Center Control
+        sec.w[11] = 0.3f  + 0.1f  * std::fabs(std::sin(jf * 1.2f));   // Game Phase
+        sec.w[12] = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.7f));   // King Shield
+        sec.w[13] = 0.8f  + 0.2f  * std::fabs(std::cos(jf * 0.5f));   // Passed Pawns
+        sec.w[14] = 0.9f  + 0.2f  * std::fabs(std::sin(jf * 0.4f));   // EG Passed Pawns
+        sec.w[15] = 0.7f  + 0.2f  * std::fabs(std::cos(jf * 0.8f));   // Attack Ratio
     }
 }
 
