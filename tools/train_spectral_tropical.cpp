@@ -358,6 +358,7 @@ int main(int argc, char* argv[]) {
     std::vector<size_t> indices(active_dataset.size());
     std::iota(indices.begin(), indices.end(), 0);
 
+    float final_rmse = 0.0f;
     for (int epoch = 1; epoch <= epochs; epoch++) {
         std::shuffle(indices.begin(), indices.end(), shuffle_rng);
 
@@ -433,6 +434,7 @@ int main(int argc, char* argv[]) {
         }
 
         float rmse = std::sqrt(total_loss / count);
+        final_rmse = rmse;
 
         if (epoch <= 10 || epoch % 10 == 0 || epoch == epochs) {
             std::cout << "  [Epoch " << std::setw(3) << epoch << "/" << epochs
@@ -471,6 +473,11 @@ int main(int argc, char* argv[]) {
         std::cout << "\n======================================================\n";
         std::cout << "  LEARNED FEATURE WEIGHT TELEMETRY (320 SECTORS)\n";
         std::cout << "======================================================\n";
+
+        // Collect feature stats for stdout and JSON tracking
+        std::ofstream json_out("model_weight_history.log", std::ios::app);
+        json_out << "FINAL_RMSE: " << final_rmse << " | WEIGHTS: ";
+
         for (size_t f = 0; f < TropicalEvaluator::NUM_FEATURES; f++) {
             float sum_w = 0.0f, min_w = 1e9f, max_w = -1e9f;
             for (const auto& sec : model.sectors()) {
@@ -483,7 +490,12 @@ int main(int argc, char* argv[]) {
             std::cout << "  x[" << std::setw(2) << f << "] (" << std::setw(12) << feat_names[f]
                       << "): Avg=" << std::fixed << std::setprecision(4) << std::showpos << avg_w
                       << " | Range=[" << std::noshowpos << min_w << ", " << max_w << "]\n";
+
+            json_out << feat_names[f] << "=" << avg_w << ",";
         }
+        json_out << "\n";
+        json_out.close();
+
         std::cout << "======================================================\n\n";
     }
 
