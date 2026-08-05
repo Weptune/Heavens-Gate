@@ -502,5 +502,61 @@
       "Safety400": 0,
       "Other": 0
     }
+  },
+  {
+    "round": 10,
+    "phase": 2,
+    "phase_round": 2,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
+    "total_games": 100,
+    "score_pct": 33.0,
+    "master_wins": 30,
+    "baseline_wins": 64,
+    "draws": 6,
+    "as_white": {
+      "wins": 20,
+      "losses": 26
+    },
+    "as_black": {
+      "wins": 10,
+      "losses": 38
+    },
+    "avg_eval": {
+      "opening": 24.7,
+      "middlegame": -0.0,
+      "endgame": 12.2
+    },
+    "blunders": {
+      "total": 1974,
+      "by_phase": {
+        "Opening": 254,
+        "Middlegame": 800,
+        "Endgame": 920
+      },
+      "recovered_count": 60,
+      "recovery_rate_pct": 3.0
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 50,
+      "converted_wins": 20,
+      "squandered": 30,
+      "conversion_rate_pct": 40.0
+    },
+    "game_length": {
+      "avg_win_moves": 61.9,
+      "avg_loss_moves": 56.3
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 23720.2
+    },
+    "pawn_promotions": 78,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 4,
+      "Material": 2,
+      "Safety400": 0,
+      "Other": 0
+    }
   }
 ]
