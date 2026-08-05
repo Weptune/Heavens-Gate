@@ -181,7 +181,7 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     x[5]  = (feat.king_pressure_us - feat.king_pressure_them) * 3.0f;          // King pressure
     x[6]  = (feat.battery_energy_us - feat.battery_energy_them) * 3.0f;        // Battery energy
     x[7]  = (feat.pawn_cohesion_us - feat.pawn_cohesion_them) * 3.0f;          // Pawn cohesion
-    x[8]  = feat.laplacian_trace / 2.0f;                                       // Trace energy
+    x[8]  = (feat.laplacian_trace - 30.0f) / 5.0f;                             // Relative trace energy
     x[9]  = (feat.mobility_us - feat.mobility_them) * 2.0f;                    // Mobility
     x[10] = (feat.center_control_us - feat.center_control_them) * 3.0f;        // Center control
     x[11] = feat.game_phase * 5.0f;                                            // Game phase
@@ -226,7 +226,7 @@ TropicalEvaluator::EvalResult TropicalEvaluator::evaluate_detailed(const Board& 
         }
     }
 
-    // Smooth Log-Sum-Exp Tropical Semiring Evaluation
+    // Smooth Log-Sum-Exp Tropical Semiring Evaluation (Centered zero offset)
     float sum_exp = 0.0f;
     std::array<float, NUM_SECTORS_PER_BUCKET> softmax_probs{};
     for (size_t j = 0; j < NUM_SECTORS_PER_BUCKET; j++) {
@@ -238,8 +238,9 @@ TropicalEvaluator::EvalResult TropicalEvaluator::evaluate_detailed(const Board& 
         softmax_probs[j] /= sum_exp;
     }
 
-    // Multiply by RESTORE_SCALE (10.0f) to restore standard centipawn evaluation scale
-    float smooth_eval = (max_val + SMOOTH_TAU * std::log(sum_exp)) * 10.0f;
+    // Subtract tau * log(NUM_SECTORS_PER_BUCKET) so baseline evaluation centered at max_val
+    float smooth_eval_units = max_val + SMOOTH_TAU * (std::log(sum_exp) - std::log(static_cast<float>(NUM_SECTORS_PER_BUCKET)));
+    float smooth_eval = smooth_eval_units * 10.0f;
     int score = static_cast<int>(std::max(-30000.0f, std::min(30000.0f, smooth_eval)));
 
     return {score, bucket, base_sec_idx + winning_sector, softmax_probs};

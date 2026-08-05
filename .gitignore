@@ -21,6 +21,12 @@ heavensgate_tnnue.nnue
 heavensgate.tnw
 heavensgate.qtnw
 
+# Continuous Training Buffer & Optimizer State
+dataset_buffer.bin
+heavensgate_adam.dat
+*.bak
+*.tmp
+
 # Temporary Dev Scripts & Scratch Files
 scratch/
 15

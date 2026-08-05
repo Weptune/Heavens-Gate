@@ -34,7 +34,7 @@ public:
     static constexpr size_t NUM_SECTORS_PER_BUCKET = 32;
     static constexpr size_t TOTAL_SECTORS          = NUM_KING_BUCKETS * NUM_SECTORS_PER_BUCKET; // 320 sectors
     static constexpr size_t NUM_FEATURES           = 16;
-    static constexpr float  SMOOTH_TAU             = 30.0f; // Log-Sum-Exp smoothing temperature in centipawns
+    static constexpr float  SMOOTH_TAU             = 3.0f; // Log-Sum-Exp smoothing temperature in normalized unit scale
 
     struct SectorWeights {
         std::array<float, NUM_FEATURES> w;
