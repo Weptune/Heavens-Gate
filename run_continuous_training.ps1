@@ -46,6 +46,10 @@ while ($true) {
     # Archive PGN per round
     Copy-Item -Path "tournament_results.pgn" -Destination ("tournament_round_" + $round_num + ".pgn") -Force
 
+    # Generate Detailed Round Telemetry JSON & Summary Report
+    Write-Host "`n[Report] Generating Round $round_num Telemetry Report..." -ForegroundColor Green
+    python scratch/generate_round_report.py ("tournament_round_" + $round_num + ".pgn") $round_num
+
     # 6. Commit and Push to GitHub
     $commit_msg = "Continuous Training Round " + $round_num + " - 500 D5 Games, 80 Adam Epochs, 100 D5 Tournament"
     Write-Host "`n[GitHub] Committing and Pushing Round $round_num results..." -ForegroundColor Cyan

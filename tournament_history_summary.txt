@@ -1,0 +1,38 @@
+=== ROUND 1 METRICS REPORT ===
+  Score: 19.8% (7W / 35L / 5D in 48 games)
+  Advantage Creation: Reached +150cp in 30/48 games (62%)
+  Advantage Conversion: Converted 7/30 (23.3% Conversion Rate)
+  Avg Eval: Op=+50cp | Mid=+22cp | End=+653cp
+  Avg Game Length: Wins=72 moves | Losses=54 moves
+  Promotions: 0 Queens/Rooks promoted
+  Blunders: Op=118 | Mid=368 | End=649
+
+=== ROUND 1 METRICS REPORT ===
+  Score: 21.3% (9W / 39L / 5D in 54 games)
+  Advantage Creation: Reached +150cp in 31/54 games (57%)
+  Advantage Conversion: Converted 9/31 (29.0% Conversion Rate)
+  Avg Eval: Op=+42cp | Mid=-39cp | End=+567cp
+  Avg Game Length: Wins=69 moves | Losses=54 moves
+  Promotions: 0 Queens/Rooks promoted
+  Blunders: Op=145 | Mid=418 | End=653
+
+=== ROUND 1 COMPREHENSIVE METRICS REPORT ===
+  Score: 20.0% (9W / 44L / 6D in 60 games)
+  Sustained Advantage: Held >=+150cp in 33/60 games (55%)
+  Advantage Conversion: Converted 9/33 (27.3% Conversion Rate)
+  Tactical Resiliency: Recovered from 34/1353 tactical drops (2.5% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 22480 cp
+  Avg Eval: Op=+40cp | Mid=-15cp | End=+371cp
+  Avg Game Length: Wins=69 moves | Losses=53 moves
+  Promotions: 0 Queens/Rooks promoted
+
+=== ROUND 1 COMPREHENSIVE METRICS REPORT ===
+  Score: 20.3% (14W / 67L / 9D in 91 games)
+  Sustained Advantage: Held >=+150cp in 54/91 games (59%)
+  Advantage Conversion: Converted 14/54 (25.9% Conversion Rate)
+  Tactical Resiliency: Recovered from 54/2170 tactical drops (2.5% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 22639 cp
+  Avg Eval: Op=+51cp | Mid=-11cp | End=+546cp
+  Avg Game Length: Wins=72 moves | Losses=53 moves
+  Promotions: 0 Queens/Rooks promoted
+
