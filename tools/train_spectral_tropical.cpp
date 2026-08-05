@@ -7,6 +7,7 @@
 #include "../src/movegen/movegen.hpp"
 #include "../src/search/search.hpp"
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <string>
 #include <chrono>
@@ -257,16 +258,62 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::cout << "\n[SpectralTropical] Parallel Dataset Generation Complete: " << dataset.size() << " position samples\n";
+    std::cout << "\n[SpectralTropical] Parallel Dataset Generation Complete: " << dataset.size() << " new position samples\n";
     std::cout << "  Outcomes: " << white_wins << " White Wins, " << black_wins << " Black Wins, " << draws << " Draws\n\n";
 
     // =========================================================================
-    // Adam Optimizer on the Tropical (max, +) Minimax Surface
+    // 150,000 Position Rolling Dataset Buffer (Multi-Round Memory)
     // =========================================================================
-    //
-    // The tropical surface T(x) = max_j (w_j^T x + b_j) is piecewise linear.
-    // We use Adam optimizer with gradient clipping to ensure smooth, stable
-    // weight convergence without gradient explosion or wild oscillations.
+    std::vector<Sample> dataset_buffer;
+    std::ifstream buf_in("dataset_buffer.bin", std::ios::binary);
+    if (buf_in.is_open()) {
+        uint32_t buf_size = 0;
+        buf_in.read(reinterpret_cast<char*>(&buf_size), sizeof(buf_size));
+        for (uint32_t i = 0; i < buf_size; i++) {
+            uint16_t fen_len = 0;
+            buf_in.read(reinterpret_cast<char*>(&fen_len), sizeof(fen_len));
+            std::string fen(fen_len, '\0');
+            buf_in.read(&fen[0], fen_len);
+            float target = 0.0f;
+            buf_in.read(reinterpret_cast<char*>(&target), sizeof(target));
+            Board b;
+            if (FEN::parse(fen, b)) {
+                dataset_buffer.push_back({b, target});
+            }
+        }
+        std::cout << "[SpectralTropical] Loaded " << dataset_buffer.size() << " previous samples from Rolling Dataset Buffer\n";
+    }
+
+    // Append new round samples to rolling buffer
+    dataset_buffer.insert(dataset_buffer.end(), dataset.begin(), dataset.end());
+
+    // Trim to most recent 150,000 samples
+    constexpr size_t MAX_BUFFER_SIZE = 150000;
+    if (dataset_buffer.size() > MAX_BUFFER_SIZE) {
+        size_t excess = dataset_buffer.size() - MAX_BUFFER_SIZE;
+        dataset_buffer.erase(dataset_buffer.begin(), dataset_buffer.begin() + excess);
+    }
+    std::cout << "[SpectralTropical] Active Training Dataset Size: " << dataset_buffer.size() << " positions (Multi-Round Buffer)\n\n";
+
+    // Save updated buffer to disk
+    std::ofstream buf_out("dataset_buffer.bin", std::ios::binary);
+    if (buf_out.is_open()) {
+        uint32_t buf_size = static_cast<uint32_t>(dataset_buffer.size());
+        buf_out.write(reinterpret_cast<const char*>(&buf_size), sizeof(buf_size));
+        for (const auto& s : dataset_buffer) {
+            std::string fen = FEN::to_string(s.board);
+            uint16_t fen_len = static_cast<uint16_t>(fen.size());
+            buf_out.write(reinterpret_cast<const char*>(&fen_len), sizeof(fen_len));
+            buf_out.write(fen.data(), fen_len);
+            buf_out.write(reinterpret_cast<const char*>(&s.target), sizeof(s.target));
+        }
+    }
+
+    // Use full rolling dataset_buffer for training
+    std::vector<Sample>& active_dataset = dataset_buffer;
+
+    // =========================================================================
+    // Adam Optimizer on the Tropical (max, +) Minimax Surface
     // =========================================================================
 
     TropicalEvaluator model;
@@ -284,18 +331,31 @@ int main(int argc, char* argv[]) {
         float v_b = 0.0f;
     };
     std::vector<SectorAdam> adam_state(TropicalEvaluator::TOTAL_SECTORS);
+    int timestep = 0;
+
+    // Load persistent Adam momentum and variance state
+    std::ifstream adam_in("heavensgate_adam.dat", std::ios::binary);
+    if (adam_in.is_open()) {
+        adam_in.read(reinterpret_cast<char*>(&timestep), sizeof(timestep));
+        for (auto& sec : adam_state) {
+            adam_in.read(reinterpret_cast<char*>(sec.m_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
+            adam_in.read(reinterpret_cast<char*>(sec.v_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
+            adam_in.read(reinterpret_cast<char*>(&sec.m_b), sizeof(sec.m_b));
+            adam_in.read(reinterpret_cast<char*>(&sec.v_b), sizeof(sec.v_b));
+        }
+        std::cout << "[SpectralTropical] Loaded persistent Adam state (Timestep: " << timestep << ")\n";
+    }
 
     float beta1 = 0.9f;
     float beta2 = 0.999f;
     float eps = 1e-8f;
     float weight_decay = 0.0001f;
-    int timestep = 0;
 
     std::cout << "[SpectralTropical] Training via Adam Optimizer (Epochs=" << epochs
               << ", LR=" << lr << ", Decay=" << lr_decay << ")...\n\n";
 
     std::mt19937 shuffle_rng(123);
-    std::vector<size_t> indices(dataset.size());
+    std::vector<size_t> indices(active_dataset.size());
     std::iota(indices.begin(), indices.end(), 0);
 
     for (int epoch = 1; epoch <= epochs; epoch++) {
@@ -305,7 +365,7 @@ int main(int argc, char* argv[]) {
         size_t count = 0;
 
         for (size_t idx : indices) {
-            const auto& sample = dataset[idx];
+            const auto& sample = active_dataset[idx];
             timestep++;
 
             // 1. Extract feature vector & smooth Log-Sum-Exp evaluation
@@ -388,6 +448,19 @@ int main(int argc, char* argv[]) {
     std::string model_path = "heavensgate_tropical.trm";
     if (model.save_weights(model_path)) {
         std::cout << "\n[SUCCESS] Saved Spectral-Tropical weights to " << model_path << "\n";
+
+        // Save persistent Adam state
+        std::ofstream adam_out("heavensgate_adam.dat", std::ios::binary);
+        if (adam_out.is_open()) {
+            adam_out.write(reinterpret_cast<const char*>(&timestep), sizeof(timestep));
+            for (const auto& sec : adam_state) {
+                adam_out.write(reinterpret_cast<const char*>(sec.m_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
+                adam_out.write(reinterpret_cast<const char*>(sec.v_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
+                adam_out.write(reinterpret_cast<const char*>(&sec.m_b), sizeof(sec.m_b));
+                adam_out.write(reinterpret_cast<const char*>(&sec.v_b), sizeof(sec.v_b));
+            }
+            std::cout << "[SUCCESS] Saved persistent Adam state to heavensgate_adam.dat\n";
+        }
 
         // Feature Weight Telemetry Summary
         static const char* feat_names[16] = {

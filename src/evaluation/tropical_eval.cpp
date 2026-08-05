@@ -158,9 +158,9 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     // Lazy Spectral Evaluation: skip expensive Laplacian eigensolver when material is decisive (> 1200 cp)
     if (std::abs(material_diff) > 1200) {
         std::array<float, NUM_FEATURES> x{};
-        x[0] = static_cast<float>(material_diff);
-        x[4] = static_cast<float>(pst_diff);
-        x[13] = static_cast<float>(passed_diff) * 30.0f;
+        x[0]  = static_cast<float>(material_diff) / 10.0f;
+        x[4]  = static_cast<float>(pst_diff) / 10.0f;
+        x[13] = static_cast<float>(passed_diff) * 4.0f;
         return x;
     }
 
@@ -170,23 +170,25 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     float their_shield = (us == Color::White) ? feat.king_shield_them : feat.king_shield_us;
     float our_pressure = (us == Color::White) ? feat.king_pressure_us : feat.king_pressure_them;
 
+    // Feature Scale Normalization: All features scaled into a balanced dynamic band (~[-50, +50])
+    // so gradient magnitudes (dLoss/dw_i = error * x_i) are equal across material and positional features.
     std::array<float, NUM_FEATURES> x;
-    x[0]  = static_cast<float>(material_diff);
-    x[1]  = (feat.fiedler_us - feat.fiedler_them) * 15.0f;
-    x[2]  = (feat.cohesion_us - feat.cohesion_them) * 5.0f;
-    x[3]  = feat.spectral_gap * 2.0f;
-    x[4]  = static_cast<float>(pst_diff);
-    x[5]  = (feat.king_pressure_us - feat.king_pressure_them) * 10.0f;
-    x[6]  = (feat.battery_energy_us - feat.battery_energy_them) * 8.0f;
-    x[7]  = (feat.pawn_cohesion_us - feat.pawn_cohesion_them) * 12.0f;
-    x[8]  = feat.laplacian_trace / 10.0f;
-    x[9]  = (feat.mobility_us - feat.mobility_them) * 3.0f;
-    x[10] = (feat.center_control_us - feat.center_control_them) * 8.0f;
-    x[11] = feat.game_phase * 50.0f;
-    x[12] = (feat.king_shield_us - feat.king_shield_them) * 10.0f;
-    x[13] = static_cast<float>(passed_diff) * 30.0f;
-    x[14] = static_cast<float>(passed_diff) * (1.0f - feat.game_phase) * 40.0f;
-    x[15] = (our_pressure / (their_shield + 1.0f)) * 15.0f;
+    x[0]  = static_cast<float>(material_diff) / 10.0f;                       // Material: 100 cp -> 10.0
+    x[1]  = (feat.fiedler_us - feat.fiedler_them) * 5.0f;                     // Fiedler cohesion
+    x[2]  = (feat.cohesion_us - feat.cohesion_them) * 2.0f;                    // Subgraph cohesion
+    x[3]  = feat.spectral_gap * 2.0f;                                          // Spectral gap
+    x[4]  = static_cast<float>(pst_diff) / 10.0f;                             // PST
+    x[5]  = (feat.king_pressure_us - feat.king_pressure_them) * 3.0f;          // King pressure
+    x[6]  = (feat.battery_energy_us - feat.battery_energy_them) * 3.0f;        // Battery energy
+    x[7]  = (feat.pawn_cohesion_us - feat.pawn_cohesion_them) * 3.0f;          // Pawn cohesion
+    x[8]  = feat.laplacian_trace / 2.0f;                                       // Trace energy
+    x[9]  = (feat.mobility_us - feat.mobility_them) * 2.0f;                    // Mobility
+    x[10] = (feat.center_control_us - feat.center_control_them) * 3.0f;        // Center control
+    x[11] = feat.game_phase * 5.0f;                                            // Game phase
+    x[12] = (feat.king_shield_us - feat.king_shield_them) * 3.0f;              // King shield
+    x[13] = static_cast<float>(passed_diff) * 4.0f;                           // Passed pawns
+    x[14] = static_cast<float>(passed_diff) * (1.0f - feat.game_phase) * 5.0f; // EG Passed pawns
+    x[15] = (our_pressure / (their_shield + 1.0f)) * 4.0f;                     // Attack ratio
 
     return x;
 }
@@ -236,7 +238,8 @@ TropicalEvaluator::EvalResult TropicalEvaluator::evaluate_detailed(const Board& 
         softmax_probs[j] /= sum_exp;
     }
 
-    float smooth_eval = max_val + SMOOTH_TAU * std::log(sum_exp);
+    // Multiply by RESTORE_SCALE (10.0f) to restore standard centipawn evaluation scale
+    float smooth_eval = (max_val + SMOOTH_TAU * std::log(sum_exp)) * 10.0f;
     int score = static_cast<int>(std::max(-30000.0f, std::min(30000.0f, smooth_eval)));
 
     return {score, bucket, base_sec_idx + winning_sector, softmax_probs};
