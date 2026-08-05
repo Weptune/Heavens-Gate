@@ -1,6 +1,10 @@
 [
   {
     "round": 1,
+    "phase": 1,
+    "phase_round": 1,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 21.0,
     "master_wins": 16,
@@ -53,6 +57,10 @@
   },
   {
     "round": 2,
+    "phase": 1,
+    "phase_round": 2,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 37.0,
     "master_wins": 34,
@@ -105,6 +113,10 @@
   },
   {
     "round": 3,
+    "phase": 1,
+    "phase_round": 3,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 28.0,
     "master_wins": 26,
@@ -157,6 +169,10 @@
   },
   {
     "round": 4,
+    "phase": 1,
+    "phase_round": 4,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 39.0,
     "master_wins": 34,
@@ -209,6 +225,10 @@
   },
   {
     "round": 5,
+    "phase": 1,
+    "phase_round": 5,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 41.0,
     "master_wins": 40,
@@ -261,6 +281,10 @@
   },
   {
     "round": 6,
+    "phase": 1,
+    "phase_round": 6,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 36.0,
     "master_wins": 32,
@@ -313,6 +337,10 @@
   },
   {
     "round": 7,
+    "phase": 1,
+    "phase_round": 7,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 35.0,
     "master_wins": 32,
@@ -365,6 +393,10 @@
   },
   {
     "round": 8,
+    "phase": 1,
+    "phase_round": 8,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 26.0,
     "master_wins": 24,

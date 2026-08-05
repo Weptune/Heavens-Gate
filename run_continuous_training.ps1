@@ -54,11 +54,14 @@ while ($true) {
     # Generate Detailed Round Telemetry JSON & Summary Report
     Write-Host "`n[Report] Generating Round $round_num Telemetry Report..." -ForegroundColor Green
     python scratch/generate_round_report.py ("tournament_round_" + $round_num + ".pgn") $round_num
+    python scratch/rebuild_history.py
+    python scratch/build_master_history.py
+    python scratch/extract_git_weight_history.py
 
     # 6. Commit and Push to GitHub
     $commit_msg = "Continuous Training Round " + $round_num + " - 500 D5 Games, 80 Adam Epochs, 100 D5 Tournament"
     Write-Host "`n[GitHub] Committing and Pushing Round $round_num results..." -ForegroundColor Cyan
-    git add tournament_history_summary.txt tournament_detailed_history.json heavensgate_tropical.trm tournament_round_*.pgn
+    git add tournament_history_summary.txt tournament_detailed_history.json model_weight_history.json heavensgate_tropical.trm tournament_round_*.pgn
     git commit -m $commit_msg
     git push origin main
 
