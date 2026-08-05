@@ -13,8 +13,11 @@ if ($existing_rounds) {
 }
 
 while ($true) {
+    $phase_num = if ($round_num -le 8) { 1 } else { 2 }
+    $phase_round_num = if ($round_num -le 8) { $round_num } else { $round_num - 8 }
+
     Write-Host "`n========================================================" -ForegroundColor Cyan
-    Write-Host "  HEAVEN'S GATE - CONTINUOUS TRAINING ROUND $round_num" -ForegroundColor Green
+    Write-Host "  HEAVEN'S GATE - PHASE $phase_num ROUND $phase_round_num (Overall Round $round_num)" -ForegroundColor Green
     Write-Host "========================================================`n" -ForegroundColor Cyan
 
     # 1. Kill any existing instances
