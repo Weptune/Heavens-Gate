@@ -15,9 +15,9 @@
       "losses": 38
     },
     "avg_eval": {
-      "opening": 51.2,
-      "middlegame": -30.3,
-      "endgame": 564.0
+      "opening": 43.2,
+      "middlegame": 57.3,
+      "endgame": 35.0
     },
     "blunders": {
       "total": 2348,
@@ -67,9 +67,9 @@
       "losses": 32
     },
     "avg_eval": {
-      "opening": 38.5,
-      "middlegame": 8.7,
-      "endgame": 472.2
+      "opening": 32.8,
+      "middlegame": 71.1,
+      "endgame": 42.0
     },
     "blunders": {
       "total": 1820,
@@ -119,9 +119,9 @@
       "losses": 46
     },
     "avg_eval": {
-      "opening": -4.6,
-      "middlegame": 85.5,
-      "endgame": 330.9
+      "opening": 53.6,
+      "middlegame": 42.1,
+      "endgame": 55.1
     },
     "blunders": {
       "total": 2150,
@@ -171,9 +171,9 @@
       "losses": 32
     },
     "avg_eval": {
-      "opening": -11.5,
-      "middlegame": 64.1,
-      "endgame": 618.8
+      "opening": 65.7,
+      "middlegame": 35.7,
+      "endgame": -2.3
     },
     "blunders": {
       "total": 2012,
@@ -223,9 +223,9 @@
       "losses": 32
     },
     "avg_eval": {
-      "opening": 90.6,
-      "middlegame": 37.4,
-      "endgame": 868.4
+      "opening": 45.3,
+      "middlegame": 44.6,
+      "endgame": -1.5
     },
     "blunders": {
       "total": 1854,
