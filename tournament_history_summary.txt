@@ -46,3 +46,13 @@
   Avg Game Length: Wins=68 moves | Losses=54 moves
   Promotions: 0 Queens/Rooks promoted
 
+=== ROUND 4 COMPREHENSIVE METRICS REPORT ===
+  Score: 39.0% (34W / 56L / 10D in 100 games)
+  Sustained Advantage: Held >=+150cp in 72/100 games (72%)
+  Advantage Conversion: Converted 34/72 (47.2% Conversion Rate)
+  Tactical Resiliency: Recovered from 68/2012 tactical drops (3.4% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 22669 cp
+  Avg Eval: Op=-12cp | Mid=+64cp | End=+619cp
+  Avg Game Length: Wins=59 moves | Losses=52 moves
+  Promotions: 0 Queens/Rooks promoted
+
