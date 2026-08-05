@@ -44,7 +44,7 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
     for (const auto& m : moves) {
         if (!in_chk) {
             Piece victim = board.piece_at(m.to());
-            int victim_val = (victim != Piece::None) ? PawnValue : 0;
+            int victim_val = (victim != Piece::None || m.is_ep()) ? PawnValue : 0;
             switch (piece_type_of(victim)) {
                 case PieceType::Pawn:   victim_val = PawnValue; break;
                 case PieceType::Knight: victim_val = KnightValue; break;
@@ -53,6 +53,7 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
                 case PieceType::Queen:  victim_val = QueenValue; break;
                 default: break;
             }
+            if (m.is_ep()) victim_val = PawnValue;
 
             if (stand_pat + victim_val + 200 < alpha && !m.is_promotion()) {
                 continue;

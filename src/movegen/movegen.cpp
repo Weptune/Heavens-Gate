@@ -187,7 +187,7 @@ void MoveGenerator::generate_capture_moves(const Board& board, MoveList& moves) 
 
     moves.clear();
     for (const auto& m : all_moves) {
-        if (m.is_capture()) {
+        if (m.is_capture() || m.is_promotion()) {
             moves.push_back(m);
         }
     }
