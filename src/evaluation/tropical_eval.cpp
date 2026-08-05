@@ -196,15 +196,19 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     x[12] = (feat.king_shield_us - feat.king_shield_them) * 3.0f;              // King shield
     x[13] = static_cast<float>(passed_diff) * 4.0f;                           // Passed pawns
     x[14] = static_cast<float>(passed_diff) * (1.0f - feat.game_phase) * 5.0f; // EG Passed pawns
-    x[15] = (our_pressure / (their_shield + 1.0f)) * 4.0f;                     // Attack ratio
+    // Phase 2 Residual Skip-Connection Cross-Terms (x16..x21)
+    // Residual formulation guarantees base features (x0..x15) are 100% protected,
+    // while cross-terms provide strictly positive non-linear boosters.
+    float pos_center   = std::max(0.0f, x[10]);
+    float pos_pawncoh  = std::max(0.0f, x[7]);
+    float pos_battery  = std::max(0.0f, x[6]);
 
-    // Phase 2 Non-Linear Cross-Terms (x16..x21)
-    x[16] = (x[6] * x[10]) / 10.0f;                                            // BatXCenter
-    x[17] = (x[1] * x[7]) / 10.0f;                                             // FiedXPWN
-    x[18] = x[9] * (1.0f - feat.game_phase);                                   // EG_Mobility (Endgame Piece Activity)
-    x[19] = (x[13] * x[10]) / 10.0f;                                           // PassXCenter
-    x[20] = (x[5] * x[6]) / 10.0f;                                             // KingXBat
-    x[21] = (x[12] * x[7]) / 10.0f;                                            // ShldXPWN
+    x[16] = x[6]  * (pos_center / 10.0f);                                       // BatXCenter Residual Boost
+    x[17] = x[1]  * (pos_pawncoh / 10.0f);                                      // FiedXPWN Residual Boost
+    x[18] = x[9]  * (1.0f - feat.game_phase);                                   // EG_Mobility Residual Boost
+    x[19] = x[13] * (pos_center / 10.0f);                                       // PassXCenter Residual Boost
+    x[20] = x[5]  * (pos_battery / 10.0f);                                      // KingXBat Residual Boost
+    x[21] = x[12] * (pos_pawncoh / 10.0f);                                      // ShldXPWN Residual Boost
 
     return x;
 }
