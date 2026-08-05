@@ -195,7 +195,37 @@
     "round": 9,
     "phase": 2,
     "phase_round": 1,
-    "commit": "LOCAL",
+    "commit": "faa8847",
+    "weights": {
+      "Material": 0.8007,
+      "Fiedler": 0.8239,
+      "Cohesion": 0.0686,
+      "Gap": 0.0809,
+      "PST": 0.1044,
+      "KingPress": 0.2154,
+      "Battery": 0.4524,
+      "PawnCoh": 0.2292,
+      "Trace": 0.0513,
+      "Mobility": 0.0395,
+      "Center": 0.1486,
+      "Phase": 1.0118,
+      "Shield": 0.1828,
+      "Passed": 0.1982,
+      "EG_Passed": 0.3148,
+      "Attack_Ratio": 0.2084,
+      "BatXCenter": 0.5904,
+      "FiedXPWN": 0.6266,
+      "EG_Mobility": 0.0921,
+      "PassXCenter": 0.311,
+      "KingXBat": 0.4114,
+      "ShldXPWN": 0.1809
+    }
+  },
+  {
+    "round": 10,
+    "phase": 2,
+    "phase_round": 2,
+    "commit": "cc57933",
     "weights": {
       "Material": 0.8,
       "Fiedler": 0.5478,
@@ -219,6 +249,36 @@
       "PassXCenter": 0.2356,
       "KingXBat": 0.3579,
       "ShldXPWN": 0.1906
+    }
+  },
+  {
+    "round": 11,
+    "phase": 2,
+    "phase_round": 3,
+    "commit": "LOCAL",
+    "weights": {
+      "Material": 0.8,
+      "Fiedler": 0.5292,
+      "Cohesion": 0.0455,
+      "Gap": 0.063,
+      "PST": 0.1513,
+      "KingPress": 0.1989,
+      "Battery": 0.5251,
+      "PawnCoh": 0.3246,
+      "Trace": 0.0922,
+      "Mobility": 0.064,
+      "Center": 0.0757,
+      "Phase": 1.0043,
+      "Shield": 0.1584,
+      "Passed": 0.2432,
+      "EG_Passed": 0.2206,
+      "Attack_Ratio": 0.2608,
+      "BatXCenter": 0.6093,
+      "FiedXPWN": 0.3035,
+      "EG_Mobility": 0.0741,
+      "PassXCenter": 0.2096,
+      "KingXBat": 0.4956,
+      "ShldXPWN": 0.2984
     }
   }
 ]
