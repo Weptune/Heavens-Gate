@@ -62,3 +62,14 @@
   * Phase Avg Evals   : Opening=+23cp | Middlegame=+57cp | Endgame=-22cp
   * Pawn Promotions   : 112 promotions
 
+=========================================================================
+  PHASE 2: Hand-Selected Feature Cross-Terms (22 Features, 7,480 Params)
+=========================================================================
+
+=== PHASE 2 ROUND 1 (Overall Round 9) SUMMARY ===
+  * Win Rate / Score  : 31.0% (26 Wins / 64 Losses / 10 Draws in 100 games)
+  * Sustained Leads   : Held >=+150cp in 60/100 games (60%)
+  * Conversion Rate   : Converted 20/60 (33.3% Conversion Efficiency)
+  * Phase Avg Evals   : Opening=+28cp | Middlegame=+31cp | Endgame=+55cp
+  * Pawn Promotions   : 58 promotions
+

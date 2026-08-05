@@ -1,6 +1,8 @@
 [
   {
     "round": 1,
+    "phase": 1,
+    "phase_round": 1,
     "commit": "1ac7f61",
     "weights": {
       "Material": 0.8052,
@@ -23,6 +25,8 @@
   },
   {
     "round": 2,
+    "phase": 1,
+    "phase_round": 2,
     "commit": "155026d",
     "weights": {
       "Material": 0.8033,
@@ -45,6 +49,8 @@
   },
   {
     "round": 3,
+    "phase": 1,
+    "phase_round": 3,
     "commit": "9e7a766",
     "weights": {
       "Material": 0.8,
@@ -67,6 +73,8 @@
   },
   {
     "round": 4,
+    "phase": 1,
+    "phase_round": 4,
     "commit": "02db950",
     "weights": {
       "Material": 0.8114,
@@ -89,6 +97,8 @@
   },
   {
     "round": 5,
+    "phase": 1,
+    "phase_round": 5,
     "commit": "5a9b2f6",
     "weights": {
       "Material": 0.8,
@@ -111,6 +121,8 @@
   },
   {
     "round": 6,
+    "phase": 1,
+    "phase_round": 6,
     "commit": "ae18ca2",
     "weights": {
       "Material": 0.8013,
@@ -133,6 +145,8 @@
   },
   {
     "round": 7,
+    "phase": 1,
+    "phase_round": 7,
     "commit": "0e128e5",
     "weights": {
       "Material": 0.8008,
@@ -155,6 +169,8 @@
   },
   {
     "round": 8,
+    "phase": 1,
+    "phase_round": 8,
     "commit": "53accfb",
     "weights": {
       "Material": 0.8,
@@ -173,6 +189,36 @@
       "Passed": 0.5127,
       "EG_Passed": 0.1606,
       "Attack_Ratio": 0.5732
+    }
+  },
+  {
+    "round": 9,
+    "phase": 2,
+    "phase_round": 1,
+    "commit": "LOCAL",
+    "weights": {
+      "Material": 0.8007,
+      "Fiedler": 0.8239,
+      "Cohesion": 0.0686,
+      "Gap": 0.0809,
+      "PST": 0.1044,
+      "KingPress": 0.2154,
+      "Battery": 0.4524,
+      "PawnCoh": 0.2292,
+      "Trace": 0.0513,
+      "Mobility": 0.0395,
+      "Center": 0.1486,
+      "Phase": 1.0118,
+      "Shield": 0.1828,
+      "Passed": 0.1982,
+      "EG_Passed": 0.3148,
+      "Attack_Ratio": 0.2084,
+      "BatXCenter": 0.5904,
+      "FiedXPWN": 0.6266,
+      "EG_Mobility": 0.0921,
+      "PassXCenter": 0.311,
+      "KingXBat": 0.4114,
+      "ShldXPWN": 0.1809
     }
   }
 ]
