@@ -5,7 +5,12 @@
 Set-Location -Path "C:\Users\abhin\heavensgate"
 $env:PATH = "C:\Users\abhin\heavensgate\tools\w64devkit\bin;" + $env:PATH
 
-$round_num = 1
+$existing_rounds = Get-ChildItem -Filter "tournament_round_*.pgn" | ForEach-Object { [int]($_.Name -replace '\D') }
+if ($existing_rounds) {
+    $round_num = ($existing_rounds | Measure-Object -Maximum).Maximum + 1
+} else {
+    $round_num = 1
+}
 
 while ($true) {
     Write-Host "`n========================================================" -ForegroundColor Cyan
