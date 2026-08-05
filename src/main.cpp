@@ -48,7 +48,7 @@ const std::vector<std::string> TournamentOpenings = {
     "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2",     // 9. Queen's Gambit Declined
     "rnbqkbnr/ppp1pppp/8/8/2pP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3",         // 10. Queen's Gambit Accepted
     "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP2BPPP/R1BQK2R b KQ - 1 6",  // 11. King's Indian: Classical
-    "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2P2/PP2G1PP/R1BQKBNR w KQ - 0 6",   // 12. King's Indian: Samisch
+    "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2P2/PP4PP/R1BQKBNR w KQ - 0 6",   // 12. King's Indian: Samisch
     "rnbqkbnr/pp2pppp/2p5/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",     // 13. Caro-Kann: Main Line
     "rnbqkbnr/pp2pppp/2p5/3P4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 3",         // 14. Caro-Kann: Advance
     "r1bqkb1r/pppp1ppp/2n2n2/4p3/4P3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4",// 15. Four Knights Game
@@ -60,7 +60,7 @@ const std::vector<std::string> TournamentOpenings = {
     "rnbqkb1r/ppp1pp1p/5np1/3p4/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 0 4",  // 21. Grünfeld Defense
     "rnbqk2r/pppp1ppp/4pn2/8/2PP4/2P5/P3PPPP/R1BQKBNR w KQkq - 0 4",     // 22. Nimzo-Indian Defense
     "rnbqkbnr/pppppp1p/6p1/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",      // 23. Modern Defense
-    "rnbqkbnr/pppp1ppp/8/4p3/2P5/8/PP1PPPPPR/RNBQKBNR b KQkq c3 0 2",     // 24. English Opening
+    "rnbqkbnr/pppp1ppp/8/4p3/2P5/8/PP1PPPPP/RNBQKBNR b KQkq c3 0 2",     // 24. English Opening
     "rnbqkbnr/ppp1p1pp/8/3p1p2/2PP4/8/PP2PPPP/RNBQKBNR w KQkq f6 0 3",    // 25. Dutch Defense
     "rnbqkbnr/pp1ppppp/8/3P4/8/8/PPP1PPPP/RNBQKBNR b KQkq - 0 2",         // 26. Benoni Defense
     "r1bqk2r/pp2bppp/2n1pn2/2pp4/2PP4/2N1PN2/PP2BPPP/R1BQ1RK1 w kq - 4 8", // 27. Tarrasch Defense
