@@ -349,7 +349,7 @@ int main(int argc, char* argv[]) {
     float beta1 = 0.9f;
     float beta2 = 0.999f;
     float eps = 1e-8f;
-    float weight_decay = 0.0001f;
+    float weight_decay = 0.0f; // Disabled per-sample L2 decay to preserve positional weights across millions of steps
 
     std::cout << "[SpectralTropical] Training via Adam Optimizer (Epochs=" << epochs
               << ", LR=" << lr << ", Decay=" << lr_decay << ")...\n\n";
