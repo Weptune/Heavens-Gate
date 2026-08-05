@@ -55,7 +55,7 @@ Bitboard Zobrist::compute_hash(const Board& board) noexcept {
     hash ^= CastlingKeys[static_cast<size_t>(board.castling_rights())];
 
     if (board.en_passant_sq() != Square::None) {
-        hash ^= EnPassantKeys[static_cast<size_t>(board.en_passant_sq())];
+        hash ^= en_passant(file_of(board.en_passant_sq()));
     }
 
     return hash;
