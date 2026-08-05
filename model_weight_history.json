@@ -1,0 +1,134 @@
+[
+  {
+    "round": 1,
+    "commit": "1ac7f61",
+    "weights": {
+      "Material": 0.8052,
+      "Fiedler": 0.384,
+      "Cohesion": 0.0439,
+      "Gap": 0.0441,
+      "PST": 0.1606,
+      "KingPress": 0.2196,
+      "Battery": 0.3198,
+      "PawnCoh": 0.1573,
+      "Trace": 0.1283,
+      "Mobility": 0.0693,
+      "Center": 0.2115,
+      "Phase": 0.4117,
+      "Shield": 0.1672,
+      "Passed": 0.1758,
+      "EG_Passed": 0.2068,
+      "Attack_Ratio": 0.359
+    }
+  },
+  {
+    "round": 2,
+    "commit": "155026d",
+    "weights": {
+      "Material": 0.8033,
+      "Fiedler": 0.3789,
+      "Cohesion": 0.0441,
+      "Gap": 0.042,
+      "PST": 0.1286,
+      "KingPress": 0.2009,
+      "Battery": 0.1733,
+      "PawnCoh": 0.1154,
+      "Trace": 0.133,
+      "Mobility": 0.0698,
+      "Center": 0.3444,
+      "Phase": 0.2991,
+      "Shield": 0.1361,
+      "Passed": 0.5441,
+      "EG_Passed": 0.1773,
+      "Attack_Ratio": 0.4184
+    }
+  },
+  {
+    "round": 3,
+    "commit": "9e7a766",
+    "weights": {
+      "Material": 0.8,
+      "Fiedler": 0.376,
+      "Cohesion": 0.0205,
+      "Gap": 0.0165,
+      "PST": 0.2027,
+      "KingPress": 0.1018,
+      "Battery": 0.1888,
+      "PawnCoh": 0.0843,
+      "Trace": 0.0792,
+      "Mobility": 0.0333,
+      "Center": 0.5175,
+      "Phase": 0.4806,
+      "Shield": 0.1477,
+      "Passed": 0.6361,
+      "EG_Passed": 0.1001,
+      "Attack_Ratio": 0.3338
+    }
+  },
+  {
+    "round": 4,
+    "commit": "02db950",
+    "weights": {
+      "Material": 0.8114,
+      "Fiedler": 0.3891,
+      "Cohesion": 0.0224,
+      "Gap": 0.0318,
+      "PST": 0.1083,
+      "KingPress": 0.1856,
+      "Battery": 0.1706,
+      "PawnCoh": 0.1052,
+      "Trace": 0.1364,
+      "Mobility": 0.0624,
+      "Center": 0.3727,
+      "Phase": 1.0151,
+      "Shield": 0.2096,
+      "Passed": 0.8405,
+      "EG_Passed": 0.1173,
+      "Attack_Ratio": 0.4915
+    }
+  },
+  {
+    "round": 5,
+    "commit": "5a9b2f6",
+    "weights": {
+      "Material": 0.8,
+      "Fiedler": 0.4359,
+      "Cohesion": 0.022,
+      "Gap": 0.0332,
+      "PST": 0.0893,
+      "KingPress": 0.1103,
+      "Battery": 0.1763,
+      "PawnCoh": 0.1244,
+      "Trace": 0.2141,
+      "Mobility": 0.0326,
+      "Center": 0.3367,
+      "Phase": 0.7796,
+      "Shield": 0.1547,
+      "Passed": 0.6657,
+      "EG_Passed": 0.0825,
+      "Attack_Ratio": 0.5747
+    }
+  },
+  {
+    "round": 6,
+    "commit": "ae18ca2",
+    "weights": {
+      "Material": 0.8013,
+      "Fiedler": 0.3943,
+      "Cohesion": 0.0064,
+      "Gap": 0.0255,
+      "PST": 0.1172,
+      "KingPress": 0.1077,
+      "Battery": 0.2193,
+      "PawnCoh": 0.1191,
+      "Trace": 0.0782,
+      "Mobility": 0.0067,
+      "Center": 0.1877,
+      "Phase": 0.9061,
+      "Shield": 0.1198,
+      "Passed": 0.5994,
+      "EG_Passed": 0.092,
+      "Attack_Ratio": 0.5726
+    }
+  }
+]
