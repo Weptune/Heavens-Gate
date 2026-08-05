@@ -1,45 +1,45 @@
 {
   "round": 1,
-  "total_games": 91,
-  "score_pct": 20.3,
-  "master_wins": 14,
-  "baseline_wins": 67,
-  "draws": 9,
+  "total_games": 100,
+  "score_pct": 21.0,
+  "master_wins": 16,
+  "baseline_wins": 74,
+  "draws": 10,
   "as_white": {
-    "wins": 5,
-    "losses": 33
+    "wins": 6,
+    "losses": 36
   },
   "as_black": {
-    "wins": 9,
-    "losses": 34
+    "wins": 10,
+    "losses": 38
   },
   "avg_eval": {
-    "opening": 51.0,
-    "middlegame": -10.7,
-    "endgame": 546.2
+    "opening": 51.2,
+    "middlegame": -30.3,
+    "endgame": 564.0
   },
   "blunders": {
-    "total": 2170,
+    "total": 2348,
     "by_phase": {
-      "Opening": 238,
-      "Middlegame": 704,
-      "Endgame": 1228
+      "Opening": 264,
+      "Middlegame": 786,
+      "Endgame": 1298
     },
-    "recovered_count": 54,
-    "recovery_rate_pct": 2.5
+    "recovered_count": 62,
+    "recovery_rate_pct": 2.6
   },
   "sustained_advantage": {
-    "games_gained_sustained_adv": 54,
-    "converted_wins": 14,
-    "squandered": 40,
-    "conversion_rate_pct": 25.9
+    "games_gained_sustained_adv": 60,
+    "converted_wins": 16,
+    "squandered": 44,
+    "conversion_rate_pct": 26.7
   },
   "game_length": {
-    "avg_win_moves": 71.6,
-    "avg_loss_moves": 53.0
+    "avg_win_moves": 68.1,
+    "avg_loss_moves": 54.0
   },
   "calibration": {
-    "avg_outcome_error_cp": 22639.0
+    "avg_outcome_error_cp": 22888.2
   },
   "pawn_promotions": 0,
   "draw_reasons": {
@@ -47,6 +47,6 @@
     "50MoveRule": 0,
     "Material": 0,
     "Safety400": 0,
-    "Other": 9
+    "Other": 10
   }
 }
