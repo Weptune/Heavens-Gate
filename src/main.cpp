@@ -126,6 +126,7 @@ void run_automated_tournament(int num_games, int depth) {
                   << " ---\n";
 
         std::string result_str = "*";
+        std::string draw_reason_str = "";
 
         while (game_moves < 400) {
             MoveList legal_moves;
@@ -145,6 +146,7 @@ void run_automated_tournament(int num_games, int depth) {
                 } else {
                     std::cout << "\n[RESULT] Draw by Stalemate!\n";
                     result_str = "1/2-1/2";
+                    draw_reason_str = "Stalemate";
                     draws++;
                 }
                 break;
@@ -153,6 +155,7 @@ void run_automated_tournament(int num_games, int depth) {
             if (board.is_insufficient_material()) {
                 std::cout << "\n[RESULT] Draw by Insufficient Material!\n";
                 result_str = "1/2-1/2";
+                draw_reason_str = "Insufficient Material";
                 draws++;
                 break;
             }
@@ -160,6 +163,7 @@ void run_automated_tournament(int num_games, int depth) {
             if (board.halfmove_clock() >= 100) {
                 std::cout << "\n[RESULT] Draw by 50-Move Rule!\n";
                 result_str = "1/2-1/2";
+                draw_reason_str = "50-Move Rule";
                 draws++;
                 break;
             }
@@ -179,6 +183,7 @@ void run_automated_tournament(int num_games, int depth) {
             if (!res.best_move) {
                 std::cout << "\n[RESULT] Draw by No Valid Move!\n";
                 result_str = "1/2-1/2";
+                draw_reason_str = "No Valid Move";
                 draws++;
                 break;
             }
@@ -209,9 +214,13 @@ void run_automated_tournament(int num_games, int depth) {
         if (game_moves >= 400 && result_str == "*") {
             std::cout << "\n[RESULT] Draw by 400-Move Safety Limit!\n";
             result_str = "1/2-1/2";
+            draw_reason_str = "400-Move Safety Limit";
             draws++;
         }
 
+        if (result_str == "1/2-1/2" && !draw_reason_str.empty()) {
+            pgn_file << "{ [%draw_reason \"" << draw_reason_str << "\"] } ";
+        }
         pgn_file << result_str << "\n\n";
 
         std::cout << "Score after Game " << g << ": Master " 
