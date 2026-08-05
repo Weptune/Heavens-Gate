@@ -27,8 +27,9 @@ heavensgate_adam.dat
 *.bak
 *.tmp
 
-# Temporary Dev Scripts & Scratch Files
+# Temporary Dev Scripts & Local Workflows
 scratch/
+run_continuous_training.ps1
 15
 
 # Dev tools & Toolchains
