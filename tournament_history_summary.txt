@@ -32,3 +32,9 @@
   * Conversion Rate   : Converted 38/68 (55.9% Conversion Efficiency)
   * Phase Avg Evals   : Opening=+45cp | Middlegame=+45cp | Endgame=-1cp
 
+=== ROUND 6 TOURNAMENT SUMMARY ===
+  * Win Rate / Score  : 36.0% (32 Wins / 60 Losses / 8 Draws in 100 games)
+  * Sustained Leads   : Held >=+150cp in 62/100 games (62%)
+  * Conversion Rate   : Converted 28/62 (45.2% Conversion Efficiency)
+  * Phase Avg Evals   : Opening=+25cp | Middlegame=+3cp | Endgame=+40cp
+

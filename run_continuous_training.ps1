@@ -53,7 +53,7 @@ while ($true) {
     # 6. Commit and Push to GitHub
     $commit_msg = "Continuous Training Round " + $round_num + " - 500 D5 Games, 80 Adam Epochs, 100 D5 Tournament"
     Write-Host "`n[GitHub] Committing and Pushing Round $round_num results..." -ForegroundColor Cyan
-    git add .
+    git add tournament_history_summary.txt tournament_detailed_history.json heavensgate_tropical.trm tournament_round_*.pgn
     git commit -m $commit_msg
     git push origin main
 
