@@ -82,6 +82,14 @@ void TropicalEvaluator::initialize_weights(uint32_t /*seed*/) {
             sec.w[13] = 0.8f  + 0.2f  * std::fabs(std::cos(jf * 0.5f));        // Passed Pawns
             sec.w[14] = 0.9f  + 0.2f  * std::fabs(std::sin(jf * 0.4f));        // EG Passed Pawns
             sec.w[15] = 0.7f  + 0.2f  * std::fabs(std::cos(jf * 0.8f));        // Attack Ratio
+
+            // Phase 2 Non-Linear Cross-Terms (x16..x21)
+            sec.w[16] = 0.4f  + 0.15f * std::fabs(std::sin(jf * 0.9f + bf));   // BatXCenter
+            sec.w[17] = 0.3f  + 0.1f  * std::fabs(std::cos(jf * 1.1f + bf));   // FiedXPWN
+            sec.w[18] = 0.6f  + 0.2f  * std::fabs(std::sin(jf * 0.6f + bf));   // EG_Mobility
+            sec.w[19] = 0.5f  + 0.2f  * std::fabs(std::cos(jf * 0.7f + bf));   // PassXCenter
+            sec.w[20] = 0.4f  + 0.15f * std::fabs(std::sin(jf * 1.3f + bf));   // KingXBat
+            sec.w[21] = 0.3f  + 0.1f  * std::fabs(std::cos(jf * 0.8f + bf));   // ShldXPWN
         }
     }
 }
@@ -189,6 +197,14 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     x[13] = static_cast<float>(passed_diff) * 4.0f;                           // Passed pawns
     x[14] = static_cast<float>(passed_diff) * (1.0f - feat.game_phase) * 5.0f; // EG Passed pawns
     x[15] = (our_pressure / (their_shield + 1.0f)) * 4.0f;                     // Attack ratio
+
+    // Phase 2 Non-Linear Cross-Terms (x16..x21)
+    x[16] = (x[6] * x[10]) / 10.0f;                                            // BatXCenter
+    x[17] = (x[1] * x[7]) / 10.0f;                                             // FiedXPWN
+    x[18] = x[9] * (1.0f - feat.game_phase);                                   // EG_Mobility (Endgame Piece Activity)
+    x[19] = (x[13] * x[10]) / 10.0f;                                           // PassXCenter
+    x[20] = (x[5] * x[6]) / 10.0f;                                             // KingXBat
+    x[21] = (x[12] * x[7]) / 10.0f;                                            // ShldXPWN
 
     return x;
 }

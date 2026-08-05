@@ -465,10 +465,11 @@ int main(int argc, char* argv[]) {
         }
 
         // Feature Weight Telemetry Summary
-        static const char* feat_names[16] = {
+        static const char* feat_names[22] = {
             "Material", "Fiedler", "Cohesion", "Gap", "PST", "KingPress",
             "Battery", "PawnCoh", "Trace", "Mobility", "Center", "Phase",
-            "Shield", "Passed", "EG_Passed", "Attack_Ratio"
+            "Shield", "Passed", "EG_Passed", "Attack_Ratio",
+            "BatXCenter", "FiedXPWN", "EG_Mobility", "PassXCenter", "KingXBat", "ShldXPWN"
         };
         std::cout << "\n======================================================\n";
         std::cout << "  LEARNED FEATURE WEIGHT TELEMETRY (320 SECTORS)\n";
