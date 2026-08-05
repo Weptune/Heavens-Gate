@@ -560,58 +560,58 @@
     }
   },
   {
-    "round": 11,
+    "round": 12,
     "phase": 2,
-    "phase_round": 3,
+    "phase_round": 4,
     "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
     "num_features": 22,
     "total_games": 100,
-    "score_pct": 24.0,
-    "master_wins": 24,
-    "baseline_wins": 76,
-    "draws": 0,
+    "score_pct": 40.0,
+    "master_wins": 38,
+    "baseline_wins": 58,
+    "draws": 4,
     "as_white": {
-      "wins": 14,
-      "losses": 36
+      "wins": 26,
+      "losses": 22
     },
     "as_black": {
-      "wins": 10,
-      "losses": 40
+      "wins": 12,
+      "losses": 36
     },
     "avg_eval": {
-      "opening": 70.4,
-      "middlegame": 75.9,
-      "endgame": 35.4
+      "opening": 42.2,
+      "middlegame": 63.6,
+      "endgame": 36.9
     },
     "blunders": {
-      "total": 2140,
+      "total": 1264,
       "by_phase": {
-        "Opening": 236,
-        "Middlegame": 944,
-        "Endgame": 960
+        "Opening": 144,
+        "Middlegame": 616,
+        "Endgame": 504
       },
-      "recovered_count": 70,
-      "recovery_rate_pct": 3.3
+      "recovered_count": 56,
+      "recovery_rate_pct": 4.4
     },
     "sustained_advantage": {
-      "games_gained_sustained_adv": 72,
-      "converted_wins": 22,
-      "squandered": 50,
-      "conversion_rate_pct": 30.6
+      "games_gained_sustained_adv": 62,
+      "converted_wins": 32,
+      "squandered": 30,
+      "conversion_rate_pct": 51.6
     },
     "game_length": {
-      "avg_win_moves": 61.3,
-      "avg_loss_moves": 56.3
+      "avg_win_moves": 52.7,
+      "avg_loss_moves": 51.5
     },
     "calibration": {
-      "avg_outcome_error_cp": 25311.0
+      "avg_outcome_error_cp": 24142.3
     },
-    "pawn_promotions": 96,
+    "pawn_promotions": 62,
     "draw_reasons": {
       "Stalemate": 0,
-      "50MoveRule": 0,
+      "50MoveRule": 2,
       "Material": 0,
-      "Safety400": 0,
+      "Safety400": 2,
       "Other": 0
     }
   }
