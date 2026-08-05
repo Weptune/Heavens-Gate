@@ -97,7 +97,7 @@ bool Board::is_repetition() const {
     for (int i = static_cast<int>(pos_history_.size()) - 1; i >= 0; --i) {
         if (pos_history_[static_cast<size_t>(i)] == zobrist_key_) {
             count++;
-            if (count >= 2) return true;
+            if (count >= 3) return true; // True 3-fold repetition per FIDE rules
         }
     }
     return false;

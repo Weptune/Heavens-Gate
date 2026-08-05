@@ -146,8 +146,6 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     if (is_time_up()) return 0;
 
     if (ply > 0 && board.is_repetition()) {
-        // Winning Repetition Penalty: Avoid accidental draws when significantly winning (>150 cp)
-        if (alpha > 150) return -100;
         return ScoreDraw;
     }
 
@@ -302,7 +300,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 }
             }
             if (use_tt) {
-                tt_.store(board.zobrist_key(), m, beta, depth, TTBound::Lower, ply);
+                tt_.store(board.zobrist_key(), m, score, depth, TTBound::Lower, ply);
             }
             if (child_node) {
                 child_node->is_pruned = true;
