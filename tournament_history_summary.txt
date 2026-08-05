@@ -38,3 +38,15 @@
   * Conversion Rate   : Converted 28/62 (45.2% Conversion Efficiency)
   * Phase Avg Evals   : Opening=+25cp | Middlegame=+3cp | Endgame=+40cp
 
+=== ROUND 7 TOURNAMENT SUMMARY ===
+  * Win Rate / Score  : 35.0% (32 Wins / 62 Losses / 6 Draws in 100 games)
+  * Sustained Leads   : Held >=+150cp in 64/100 games (64%)
+  * Conversion Rate   : Converted 28/64 (43.8% Conversion Efficiency)
+  * Phase Avg Evals   : Opening=+27cp | Middlegame=+21cp | Endgame=+147cp
+
+=== ROUND 8 TOURNAMENT SUMMARY ===
+  * Win Rate / Score  : 26.0% (24 Wins / 72 Losses / 4 Draws in 100 games)
+  * Sustained Leads   : Held >=+150cp in 54/100 games (54%)
+  * Conversion Rate   : Converted 20/54 (37.0% Conversion Efficiency)
+  * Phase Avg Evals   : Opening=+23cp | Middlegame=+57cp | Endgame=-22cp
+

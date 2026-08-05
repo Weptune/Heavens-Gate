@@ -310,5 +310,109 @@
       "Safety400": 0,
       "Other": 0
     }
+  },
+  {
+    "round": 7,
+    "total_games": 100,
+    "score_pct": 35.0,
+    "master_wins": 32,
+    "baseline_wins": 62,
+    "draws": 6,
+    "as_white": {
+      "wins": 18,
+      "losses": 30
+    },
+    "as_black": {
+      "wins": 14,
+      "losses": 32
+    },
+    "avg_eval": {
+      "opening": 26.9,
+      "middlegame": 20.7,
+      "endgame": 146.5
+    },
+    "blunders": {
+      "total": 1922,
+      "by_phase": {
+        "Opening": 164,
+        "Middlegame": 704,
+        "Endgame": 1054
+      },
+      "recovered_count": 64,
+      "recovery_rate_pct": 3.3
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 64,
+      "converted_wins": 28,
+      "squandered": 36,
+      "conversion_rate_pct": 43.8
+    },
+    "game_length": {
+      "avg_win_moves": 73.9,
+      "avg_loss_moves": 54.5
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 23686.5
+    },
+    "pawn_promotions": 110,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 4,
+      "Material": 2,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 8,
+    "total_games": 100,
+    "score_pct": 26.0,
+    "master_wins": 24,
+    "baseline_wins": 72,
+    "draws": 4,
+    "as_white": {
+      "wins": 14,
+      "losses": 34
+    },
+    "as_black": {
+      "wins": 10,
+      "losses": 38
+    },
+    "avg_eval": {
+      "opening": 22.5,
+      "middlegame": 57.2,
+      "endgame": -21.8
+    },
+    "blunders": {
+      "total": 1476,
+      "by_phase": {
+        "Opening": 122,
+        "Middlegame": 518,
+        "Endgame": 836
+      },
+      "recovered_count": 46,
+      "recovery_rate_pct": 3.1
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 54,
+      "converted_wins": 20,
+      "squandered": 34,
+      "conversion_rate_pct": 37.0
+    },
+    "game_length": {
+      "avg_win_moves": 62.2,
+      "avg_loss_moves": 62.0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 24287.0
+    },
+    "pawn_promotions": 112,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 4,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
   }
 ]
