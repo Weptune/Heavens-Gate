@@ -42,7 +42,7 @@
     "calibration": {
       "avg_outcome_error_cp": 22888.2
     },
-    "pawn_promotions": 0,
+    "pawn_promotions": 78,
     "draw_reasons": {
       "Stalemate": 0,
       "50MoveRule": 0,
@@ -94,7 +94,7 @@
     "calibration": {
       "avg_outcome_error_cp": 23663.2
     },
-    "pawn_promotions": 0,
+    "pawn_promotions": 92,
     "draw_reasons": {
       "Stalemate": 0,
       "50MoveRule": 0,
@@ -146,7 +146,7 @@
     "calibration": {
       "avg_outcome_error_cp": 24279.0
     },
-    "pawn_promotions": 0,
+    "pawn_promotions": 104,
     "draw_reasons": {
       "Stalemate": 0,
       "50MoveRule": 0,
@@ -198,7 +198,7 @@
     "calibration": {
       "avg_outcome_error_cp": 22669.2
     },
-    "pawn_promotions": 0,
+    "pawn_promotions": 92,
     "draw_reasons": {
       "Stalemate": 0,
       "50MoveRule": 0,
@@ -250,7 +250,7 @@
     "calibration": {
       "avg_outcome_error_cp": 24619.9
     },
-    "pawn_promotions": 0,
+    "pawn_promotions": 82,
     "draw_reasons": {
       "Stalemate": 0,
       "50MoveRule": 2,
