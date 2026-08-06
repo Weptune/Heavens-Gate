@@ -40,15 +40,14 @@ while true; do
     echo "[2/4] Simulating 250 Games at Depth 7 and Training 80 Adam Epochs..."
     ./train_spectral_tropical 250 7 80 0.0005
 
-    # 3. Compile Engine Binary
-    echo "[3/4] Compiling Engine (AVX2 SIMD Accelerated)..."
-    g++ -std=c++20 -O3 -mavx2 -mfma -Isrc src/main.cpp \
-        src/board/board.cpp src/core/fen.cpp src/core/zobrist.cpp src/core/polyglot.cpp \
+    # 3. Compile Engine Binary (AVX2 SIMD & OpenMP Accelerated)
+    echo "[3/4] Compiling Engine (AVX2 SIMD & OpenMP Accelerated)..."
+    g++ -std=c++20 -O3 -mavx2 -mfma -fopenmp -Isrc src/main.cpp src/board/board.cpp src/core/fen.cpp src/core/zobrist.cpp src/core/polyglot.cpp \
         src/movegen/magic.cpp src/movegen/attack_masks.cpp src/movegen/movegen.cpp src/movegen/perft.cpp \
-        src/evaluation/pst.cpp src/evaluation/eval_features.cpp src/evaluation/nnue.cpp \
-        src/evaluation/tensor_eval.cpp src/evaluation/tensor_train.cpp src/evaluation/tensor_quant.cpp \
-        src/evaluation/tensor_nnue.cpp src/evaluation/spectral_graph.cpp src/evaluation/tropical_eval.cpp \
-        src/evaluation/eval.cpp src/search/move_picker.cpp src/search/tt.cpp src/search/search.cpp \
+        src/evaluation/pst.cpp src/evaluation/eval_features.cpp src/evaluation/nnue.cpp src/evaluation/tensor_eval.cpp \
+        src/evaluation/tensor_train.cpp src/evaluation/tensor_quant.cpp src/evaluation/tensor_nnue.cpp \
+        src/evaluation/spectral_graph.cpp src/evaluation/tropical_eval.cpp src/evaluation/eval.cpp \
+        src/search/move_picker.cpp src/search/tt.cpp src/search/search.cpp \
         src/visualization/exporter.cpp src/benchmark/metrics.cpp src/uci/uci.cpp \
         -o heavensgate
 
