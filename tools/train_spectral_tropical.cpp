@@ -173,7 +173,7 @@ int main(int argc, char* argv[]) {
     #pragma omp parallel
     {
         SearchEngine search_engine;
-        search_engine.tt().resize(64 * 1024 * 1024); // 64 MB TT cache per thread (512 MB total RAM)
+        search_engine.tt().resize(64); // 64 MB TT cache per thread (512 MB total RAM across 8 threads)
         Evaluator::set_mode(EvalMode::SpectralTropical);
 
         #pragma omp for schedule(dynamic) reduction(+:white_wins,black_wins,draws)
