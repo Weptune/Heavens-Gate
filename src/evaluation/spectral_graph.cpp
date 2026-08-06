@@ -239,13 +239,10 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     std::vector<float> v_next(N, 0.0f);
     float max_lambda = 0.0f;
 
-    for (int iter = 0; iter < 6; iter++) {
+    for (int iter = 0; iter < 4; iter++) {
         float norm_sq = 0.0f;
         for (int i = 0; i < N; i++) {
-            float sum = 0.0f;
-            for (int j = 0; j < N; j++) {
-                sum += L[i * N + j] * v[j];
-            }
+            float sum = simd_dot_product(&L[i * N], v.data(), N);
             v_next[i] = sum;
             norm_sq += sum * sum;
         }
@@ -257,12 +254,12 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
         }
     }
 
-    // Global Fiedler value for spectral_gap computation
+    // Global Fiedler value for spectral_gap computation (4 iterations, AVX2 SIMD vectorized)
     std::vector<float> u(N);
     for (int i = 0; i < N; i++) u[i] = (i % 2 == 0) ? 1.0f : -1.0f;
 
     float global_fiedler = 0.0f;
-    for (int iter = 0; iter < 8; iter++) {
+    for (int iter = 0; iter < 5; iter++) {
         float mean = 0.0f;
         for (int i = 0; i < N; i++) mean += u[i];
         mean /= static_cast<float>(N);
@@ -270,10 +267,7 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
 
         float norm_sq = 0.0f;
         for (int i = 0; i < N; i++) {
-            float sum = max_lambda * u[i];
-            for (int j = 0; j < N; j++) {
-                sum -= L[i * N + j] * u[j];
-            }
+            float sum = max_lambda * u[i] - simd_dot_product(&L[i * N], u.data(), N);
             v_next[i] = sum;
             norm_sq += sum * sum;
         }
