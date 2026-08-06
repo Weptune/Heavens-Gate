@@ -36,9 +36,9 @@ while true; do
         src/visualization/exporter.cpp src/benchmark/metrics.cpp src/uci/uci.cpp \
         -o train_spectral_tropical
 
-    # 2. Run Self-Play & SGD Training (500 Games @ Depth 8, 80 Epochs, LR=0.0005)
-    echo "[2/4] Simulating 500 Games at Depth 8 and Training 80 Adam Epochs..."
-    ./train_spectral_tropical 500 8 80 0.0005
+    # 2. Run Self-Play & SGD Training (250 Games @ Depth 7, 80 Epochs, LR=0.0005)
+    echo "[2/4] Simulating 250 Games at Depth 7 and Training 80 Adam Epochs..."
+    ./train_spectral_tropical 250 7 80 0.0005
 
     # 3. Compile Engine Binary
     echo "[3/4] Compiling Engine (AVX2 SIMD Accelerated)..."
