@@ -22,6 +22,7 @@ public:
     void add_countermove(Move prev_move, Move countermove) noexcept;
 
     void score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move pv_move = Move(), Move prev_move = Move()) const noexcept;
+    static bool see_ge(const Board& board, Move m, int threshold) noexcept;
 };
 
 } // namespace heavensgate

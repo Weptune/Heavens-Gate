@@ -96,7 +96,8 @@ void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int p
                 default: break;
             }
 
-            scores[i] = 1000000 + (victim_val * 10 - attacker_val);
+            bool is_good_see = see_ge(board, m, 0);
+            scores[i] = (is_good_see ? 1000000 : -100000) + (victim_val * 10 - attacker_val);
         } else if (m.is_promotion()) {
             scores[i] = 900000;
         } else if (m.type() == MoveType::KingCastle || m.type() == MoveType::QueenCastle) {
@@ -129,6 +130,41 @@ void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int p
         moves[static_cast<size_t>(j + 1)] = key_move;
         scores[static_cast<size_t>(j + 1)] = key_score;
     }
+}
+
+bool MovePicker::see_ge(const Board& board, Move m, int threshold) noexcept {
+    if (!m.is_capture()) return threshold <= 0;
+
+    Piece victim = board.piece_at(m.to());
+    Piece attacker = board.piece_at(m.from());
+    if (victim == Piece::None && !m.is_ep()) return threshold <= 0;
+
+    int victim_val = PawnValue;
+    switch (piece_type_of(victim)) {
+        case PieceType::Pawn:   victim_val = PawnValue; break;
+        case PieceType::Knight: victim_val = KnightValue; break;
+        case PieceType::Bishop: victim_val = BishopValue; break;
+        case PieceType::Rook:   victim_val = RookValue; break;
+        case PieceType::Queen:  victim_val = QueenValue; break;
+        default: break;
+    }
+
+    int attacker_val = PawnValue;
+    switch (piece_type_of(attacker)) {
+        case PieceType::Pawn:   attacker_val = PawnValue; break;
+        case PieceType::Knight: attacker_val = KnightValue; break;
+        case PieceType::Bishop: attacker_val = BishopValue; break;
+        case PieceType::Rook:   attacker_val = RookValue; break;
+        case PieceType::Queen:  attacker_val = QueenValue; break;
+        default: break;
+    }
+
+    // Static balance: If victim value minus attacker value exceeds threshold, capture is good!
+    int swap = victim_val - threshold;
+    if (swap < 0) return false;
+    if (swap - attacker_val >= 0) return true;
+
+    return swap >= 0;
 }
 
 } // namespace heavensgate
