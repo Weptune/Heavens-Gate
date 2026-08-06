@@ -99,6 +99,8 @@ void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int p
             scores[i] = 1000000 + (victim_val * 10 - attacker_val);
         } else if (m.is_promotion()) {
             scores[i] = 900000;
+        } else if (m.type() == MoveType::KingCastle || m.type() == MoveType::QueenCastle) {
+            scores[i] = 850000;
         } else if (m == killer1) {
             scores[i] = 800000;
         } else if (m == killer2) {
