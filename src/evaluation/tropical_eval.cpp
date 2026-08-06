@@ -196,6 +196,8 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     x[12] = (feat.king_shield_us - feat.king_shield_them) * 3.0f;              // King shield
     x[13] = static_cast<float>(passed_diff) * 4.0f;                           // Passed pawns
     x[14] = static_cast<float>(passed_diff) * (1.0f - feat.game_phase) * 5.0f; // EG Passed pawns
+    x[15] = (feat.king_pressure_us / (feat.king_pressure_them + 1.0f)) * 5.0f; // Attack Ratio
+
     // Phase 2 Residual Skip-Connection Cross-Terms (x16..x21)
     // Residual formulation guarantees base features (x0..x15) are 100% protected,
     // while cross-terms provide strictly positive non-linear boosters.
