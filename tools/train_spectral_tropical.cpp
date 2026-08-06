@@ -287,8 +287,8 @@ int main(int argc, char* argv[]) {
     // Append new round samples to rolling buffer
     dataset_buffer.insert(dataset_buffer.end(), dataset.begin(), dataset.end());
 
-    // Trim to most recent 300,000 samples
-    constexpr size_t MAX_BUFFER_SIZE = 300000;
+    // Trim to most recent 500,000 samples
+    constexpr size_t MAX_BUFFER_SIZE = 500000;
     if (dataset_buffer.size() > MAX_BUFFER_SIZE) {
         size_t excess = dataset_buffer.size() - MAX_BUFFER_SIZE;
         dataset_buffer.erase(dataset_buffer.begin(), dataset_buffer.begin() + excess);
