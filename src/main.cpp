@@ -103,6 +103,10 @@ void run_automated_tournament(int num_games, int depth) {
     SearchEngine master_engine;
     SearchEngine baseline_engine;
 
+    // Allocate 256 MB Transposition Table for both engines in tournament matches
+    master_engine.tt().resize(256 * 1024 * 1024);
+    baseline_engine.tt().resize(256 * 1024 * 1024);
+
     std::ofstream pgn_file("tournament_results.pgn");
 
     for (int g = 1; g <= num_games; ++g) {

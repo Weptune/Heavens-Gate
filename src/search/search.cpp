@@ -153,8 +153,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     Color us = board.side_to_move();
     bool in_chk = MoveGenerator::in_check(board, us);
 
-    // Bounded Check Extension (ply < 4) to prevent search depth explosion in self-play
-    if (in_chk && ply < 4 && depth > 1) {
+    // Check Extension (ply < 16) to prevent checkmate blind spots in middlegame/endgame
+    if (in_chk && ply < 16 && depth > 1) {
         depth++;
     }
 
