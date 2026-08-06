@@ -349,6 +349,7 @@ int main(int argc, char* argv[]) {
         if (line.empty()) continue;
 
         if (line == "uci") {
+            Evaluator::set_mode(EvalMode::SpectralTropical);
             std::cout << "id name Heaven's Gate Master Edition\n";
             std::cout << "id author DeepMind Antigravity\n";
             std::cout << "uciok" << std::endl;

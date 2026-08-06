@@ -76,15 +76,22 @@ void UCI::loop() {
     FEN::parse(FEN::StartPOS, board);
     SearchEngine engine;
 
+    // Set SpectralTropical evaluation mode and allocate 256MB TT
+    Evaluator::set_mode(EvalMode::SpectralTropical);
+    engine.tt().resize(256);
+
     std::string line;
     while (std::getline(std::cin, line)) {
         if (line == "uci") {
-            std::cout << "id name Heaven's Gate 16D (Spectral-Tropical Edition)\n";
-            std::cout << "id author Antigravity Math Team\n";
+            std::cout << "id name Heaven's Gate Master Edition\n";
+            std::cout << "id author DeepMind Antigravity\n";
             std::cout << "uciok" << std::endl;
         } else if (line == "isready") {
+            Evaluator::set_mode(EvalMode::SpectralTropical);
             std::cout << "readyok" << std::endl;
         } else if (line == "ucinewgame") {
+            Evaluator::set_mode(EvalMode::SpectralTropical);
+            board.clear();
             FEN::parse(FEN::StartPOS, board);
         } else if (line.rfind("position", 0) == 0) {
             handle_position(line, board);
