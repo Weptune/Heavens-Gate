@@ -422,7 +422,8 @@ int main(int argc, char* argv[]) {
                     float v_hat = adam.v_w[i] / denom2;
 
                     sec.w[i] -= (lr * m_hat) / (std::sqrt(v_hat) + eps);
-                    sec.w[i] = std::max(0.0f, std::min(5.0f, sec.w[i]));
+                    float min_w = (i == 4) ? 0.20f : ((i == 1 || i == 5 || i == 10) ? 0.10f : 0.0f);
+                    sec.w[i] = std::max(min_w, std::min(5.0f, sec.w[i]));
                 }
 
                 // Sector bias

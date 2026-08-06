@@ -265,9 +265,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         if (i == 0) {
             score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
         } else {
-            // Late Move Reductions (LMR) for quiet moves
-            if (i >= 4 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk) {
-                int reduction = 1 + static_cast<int>(std::log(depth) * std::log(i + 1) / 2.5);
+            // History-Based Late Move Reductions (LMR) for quiet moves
+            if (i >= 3 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk) {
+                int reduction = 1 + static_cast<int>(std::log(depth) * std::log(i + 1) / 2.2);
+                int history_val = move_picker_.get_history_score(us, m);
+                if (history_val > 500) reduction = std::max(1, reduction - 1);
                 int reduced_depth = std::max(1, depth - 1 - reduction);
 
                 score = -negamax_alphabeta(board, reduced_depth, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node);

@@ -38,6 +38,13 @@ void MovePicker::add_history_score(Color side, Move move, int depth) noexcept {
     }
 }
 
+int MovePicker::get_history_score(Color c, Move move) const noexcept {
+    size_t c_idx = static_cast<size_t>(c);
+    size_t from_idx = static_cast<size_t>(move.from());
+    size_t to_idx = static_cast<size_t>(move.to());
+    return history_scores_[c_idx][from_idx][to_idx];
+}
+
 void MovePicker::add_countermove(Move prev_move, Move move) noexcept {
     size_t from_idx = static_cast<size_t>(prev_move.from());
     size_t to_idx = static_cast<size_t>(prev_move.to());

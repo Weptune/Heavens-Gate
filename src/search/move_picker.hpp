@@ -18,6 +18,7 @@ public:
     void clear() noexcept;
     void add_killer_move(int ply, Move m) noexcept;
     void add_history_score(Color c, Move m, int depth) noexcept;
+    int get_history_score(Color c, Move m) const noexcept;
     void add_countermove(Move prev_move, Move countermove) noexcept;
 
     void score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move pv_move = Move(), Move prev_move = Move()) const noexcept;

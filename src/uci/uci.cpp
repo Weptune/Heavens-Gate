@@ -1,10 +1,14 @@
 #include "uci.hpp"
 #include "../core/fen.hpp"
+#include "../core/polyglot.hpp"
 #include <iostream>
 #include <sstream>
 #include <vector>
 
 namespace heavensgate {
+
+static PolyGlotBook uci_book;
+static bool uci_book_attempted = false;
 
 void UCI::handle_position(const std::string& line, Board& board) {
     std::stringstream ss(line);
@@ -39,6 +43,20 @@ void UCI::handle_position(const std::string& line, Board& board) {
 }
 
 void UCI::handle_go(const std::string& line, Board& board, SearchEngine& engine) {
+    if (!uci_book_attempted) {
+        uci_book_attempted = true;
+        uci_book.load("performance.bin");
+        if (!uci_book.is_loaded()) uci_book.load("tools/performance.bin");
+    }
+
+    if (uci_book.is_loaded()) {
+        Move book_move = uci_book.probe(board);
+        if (static_cast<bool>(book_move)) {
+            std::cout << "bestmove " << move_to_uci(book_move) << std::endl;
+            return;
+        }
+    }
+
     std::stringstream ss(line);
     std::string token;
     ss >> token; // "go"
@@ -61,7 +79,6 @@ void UCI::handle_go(const std::string& line, Board& board, SearchEngine& engine)
     } else if (wtime > 0 || btime > 0) {
         int my_time = (board.side_to_move() == Color::White) ? wtime : btime;
         int my_inc  = (board.side_to_move() == Color::White) ? winc  : binc;
-        // Allocate time per move: time/35 + 80% increment, capped at 80% of remaining clock
         double alloc = (my_time / 35.0) + (my_inc * 0.8);
         time_ms = std::min(alloc, my_time * 0.8);
     }
@@ -76,7 +93,6 @@ void UCI::loop() {
     FEN::parse(FEN::StartPOS, board);
     SearchEngine engine;
 
-    // Set SpectralTropical evaluation mode and allocate 256MB TT
     Evaluator::set_mode(EvalMode::SpectralTropical);
     engine.tt().resize(256);
 
