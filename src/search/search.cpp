@@ -277,7 +277,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             }
 
             // PVS Re-Search: If zero-window search raised alpha, re-search with full [alpha, beta] window!
-            if (score > alpha) {
+            if (score > alpha && score < beta) {
                 score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
             }
         }
