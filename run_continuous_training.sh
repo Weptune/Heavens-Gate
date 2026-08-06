@@ -24,9 +24,9 @@ while true; do
     echo "========================================================================="
     echo ""
 
-    # 1. Compile Trainer with OpenMP
-    echo "[1/4] Compiling Trainer..."
-    g++ -std=c++20 -O3 -fopenmp -Isrc tools/train_spectral_tropical.cpp \
+    # 1. Compile Trainer with OpenMP & AVX2 SIMD Acceleration
+    echo "[1/4] Compiling Trainer (AVX2 SIMD Accelerated)..."
+    g++ -std=c++20 -O3 -mavx2 -mfma -fopenmp -Isrc tools/train_spectral_tropical.cpp \
         src/board/board.cpp src/core/fen.cpp src/core/zobrist.cpp src/core/polyglot.cpp \
         src/movegen/magic.cpp src/movegen/attack_masks.cpp src/movegen/movegen.cpp src/movegen/perft.cpp \
         src/evaluation/pst.cpp src/evaluation/eval_features.cpp src/evaluation/nnue.cpp \
@@ -41,8 +41,8 @@ while true; do
     ./train_spectral_tropical 500 8 80 0.0005
 
     # 3. Compile Engine Binary
-    echo "[3/4] Compiling Engine..."
-    g++ -std=c++20 -O3 -Isrc src/main.cpp \
+    echo "[3/4] Compiling Engine (AVX2 SIMD Accelerated)..."
+    g++ -std=c++20 -O3 -mavx2 -mfma -Isrc src/main.cpp \
         src/board/board.cpp src/core/fen.cpp src/core/zobrist.cpp src/core/polyglot.cpp \
         src/movegen/magic.cpp src/movegen/attack_masks.cpp src/movegen/movegen.cpp src/movegen/perft.cpp \
         src/evaluation/pst.cpp src/evaluation/eval_features.cpp src/evaluation/nnue.cpp \

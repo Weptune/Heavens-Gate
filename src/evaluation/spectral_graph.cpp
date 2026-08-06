@@ -6,6 +6,36 @@
 #include <numeric>
 #include <iostream>
 
+#if defined(__AVX2__) || defined(__AVX__)
+#include <immintrin.h>
+
+static inline float simd_dot_product(const float* a, const float* b, int n) {
+    int i = 0;
+    float sum = 0.0f;
+#if defined(__AVX2__)
+    __m256 acc = _mm256_setzero_ps();
+    for (; i <= n - 8; i += 8) {
+        __m256 va = _mm256_loadu_ps(a + i);
+        __m256 vb = _mm256_loadu_ps(b + i);
+        acc = _mm256_fmadd_ps(va, vb, acc);
+    }
+    alignas(32) float tmp[8];
+    _mm256_storeu_ps(tmp, acc);
+    sum = tmp[0] + tmp[1] + tmp[2] + tmp[3] + tmp[4] + tmp[5] + tmp[6] + tmp[7];
+#endif
+    for (; i < n; i++) {
+        sum += a[i] * b[i];
+    }
+    return sum;
+}
+#else
+static inline float simd_dot_product(const float* a, const float* b, int n) {
+    float sum = 0.0f;
+    for (int i = 0; i < n; i++) sum += a[i] * b[i];
+    return sum;
+}
+#endif
+
 namespace heavensgate {
 
 float SpectralGraph::compute_edge_weight(Piece p1, Square sq1, Piece p2, Square sq2) {
@@ -91,11 +121,10 @@ static float compute_side_fiedler(
     std::vector<float> v_next(N, 0.0f);
     float max_lambda = 0.0f;
 
-    for (int iter = 0; iter < 6; iter++) {
+    for (int iter = 0; iter < 4; iter++) {
         float norm_sq = 0.0f;
         for (int i = 0; i < N; i++) {
-            float sum = 0.0f;
-            for (int j = 0; j < N; j++) sum += L[i * N + j] * v[j];
+            float sum = simd_dot_product(&L[i * N], v.data(), N);
             v_next[i] = sum;
             norm_sq += sum * sum;
         }
@@ -108,24 +137,23 @@ static float compute_side_fiedler(
 
     if (max_lambda < 1e-6f) return 0.0f;
 
-    // Inverse Power Iteration for Fiedler value λ₂
+    // Inverse Power Iteration for Fiedler value λ₂ (4 iterations, AVX2 SIMD vectorized)
     // Iterate on M = (max_lambda * I - L), deflating the constant eigenvector
     std::vector<float> u(N);
     for (int i = 0; i < N; i++) u[i] = (i % 2 == 0) ? 1.0f : -1.0f;
 
     float fiedler = 0.0f;
-    for (int iter = 0; iter < 8; iter++) {
+    for (int iter = 0; iter < 5; iter++) {
         // Project orthogonal to constant eigenvector
         float mean = 0.0f;
         for (int i = 0; i < N; i++) mean += u[i];
         mean /= static_cast<float>(N);
         for (int i = 0; i < N; i++) u[i] -= mean;
 
-        // Multiply by M = (max_lambda * I - L)
+        // Multiply by M = (max_lambda * I - L) using AVX2 SIMD dot product
         float norm_sq = 0.0f;
         for (int i = 0; i < N; i++) {
-            float sum = max_lambda * u[i];
-            for (int j = 0; j < N; j++) sum -= L[i * N + j] * u[j];
+            float sum = max_lambda * u[i] - simd_dot_product(&L[i * N], u.data(), N);
             v_next[i] = sum;
             norm_sq += sum * sum;
         }
