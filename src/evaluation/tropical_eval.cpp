@@ -217,7 +217,7 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
 
 int TropicalEvaluator::evaluate(const Board& board) const {
     auto res = evaluate_detailed(board);
-    return res.score;
+    return res.score + 15; // +15 cp Tempo Bonus for side to move!
 }
 
 TropicalEvaluator::EvalResult TropicalEvaluator::evaluate_detailed(const Board& board) const {
