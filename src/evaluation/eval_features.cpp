@@ -224,10 +224,20 @@ int EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
         }
     };
 
-    check_attackers(PieceType::Knight, 2, [](Square s, Bitboard) { return AttackMasks::knight_attacks(s); });
-    check_attackers(PieceType::Bishop, 2, [](Square s, Bitboard o) { return AttackMasks::bishop_attacks(s, o); });
-    check_attackers(PieceType::Rook,   3, [](Square s, Bitboard o) { return AttackMasks::rook_attacks(s, o); });
-    check_attackers(PieceType::Queen,  5, [](Square s, Bitboard o) { return AttackMasks::queen_attacks(s, o); });
+    check_attackers(PieceType::Knight, 3, [](Square s, Bitboard) { return AttackMasks::knight_attacks(s); });
+    check_attackers(PieceType::Bishop, 3, [](Square s, Bitboard o) { return AttackMasks::bishop_attacks(s, o); });
+    check_attackers(PieceType::Rook,   5, [](Square s, Bitboard o) { return AttackMasks::rook_attacks(s, o); });
+    check_attackers(PieceType::Queen,  8, [](Square s, Bitboard o) { return AttackMasks::queen_attacks(s, o); });
+
+    // Open/Semi-Open File King Danger Penalty (-50 cp per heavy piece aligned on King file)
+    File kf = file_of(ksq);
+    Bitboard enemy_rooks_queens = board.pieces(make_piece(~side, PieceType::Rook)) | board.pieces(make_piece(~side, PieceType::Queen));
+    while (enemy_rooks_queens) {
+        Square sq = pop_lsb(enemy_rooks_queens);
+        if (std::abs(static_cast<int>(file_of(sq)) - static_cast<int>(kf)) <= 1) {
+            score -= 50; // Penalty for opponent heavy pieces aligned on/near King file!
+        }
+    }
 
     size_t danger_idx = std::min(static_cast<size_t>(attacker_weight), static_cast<size_t>(31));
     score -= KingDangerTable[danger_idx];
