@@ -178,7 +178,7 @@ void run_automated_tournament(int num_games, int depth) {
             SearchResult res;
             if (current_is_master) {
                 Evaluator::set_mode(EvalMode::SpectralTropical);
-                res = master_engine.search_alphabeta(board, depth, true, true);
+                res = master_engine.search_smp(board, depth, 8);
             } else {
                 Evaluator::set_mode(EvalMode::MasterPositional);
                 res = baseline_engine.search_alphabeta(board, depth, true, true);
