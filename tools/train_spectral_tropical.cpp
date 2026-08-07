@@ -357,8 +357,26 @@ int main(int argc, char* argv[]) {
     std::cout << "[SpectralTropical] Training via Adam Optimizer (Epochs=" << epochs
               << ", LR=" << lr << ", Decay=" << lr_decay << ")...\n\n";
 
+    std::cout << "[SpectralTropical] Pre-computing 22D Feature Vectors for " << active_dataset.size() << " positions...\n";
+    struct CachedSample {
+        std::array<float, TropicalEvaluator::NUM_FEATURES> features;
+        size_t bucket;
+        float target;
+    };
+    std::vector<CachedSample> cached_dataset(active_dataset.size());
+
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t i = 0; i < active_dataset.size(); i++) {
+        const auto& s = active_dataset[i];
+        cached_dataset[i].features = model.extract_features(s.board);
+        Square ksq = s.board.king_square(s.board.side_to_move() == Color::White ? Color::Black : Color::White);
+        cached_dataset[i].bucket = model.get_king_bucket(ksq);
+        cached_dataset[i].target = s.target;
+    }
+    std::cout << "[SpectralTropical] Feature Caching Complete! Launching 80-Epoch Adam SGD...\n\n";
+
     std::mt19937 shuffle_rng(123);
-    std::vector<size_t> indices(active_dataset.size());
+    std::vector<size_t> indices(cached_dataset.size());
     std::iota(indices.begin(), indices.end(), 0);
 
     float final_rmse = 0.0f;
@@ -369,25 +387,24 @@ int main(int argc, char* argv[]) {
         size_t count = 0;
 
         for (size_t idx : indices) {
-            const auto& sample = active_dataset[idx];
+            const auto& sample = cached_dataset[idx];
             timestep++;
 
-            // 1. Extract feature vector & smooth Log-Sum-Exp evaluation
-            auto features = model.extract_features(sample.board);
-            auto eval_res = model.evaluate_detailed(sample.board);
+            // 1. Fast evaluation from pre-computed feature vector
+            auto eval_res = model.evaluate_detailed_from_features(sample.features, sample.bucket);
 
             // 2. Compute prediction error
             float error = std::max(-1000.0f, std::min(1000.0f, static_cast<float>(eval_res.score) - sample.target));
             total_loss += error * error;
             count++;
 
-            size_t base_sec_idx = static_cast<size_t>(eval_res.bucket) * TropicalEvaluator::NUM_SECTORS_PER_BUCKET;
+            size_t base_sec_idx = sample.bucket * TropicalEvaluator::NUM_SECTORS_PER_BUCKET;
 
-            // 3. Softmax-Weighted Gradient Distribution across ALL 32 sectors of active King Bucket
+            // 3. Softmax-Weighted Gradient Distribution across active King Bucket
             for (size_t j = 0; j < TropicalEvaluator::NUM_SECTORS_PER_BUCKET; j++) {
                 size_t sec_idx = base_sec_idx + j;
                 float prob = eval_res.softmax_probs[j];
-                if (prob < 1e-4f) continue; // Skip negligible sector activations
+                if (prob < 1e-4f) continue;
 
                 auto& sec = model.sectors()[sec_idx];
                 auto& adam = adam_state[sec_idx];
@@ -396,7 +413,7 @@ int main(int argc, char* argv[]) {
 
                 // Material weight w[0] (learned inside sectors, bounded [0.8, 1.2])
                 {
-                    float grad0 = (sector_error * features[0]) / 100.0f + weight_decay * (sec.w[0] - 1.0f);
+                    float grad0 = (sector_error * sample.features[0]) / 100.0f + weight_decay * (sec.w[0] - 1.0f);
                     grad0 = std::max(-50.0f, std::min(50.0f, grad0));
                     adam.m_w[0] = beta1 * adam.m_w[0] + (1.0f - beta1) * grad0;
                     adam.v_w[0] = beta2 * adam.v_w[0] + (1.0f - beta2) * (grad0 * grad0);
@@ -410,7 +427,7 @@ int main(int argc, char* argv[]) {
 
                 // Positional weights w[1..21] (non-negative bounds [0.0, 5.0])
                 for (size_t i = 1; i < TropicalEvaluator::NUM_FEATURES; i++) {
-                    float grad = (sector_error * features[i]) / 100.0f + weight_decay * sec.w[i];
+                    float grad = (sector_error * sample.features[i]) / 100.0f + weight_decay * sec.w[i];
                     grad = std::max(-50.0f, std::min(50.0f, grad));
 
                     adam.m_w[i] = beta1 * adam.m_w[i] + (1.0f - beta1) * grad;

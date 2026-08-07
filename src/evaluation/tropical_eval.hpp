@@ -60,6 +60,8 @@ public:
         std::array<float, NUM_SECTORS_PER_BUCKET> softmax_probs;
     };
     EvalResult evaluate_detailed(const Board& board) const;
+    EvalResult evaluate_detailed_from_features(const std::array<float, NUM_FEATURES>& features, size_t bucket) const;
+    static size_t get_king_bucket(Square opp_king_sq);
     std::pair<int, size_t> evaluate_with_sector(const Board& board) const;
 
     // Weight management

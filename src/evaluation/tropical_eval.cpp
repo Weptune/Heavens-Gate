@@ -268,6 +268,53 @@ TropicalEvaluator::EvalResult TropicalEvaluator::evaluate_detailed(const Board& 
     return {score, bucket, base_sec_idx + winning_sector, softmax_probs};
 }
 
+size_t TropicalEvaluator::get_king_bucket(Square opp_king_sq) {
+    if (opp_king_sq == Square::None) return 0;
+    int rank = static_cast<int>(rank_of(opp_king_sq));
+    int file = static_cast<int>(file_of(opp_king_sq));
+    if (file >= 4) file = 7 - file;
+    int b = (rank / 2) * 2 + (file / 2);
+    return static_cast<size_t>(std::max(0, std::min(9, b)));
+}
+
+TropicalEvaluator::EvalResult TropicalEvaluator::evaluate_detailed_from_features(const std::array<float, NUM_FEATURES>& x, size_t bucket) const {
+    size_t base_sec_idx = bucket * NUM_SECTORS_PER_BUCKET;
+
+    std::array<float, NUM_SECTORS_PER_BUCKET> sector_vals;
+    float max_val = -1e9f;
+    size_t winning_sector = 0;
+
+    for (size_t j = 0; j < NUM_SECTORS_PER_BUCKET; j++) {
+        const auto& sec = sectors_[base_sec_idx + j];
+        float val = sec.b;
+        for (size_t i = 0; i < NUM_FEATURES; i++) {
+            val += sec.w[i] * x[i];
+        }
+        sector_vals[j] = val;
+        if (val > max_val) {
+            max_val = val;
+            winning_sector = j;
+        }
+    }
+
+    float sum_exp = 0.0f;
+    std::array<float, NUM_SECTORS_PER_BUCKET> softmax_probs{};
+    for (size_t j = 0; j < NUM_SECTORS_PER_BUCKET; j++) {
+        float exp_val = std::exp((sector_vals[j] - max_val) / SMOOTH_TAU);
+        softmax_probs[j] = exp_val;
+        sum_exp += exp_val;
+    }
+    for (size_t j = 0; j < NUM_SECTORS_PER_BUCKET; j++) {
+        softmax_probs[j] /= sum_exp;
+    }
+
+    float smooth_eval_units = max_val + SMOOTH_TAU * (std::log(sum_exp) - std::log(static_cast<float>(NUM_SECTORS_PER_BUCKET)));
+    float smooth_eval = smooth_eval_units * 10.0f;
+    int score = static_cast<int>(std::max(-30000.0f, std::min(30000.0f, smooth_eval)));
+
+    return {score, static_cast<int>(bucket), base_sec_idx + winning_sector, softmax_probs};
+}
+
 std::pair<int, size_t> TropicalEvaluator::evaluate_with_sector(const Board& board) const {
     auto res = evaluate_detailed(board);
     return {res.score, res.winning_sector};
