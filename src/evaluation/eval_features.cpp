@@ -171,6 +171,14 @@ int EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
         int center_dist = std::max(std::abs(kr_idx - 3), std::abs(kf_idx - 3));
         score += (4 - center_dist) * 10; // Up to +40 cp for King in center in endgames!
     } else {
+        // 0. Uncastled Exposed King Penalty (-120 cp for early opening King walks to e2/d2/f2 while Queens on board)
+        int kr = static_cast<int>(rank_of(ksq));
+        int kf = static_cast<int>(file_of(ksq));
+        if ((side == Color::White && kr >= 1 && kr <= 3 && kf >= 2 && kf <= 5) ||
+            (side == Color::Black && kr >= 4 && kr <= 6 && kf >= 2 && kf <= 5)) {
+            score -= 120; // Severe opening King walk penalty!
+        }
+
         // 1. Middlegame Pawn Shield Bonus
         File kf = file_of(ksq);
         Rank kr = rank_of(ksq);
