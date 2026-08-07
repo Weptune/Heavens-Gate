@@ -110,8 +110,10 @@ void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int p
 
             bool is_good_see = see_ge(board, m, 0);
             scores[i] = (is_good_see ? 1000000 : -100000) + (victim_val * 10 - attacker_val);
+        } else if (m.type() == MoveType::PromoQueen || m.type() == MoveType::PromoCaptureQueen) {
+            scores[i] = 950000;
         } else if (m.is_promotion()) {
-            scores[i] = 900000;
+            scores[i] = 200000;
         } else if (m.type() == MoveType::KingCastle || m.type() == MoveType::QueenCastle) {
             scores[i] = 850000;
         } else if (m == killer1) {
@@ -124,6 +126,13 @@ void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int p
             size_t from_idx = static_cast<size_t>(m.from());
             size_t to_idx   = static_cast<size_t>(m.to());
             scores[i] = history_scores_[c_idx][from_idx][to_idx];
+            
+            // Check move bonus (+750k) if move delivers check to opponent
+            Board check_test = board;
+            check_test.make_move(m);
+            if (MoveGenerator::in_check(check_test, ~side)) {
+                scores[i] += 750000;
+            }
         }
     }
 
