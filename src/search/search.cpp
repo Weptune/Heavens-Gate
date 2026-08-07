@@ -508,6 +508,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
     SearchResult final_result;
     Move best_pv_move = Move();
     int last_score = 0;
+    int stable_move_count = 0;
 
     for (int d = 1; d <= max_depth; ++d) {
         metrics_tracker_.set_depth(d);
@@ -516,6 +517,16 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
         MoveGenerator::generate_legal_moves(board, moves);
 
         if (moves.empty()) break;
+
+        // 1. Single Legal Move Fast Path (0ms spent on forced moves)
+        if (moves.size() == 1) {
+            final_result.best_move = moves[0];
+            final_result.best_score = last_score;
+            final_result.completed_depth = d;
+            metrics_tracker_.stop_timer();
+            final_result.metrics = metrics_tracker_.get_metrics();
+            return final_result;
+        }
 
         move_picker_.score_and_sort_moves(board, moves, 0, best_pv_move);
 
@@ -571,11 +582,17 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
             }
         }
 
-        if (interrupted) {
-            break;
+        if (interrupted) break;
+
+        // 2. Smart Move Stability Check: Count how many depths best_move remained stable
+        if (current_best_move == best_pv_move) {
+            stable_move_count++;
+        } else {
+            stable_move_count = 0;
         }
 
         best_pv_move = current_best_move;
+        int eval_diff = std::abs(current_best_score - last_score);
         last_score   = current_best_score;
 
         final_result.best_move = current_best_move;
@@ -584,6 +601,11 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
         final_result.completed_depth = d;
         final_result.tt_hits = tt_.hits();
         final_result.q_nodes = q_nodes_;
+
+        // 3. Smart Early Termination: If position is calm (eval_diff < 15cp) and best_move is stable for 3 depths at d >= 6
+        if (d >= 6 && stable_move_count >= 2 && eval_diff < 15) {
+            break; // Positional evaluation has settled! Stop early and save CPU time!
+        }
 
         if (is_time_up()) break;
     }
