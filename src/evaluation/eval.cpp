@@ -88,6 +88,19 @@ int Evaluator::evaluate(const Board& board) {
     }
 
     if (current_mode_ == EvalMode::SpectralTropical) {
+        // Tier 1: Fast O(1) Bitmask Material + PST Eval (~5 nanoseconds)
+        int white_fast = evaluate_side(board, Color::White);
+        int black_fast = evaluate_side(board, Color::Black);
+        int fast_diff  = (board.side_to_move() == Color::White) ? (white_fast - black_fast) : (black_fast - white_fast);
+
+        // Tier 1 Lazy Cutoff Threshold (+/- 450 cp):
+        // If one side has a clear material/PST lead (e.g. up a Queen, Rook, or 2 pieces),
+        // skip expensive Power Iteration eigensolvers and return Tier 1 eval!
+        if (std::abs(fast_diff) >= 450) {
+            return fast_diff + 15; // +15 cp Side-to-Move Tempo Bonus
+        }
+
+        // Tier 2: Full Spectral-Tropical Graph Eigensolver (High Precision for [-450, +450] cp)
         return TropicalEvaluator::instance().evaluate(board);
     }
 
