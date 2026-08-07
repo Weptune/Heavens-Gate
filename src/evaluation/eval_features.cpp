@@ -180,21 +180,21 @@ int EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
         }
 
         // 1. Middlegame Pawn Shield Bonus
-        File kf = file_of(ksq);
-        Rank kr = rank_of(ksq);
+        File kf_enum = file_of(ksq);
+        Rank kr_enum = rank_of(ksq);
 
         Bitboard shield_mask = EmptyBB;
-        if (side == Color::White && kr <= Rank::Rank3) {
+        if (side == Color::White && kr_enum <= Rank::Rank3) {
             for (int df = -1; df <= 1; ++df) {
-                int f_idx = static_cast<int>(kf) + df;
+                int f_idx = static_cast<int>(kf_enum) + df;
                 if (f_idx >= 0 && f_idx < 8) {
                     shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank2));
                     shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank3));
                 }
             }
-        } else if (side == Color::Black && kr >= Rank::Rank6) {
+        } else if (side == Color::Black && kr_enum >= Rank::Rank6) {
             for (int df = -1; df <= 1; ++df) {
-                int f_idx = static_cast<int>(kf) + df;
+                int f_idx = static_cast<int>(kf_enum) + df;
                 if (f_idx >= 0 && f_idx < 8) {
                     shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank7));
                     shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank6));
