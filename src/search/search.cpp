@@ -592,7 +592,53 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 }
 
 SearchResult SearchEngine::search_smp(Board& board, int max_depth, int num_threads) {
+    if (num_threads <= 1) {
+        return search_iterative_deepening(board, max_depth, 0.0);
+    }
+
+    MoveList moves;
+    MoveGenerator::generate_legal_moves(board, moves);
+    if (moves.empty()) {
+        return search_iterative_deepening(board, max_depth, 0.0);
+    }
+
+    metrics_tracker_.start_timer();
+    move_picker_.score_and_sort_moves(board, moves, 0);
+
+    SearchResult best_result;
+    best_result.best_score = -ScoreInfinity;
+    best_result.best_move = moves[0];
+
+    #if defined(_OPENMP)
+    #pragma omp parallel num_threads(num_threads)
+    {
+        SearchEngine thread_engine;
+        
+        #pragma omp for schedule(dynamic, 1)
+        for (size_t i = 0; i < moves.size(); i++) {
+            Move m = moves[i];
+            Board local_board = board;
+            local_board.make_move(m);
+
+            int score = -thread_engine.negamax_alphabeta(local_board, max_depth - 1, 1, -ScoreInfinity, ScoreInfinity, true, true, Move(), m, nullptr);
+
+            #pragma omp critical
+            {
+                if (score > best_result.best_score) {
+                    best_result.best_score = score;
+                    best_result.best_move = m;
+                }
+            }
+        }
+    }
+    #else
     return search_iterative_deepening(board, max_depth, 0.0);
+    #endif
+
+    metrics_tracker_.stop_timer();
+    best_result.completed_depth = max_depth;
+    best_result.metrics = metrics_tracker_.get_metrics();
+    return best_result;
 }
 
 } // namespace heavensgate
