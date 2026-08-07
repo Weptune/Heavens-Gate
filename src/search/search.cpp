@@ -425,6 +425,8 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
         if (static_cast<bool>(book_move)) {
             result.best_move = book_move;
             result.best_score = 0;
+            metrics_tracker_.stop_timer();
+            result.metrics = metrics_tracker_.get_metrics();
             return result;
         }
     }
@@ -499,6 +501,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
     max_time_ms_ = max_time_ms;
     time_stop_flag_ = false;
 
+    metrics_tracker_.reset();
     metrics_tracker_.start_timer();
     metrics_tracker_.set_version("v10.0 (Master Search Architecture)");
 

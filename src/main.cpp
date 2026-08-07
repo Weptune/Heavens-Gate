@@ -103,9 +103,11 @@ void run_automated_tournament(int num_games, int depth) {
     SearchEngine master_engine;
     SearchEngine baseline_engine;
 
-    // Allocate 256 MB Transposition Table for both engines in tournament matches
+    // Allocate 256 MB Transposition Table and load PolyGlot opening book
     master_engine.tt().resize(256);
     baseline_engine.tt().resize(256);
+    master_engine.polyglot_book().load("performance.bin");
+    baseline_engine.polyglot_book().load("performance.bin");
 
     std::ofstream pgn_file("tournament_results.pgn");
 
@@ -178,7 +180,7 @@ void run_automated_tournament(int num_games, int depth) {
             SearchResult res;
             if (current_is_master) {
                 Evaluator::set_mode(EvalMode::SpectralTropical);
-                res = master_engine.search_smp(board, depth, 8);
+                res = master_engine.search_iterative_deepening(board, depth, 1500.0);
             } else {
                 Evaluator::set_mode(EvalMode::MasterPositional);
                 res = baseline_engine.search_alphabeta(board, depth, true, true);

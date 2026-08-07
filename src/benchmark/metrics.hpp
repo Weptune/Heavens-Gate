@@ -28,6 +28,7 @@ private:
     EngineMetrics current_metrics_;
 
 public:
+    void reset() { current_metrics_ = EngineMetrics{}; }
     void start_timer();
     void stop_timer();
     
