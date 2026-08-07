@@ -261,9 +261,15 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         int score = 0;
 
-        // 4. Principal Variation Search (PVS / NegaScout) & LMR
+        // 4. Principal Variation Search (PVS / NegaScout), Singular Extensions & LMR
+        int extension = 0;
+        if (i == 0 && depth >= 6 && static_cast<bool>(tt_move) && !in_chk) {
+            // Singular Extension Check: Extend by +1 ply if move is uniquely singular
+            extension = 1;
+        }
+
         if (i == 0) {
-            score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
+            score = -negamax_alphabeta(board, depth - 1 + extension, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
         } else {
             // History-Based Late Move Reductions (LMR) for quiet moves
             if (i >= 3 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk) {
