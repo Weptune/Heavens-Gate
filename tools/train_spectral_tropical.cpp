@@ -400,8 +400,8 @@ int main(int argc, char* argv[]) {
                     grad0 = std::max(-50.0f, std::min(50.0f, grad0));
                     adam.m_w[0] = beta1 * adam.m_w[0] + (1.0f - beta1) * grad0;
                     adam.v_w[0] = beta2 * adam.v_w[0] + (1.0f - beta2) * (grad0 * grad0);
-                    float denom1 = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta1, std::min(timestep, 1000))));
-                    float denom2 = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta2, std::min(timestep, 1000))));
+                    float denom1 = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta1, timestep)));
+                    float denom2 = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta2, timestep)));
                     float m_hat0 = adam.m_w[0] / denom1;
                     float v_hat0 = adam.v_w[0] / denom2;
                     sec.w[0] -= (lr * m_hat0) / (std::sqrt(v_hat0) + eps);
@@ -416,8 +416,8 @@ int main(int argc, char* argv[]) {
                     adam.m_w[i] = beta1 * adam.m_w[i] + (1.0f - beta1) * grad;
                     adam.v_w[i] = beta2 * adam.v_w[i] + (1.0f - beta2) * (grad * grad);
 
-                    float denom1 = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta1, std::min(timestep, 1000))));
-                    float denom2 = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta2, std::min(timestep, 1000))));
+                    float denom1 = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta1, timestep)));
+                    float denom2 = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta2, timestep)));
                     float m_hat = adam.m_w[i] / denom1;
                     float v_hat = adam.v_w[i] / denom2;
 
@@ -433,8 +433,8 @@ int main(int argc, char* argv[]) {
                 adam.m_b = beta1 * adam.m_b + (1.0f - beta1) * grad_b;
                 adam.v_b = beta2 * adam.v_b + (1.0f - beta2) * (grad_b * grad_b);
 
-                float denom1_b = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta1, std::min(timestep, 1000))));
-                float denom2_b = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta2, std::min(timestep, 1000))));
+                float denom1_b = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta1, timestep)));
+                float denom2_b = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta2, timestep)));
                 float m_hat_b = adam.m_b / denom1_b;
                 float v_hat_b = adam.v_b / denom2_b;
 

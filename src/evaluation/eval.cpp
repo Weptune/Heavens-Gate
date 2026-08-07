@@ -99,7 +99,7 @@ int Evaluator::evaluate(const Board& board) {
 }
 
 static constexpr int MAX_SEARCH_PLY = 256;
-static TensorMPSQuantized::QuantizedEnvironment s_quant_env[MAX_SEARCH_PLY];
+static thread_local TensorMPSQuantized::QuantizedEnvironment s_quant_env[MAX_SEARCH_PLY];
 
 void Evaluator::reset_incremental_cache() {
     for (int i = 0; i < MAX_SEARCH_PLY; i++) {
