@@ -15,6 +15,18 @@ void MovePicker::clear() noexcept {
     countermoves_.fill({});
 }
 
+void MovePicker::age_history() noexcept {
+    killer_moves_.fill({});
+    countermoves_.fill({});
+    for (auto& c : history_scores_) {
+        for (auto& f : c) {
+            for (auto& val : f) {
+                val /= 2;
+            }
+        }
+    }
+}
+
 void MovePicker::add_killer_move(int ply, Move move) noexcept {
     if (ply >= 128) return;
     if (killer_moves_[static_cast<size_t>(ply)][0] != move) {

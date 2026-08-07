@@ -16,6 +16,7 @@ public:
     MovePicker();
 
     void clear() noexcept;
+    void age_history() noexcept;
     void add_killer_move(int ply, Move m) noexcept;
     void add_history_score(Color c, Move m, int depth) noexcept;
     int get_history_score(Color c, Move m) const noexcept;
