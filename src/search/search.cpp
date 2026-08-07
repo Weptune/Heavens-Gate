@@ -486,7 +486,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
 SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_depth, double max_time_ms) {
     pv_table_.clear();
     move_picker_.age_history();
-    tt_.clear();
+    // Persistent TT across game turns (do not clear TT between moves)
     q_nodes_ = 0;
 
     search_start_time_ = std::chrono::high_resolution_clock::now();
