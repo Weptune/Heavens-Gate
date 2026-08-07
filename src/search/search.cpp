@@ -584,4 +584,33 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
     return final_result;
 }
 
+SearchResult SearchEngine::search_smp(Board& board, int max_depth, int num_threads) {
+    if (num_threads <= 1) {
+        return search_iterative_deepening(board, max_depth, 0.0);
+    }
+
+    SearchResult master_result;
+    #if defined(_OPENMP)
+    #pragma omp parallel num_threads(num_threads)
+    {
+        Board thread_board = board;
+        SearchEngine thread_engine;
+        thread_engine.tt() = tt_; // Shared Transposition Table
+        
+        SearchResult res = thread_engine.search_iterative_deepening(thread_board, max_depth, 0.0);
+        #pragma omp critical
+        {
+            if (res.completed_depth > master_result.completed_depth || 
+               (res.completed_depth == master_result.completed_depth && res.best_score > master_result.best_score)) {
+                master_result = res;
+            }
+        }
+    }
+    #else
+    master_result = search_iterative_deepening(board, max_depth, 0.0);
+    #endif
+
+    return master_result;
+}
+
 } // namespace heavensgate
