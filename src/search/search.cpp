@@ -531,6 +531,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 
         while (true) {
             current_best_score = -ScoreInfinity;
+            int orig_alpha = alpha;
 
             for (const auto& m : moves) {
                 board.make_move(m);
@@ -558,7 +559,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 
             if (interrupted) break;
 
-            if (current_best_score <= alpha) {
+            if (current_best_score <= orig_alpha) {
                 alpha = -ScoreInfinity;
             } else if (current_best_score >= beta) {
                 beta = ScoreInfinity;
@@ -567,7 +568,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
             }
         }
 
-        if (interrupted && d > 1) {
+        if (interrupted) {
             break;
         }
 
