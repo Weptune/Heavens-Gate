@@ -296,8 +296,8 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         std::string cmd = argv[1];
         if (cmd == "tournament") {
-            int games = (argc > 2) ? std::stoi(argv[2]) : 50;
-            int depth = (argc > 3) ? std::stoi(argv[3]) : 3;
+            int games = (argc > 2) ? std::stoi(argv[2]) : 100;
+            int depth = (argc > 3) ? std::stoi(argv[3]) : 8;
             run_automated_tournament(games, depth);
             return 0;
         }
@@ -313,8 +313,8 @@ int main(int argc, char* argv[]) {
             UCI::loop();
             return 0;
         } else if (arg == "tournament") {
-            int games = (argc > 2) ? std::stoi(argv[2]) : 50;
-            int depth = (argc > 3) ? std::stoi(argv[3]) : 4;
+            int games = (argc > 2) ? std::stoi(argv[2]) : 100;
+            int depth = (argc > 3) ? std::stoi(argv[3]) : 8;
             run_automated_tournament(games, depth);
             return 0;
         }
@@ -325,7 +325,7 @@ int main(int argc, char* argv[]) {
     std::cout << "======================================================\n";
     std::cout << "Commands:\n";
     std::cout << "  uci                         - Switch to standard UCI Protocol mode\n";
-    std::cout << "  tournament [games] [depth]  - Run 50-game grandmaster tournament & save PGN\n";
+    std::cout << "  tournament [games] [depth]  - Run 100-game grandmaster tournament & save PGN\n";
     std::cout << "  id <depth> [time_ms]        - Run Iterative Deepening + PVS + Eval\n";
     std::cout << "  alphabeta <depth> / ab <d>  - Run Move-Ordered PVS search\n";
     std::cout << "  compare <depth>             - Compare Minimax vs Raw Alpha-Beta vs Master Search\n";
@@ -358,8 +358,8 @@ int main(int argc, char* argv[]) {
             UCI::loop();
             break;
         } else if (line.rfind("tournament", 0) == 0) {
-            int games = 50;
-            int depth = 4;
+            int games = 100;
+            int depth = 8;
             try {
                 std::stringstream ss(line);
                 std::string cmd;
