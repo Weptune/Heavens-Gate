@@ -392,7 +392,9 @@ int main(int argc, char* argv[]) {
                 auto& sec = model.sectors()[sec_idx];
                 auto& adam = adam_state[sec_idx];
 
-                float sector_error = error * prob;
+                // Smart Discrepancy Weighting: Bounded [1.0, 1.5] multiplier for hard positional edge-cases
+                float disc_weight = 1.0f + std::min(0.5f, std::abs(error) / 400.0f);
+                float sector_error = error * prob * disc_weight;
 
                 // Material weight w[0] (learned inside sectors, bounded [0.8, 1.2])
                 {
