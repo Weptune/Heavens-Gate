@@ -602,10 +602,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
         final_result.tt_hits = tt_.hits();
         final_result.q_nodes = q_nodes_;
 
-        // 3. Smart Early Termination: If position is calm (eval_diff < 15cp) and best_move is stable for 3 depths at d >= 6
-        if (d >= 6 && stable_move_count >= 2 && eval_diff < 15) {
-            break; // Positional evaluation has settled! Stop early and save CPU time!
-        }
+        // Always complete full depth 8 search to prevent tactical blunders!
 
         if (is_time_up()) break;
     }
