@@ -233,11 +233,16 @@ int EvalFeatures::evaluate_piece_activity(const Board& board, Color side) {
     Bitboard center_mask = square_bb(Square::d4) | square_bb(Square::e4) | square_bb(Square::d5) | square_bb(Square::e5);
     score += popcount(knights & center_mask) * 15;
 
-    // Rooks on Open File Bonus (+25 cp)
+    // Rooks on Open File Bonus (+25 cp) & 7th Rank Bonus (+35 cp)
     Bitboard all_pawns = board.pieces(Piece::WhitePawn) | board.pieces(Piece::BlackPawn);
+    Rank SeventhRank = (side == Color::White) ? Rank::Rank7 : Rank::Rank2;
     while (rooks) {
         Square rsq = pop_lsb(rooks);
         File f = file_of(rsq);
+        Rank r = rank_of(rsq);
+        if (r == SeventhRank) {
+            score += 35; // Rook on 7th Rank!
+        }
         if ((all_pawns & file_bb(f)) == EmptyBB) {
             score += 25; // Open file
         } else if ((board.pieces(make_piece(side, PieceType::Pawn)) & file_bb(f)) == EmptyBB) {
