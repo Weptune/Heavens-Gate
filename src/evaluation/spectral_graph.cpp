@@ -350,13 +350,20 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
             }
         }
 
-        // Mobility: count edges (attack/defense interactions) per side
-        float piece_edges = 0.0f;
-        for (int j = 0; j < N; j++) {
-            if (i != j) piece_edges += (A[i * N + j] > 0.0f) ? 1.0f : 0.0f;
+        // Mobility: count total squares attacked by each piece on the board
+        Bitboard occ = board.occupied();
+        Bitboard piece_attacks = 0;
+        switch (pt) {
+            case PieceType::Knight: piece_attacks = AttackMasks::knight_attacks(sq); break;
+            case PieceType::Bishop: piece_attacks = AttackMasks::bishop_attacks(sq, occ); break;
+            case PieceType::Rook:   piece_attacks = AttackMasks::rook_attacks(sq, occ); break;
+            case PieceType::Queen:  piece_attacks = AttackMasks::queen_attacks(sq, occ); break;
+            case PieceType::King:   piece_attacks = AttackMasks::king_attacks(sq); break;
+            default: break;
         }
-        if (c == us) us_mobility += piece_edges;
-        else them_mobility += piece_edges;
+        float mobility_sqs = static_cast<float>(popcount(piece_attacks));
+        if (c == us) us_mobility += mobility_sqs;
+        else them_mobility += mobility_sqs;
 
         // Center control: Chebyshev distance to center squares
         int sq_rank = static_cast<int>(rank_of(sq));
