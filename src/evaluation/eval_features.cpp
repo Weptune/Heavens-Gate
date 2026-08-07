@@ -162,32 +162,42 @@ int EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
     Square ksq = board.king_square(side);
     if (ksq == Square::None) return 0;
 
-    // 1. Pawn Shield Bonus
-    File kf = file_of(ksq);
-    Rank kr = rank_of(ksq);
+    // Check if Queens are off the board (Endgame Phase)
+    int queens_count = popcount(board.pieces(Piece::WhiteQueen) | board.pieces(Piece::BlackQueen));
+    if (queens_count == 0) {
+        // Endgame King Centralization Bonus (+30 cp for King near center d4, e4, d5, e5)
+        int kr_idx = static_cast<int>(rank_of(ksq));
+        int kf_idx = static_cast<int>(file_of(ksq));
+        int center_dist = std::max(std::abs(kr_idx - 3), std::abs(kf_idx - 3));
+        score += (4 - center_dist) * 10; // Up to +40 cp for King in center in endgames!
+    } else {
+        // 1. Middlegame Pawn Shield Bonus
+        File kf = file_of(ksq);
+        Rank kr = rank_of(ksq);
 
-    Bitboard shield_mask = EmptyBB;
-    if (side == Color::White && kr <= Rank::Rank3) {
-        for (int df = -1; df <= 1; ++df) {
-            int f_idx = static_cast<int>(kf) + df;
-            if (f_idx >= 0 && f_idx < 8) {
-                shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank2));
-                shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank3));
+        Bitboard shield_mask = EmptyBB;
+        if (side == Color::White && kr <= Rank::Rank3) {
+            for (int df = -1; df <= 1; ++df) {
+                int f_idx = static_cast<int>(kf) + df;
+                if (f_idx >= 0 && f_idx < 8) {
+                    shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank2));
+                    shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank3));
+                }
+            }
+        } else if (side == Color::Black && kr >= Rank::Rank6) {
+            for (int df = -1; df <= 1; ++df) {
+                int f_idx = static_cast<int>(kf) + df;
+                if (f_idx >= 0 && f_idx < 8) {
+                    shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank7));
+                    shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank6));
+                }
             }
         }
-    } else if (side == Color::Black && kr >= Rank::Rank6) {
-        for (int df = -1; df <= 1; ++df) {
-            int f_idx = static_cast<int>(kf) + df;
-            if (f_idx >= 0 && f_idx < 8) {
-                shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank7));
-                shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank6));
-            }
-        }
+
+        Bitboard my_pawns = board.pieces(make_piece(side, PieceType::Pawn));
+        int shield_pawns = popcount(my_pawns & shield_mask);
+        score += shield_pawns * 15;
     }
-
-    Bitboard my_pawns = board.pieces(make_piece(side, PieceType::Pawn));
-    int shield_pawns = popcount(my_pawns & shield_mask);
-    score += shield_pawns * 15;
 
     // 2. Enemy Attackers Count & Danger Scale
     Bitboard king_zone = AttackMasks::king_attacks(ksq) | square_bb(ksq);
