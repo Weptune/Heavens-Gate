@@ -146,7 +146,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     if (is_time_up()) return 0;
 
-    if (ply > 0 && board.is_repetition()) {
+    if (ply > 0 && (board.is_repetition() || board.halfmove_clock() >= 96)) {
         return ScoreDraw;
     }
 
