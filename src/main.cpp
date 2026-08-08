@@ -207,13 +207,13 @@ void run_automated_tournament(int num_games, int depth) {
             if (board.side_to_move() == Color::White) {
                 std::cout << (game_moves / 2 + 1) << ". " << uci_move << " (" << res.best_score << "cp, " 
                           << std::fixed << std::setprecision(1) << move_time_ms << "ms, " 
-                          << move_nodes << " nodes, " << static_cast<uint64_t>(move_nps) << " nps) ";
+                          << move_nodes << " nodes, " << static_cast<uint64_t>(move_nps) << " nps) " << std::flush;
                 pgn_file << (game_moves / 2 + 1) << ". " << uci_move 
                          << " { [%eval " << res.best_score << "] [%clk " << move_time_ms << "ms] [%nodes " << move_nodes << "] [%nps " << static_cast<uint64_t>(move_nps) << "] } ";
             } else {
                 std::cout << uci_move << " (" << res.best_score << "cp, " 
                           << std::fixed << std::setprecision(1) << move_time_ms << "ms, " 
-                          << move_nodes << " nodes, " << static_cast<uint64_t>(move_nps) << " nps)\n";
+                          << move_nodes << " nodes, " << static_cast<uint64_t>(move_nps) << " nps)\n" << std::flush;
                 pgn_file << uci_move 
                          << " { [%eval " << res.best_score << "] [%clk " << move_time_ms << "ms] [%nodes " << move_nodes << "] [%nps " << static_cast<uint64_t>(move_nps) << "] }\n";
             }
@@ -233,9 +233,10 @@ void run_automated_tournament(int num_games, int depth) {
             pgn_file << "{ [%draw_reason \"" << draw_reason_str << "\"] } ";
         }
         pgn_file << result_str << "\n\n";
+        pgn_file.flush();
 
         std::cout << "Score after Game " << g << ": Master " 
-                  << a_wins << " - " << b_wins << " Baseline (" << draws << " draws)\n";
+                  << a_wins << " - " << b_wins << " Baseline (" << draws << " draws)\n" << std::flush;
     }
 
     pgn_file.close();
