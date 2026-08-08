@@ -730,5 +730,35 @@
       "KingXBat": 0.0791,
       "ShldXPWN": 0.0351
     }
+  },
+  {
+    "round": 27,
+    "phase": 2,
+    "phase_round": 19,
+    "commit": "LOCAL",
+    "weights": {
+      "Material": 0.8002,
+      "Fiedler": 0.1927,
+      "Cohesion": 0.0021,
+      "Gap": 0.0112,
+      "PST": 0.4785,
+      "KingPress": 0.1348,
+      "Battery": 0.0421,
+      "PawnCoh": 0.2748,
+      "Trace": 0.0147,
+      "Mobility": 0.0039,
+      "Center": 0.1436,
+      "Phase": 0.7624,
+      "Shield": 0.1569,
+      "Passed": 0.0989,
+      "EG_Passed": 0.1935,
+      "Attack_Ratio": 0.014,
+      "BatXCenter": 0.5066,
+      "FiedXPWN": 0.2442,
+      "EG_Mobility": 0.0012,
+      "PassXCenter": 0.0202,
+      "KingXBat": 0.0972,
+      "ShldXPWN": 0.0304
+    }
   }
 ]
