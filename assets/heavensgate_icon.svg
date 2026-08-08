@@ -1,21 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#FEF08A" stop-opacity="0.45"/>
-      <stop offset="45%" stop-color="#38BDF8" stop-opacity="0.25"/>
-      <stop offset="100%" stop-color="#050814" stop-opacity="1.0"/>
+    <radialGradient id="bgGlow" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#FDE68A" stop-opacity="0.35"/>
+      <stop offset="50%" stop-color="#1E3A8A" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#0A0D14" stop-opacity="1.0"/>
     </radialGradient>
-    <linearGradient id="goldPearl" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="50%" stop-color="#FEF08A"/>
-      <stop offset="100%" stop-color="#EAB308"/>
+      <stop offset="40%" stop-color="#FDE68A"/>
+      <stop offset="100%" stop-color="#D97706"/>
     </linearGradient>
-    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#38BDF8"/>
-      <stop offset="100%" stop-color="#0284C7"/>
-    </linearGradient>
-    <filter id="etherealGlow">
-      <feGaussianBlur stdDeviation="12" result="coloredBlur"/>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="10" result="coloredBlur"/>
       <feMerge>
         <feMergeNode in="coloredBlur"/>
         <feMergeNode in="SourceGraphic"/>
@@ -23,32 +19,38 @@
     </filter>
   </defs>
 
-  <!-- Deep Midnight Sky -->
-  <rect width="1024" height="1024" fill="#050814"/>
-  <circle cx="512" cy="540" r="480" fill="url(#bgGlow)"/>
+  <!-- Deep Midnight Slate Background -->
+  <rect width="1024" height="1024" fill="#0A0D14"/>
+  <circle cx="512" cy="512" r="480" fill="url(#bgGlow)"/>
 
-  <!-- Celestial Archway Threshold -->
-  <path d="M 260 772 L 260 552 A 260 330 0 0 1 764 552 L 764 772" fill="none" stroke="url(#goldPearl)" stroke-width="16" stroke-linecap="round" filter="url(#etherealGlow)"/>
-  <path d="M 275 772 L 275 552 A 240 310 0 0 1 749 552 L 749 772" fill="none" stroke="#F8FAFC" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
-  <line x1="212" y1="772" x2="812" y2="772" stroke="url(#goldPearl)" stroke-width="10" stroke-linecap="round"/>
+  <!-- Celestial Gothic Archway ("Heaven's Gate") -->
+  <g filter="url(#softGlow)">
+    <line x1="282" y1="352" x2="282" y2="772" stroke="url(#goldGrad)" stroke-width="16" stroke-linecap="round"/>
+    <line x1="742" y1="352" x2="742" y2="772" stroke="url(#goldGrad)" stroke-width="16" stroke-linecap="round"/>
+    <path d="M 282 357 A 460 420 0 0 1 512 237" fill="none" stroke="url(#goldGrad)" stroke-width="16" stroke-linecap="round"/>
+    <path d="M 742 357 A 460 420 0 0 0 512 237" fill="none" stroke="url(#goldGrad)" stroke-width="16" stroke-linecap="round"/>
 
-  <!-- Smooth Flowing Ethereal Chess King -->
-  <g filter="url(#etherealGlow)">
-    <!-- Cross Top -->
-    <rect x="505" y="334" width="14" height="44" rx="7" fill="#FFFFFF"/>
-    <rect x="492" y="350" width="40" height="14" rx="7" fill="#FFFFFF"/>
-    <circle cx="512" cy="334" r="7" fill="#FEF08A"/>
+    <!-- Inner Ivory Accent Frame -->
+    <line x1="300" y1="362" x2="300" y2="772" stroke="#FAFAFA" stroke-width="4" opacity="0.9"/>
+    <line x1="724" y1="362" x2="724" y2="772" stroke="#FAFAFA" stroke-width="4" opacity="0.9"/>
+    <path d="M 300 362 A 424 405 0 0 1 512 247" fill="none" stroke="#FAFAFA" stroke-width="4" opacity="0.9"/>
+    <path d="M 724 362 A 424 405 0 0 0 512 247" fill="none" stroke="#FAFAFA" stroke-width="4" opacity="0.9"/>
 
-    <!-- Smooth Spherical Crown -->
-    <circle cx="512" cy="402" r="28" fill="#FEF08A"/>
-    <circle cx="512" cy="402" r="18" fill="#FFFFFF"/>
-    <circle cx="422" cy="407" r="20" fill="url(#skyGrad)"/>
-    <circle cx="602" cy="407" r="20" fill="url(#skyGrad)"/>
-    <circle cx="462" cy="432" r="15" fill="#7DD3FC"/>
-    <circle cx="562" cy="432" r="15" fill="#7DD3FC"/>
+    <!-- Threshold Base -->
+    <line x1="242" y1="772" x2="782" y2="772" stroke="url(#goldGrad)" stroke-width="12" stroke-linecap="round"/>
+  </g>
 
-    <!-- Concentric Halo Rings -->
-    <circle cx="512" cy="592" r="140" fill="none" stroke="#38BDF8" stroke-width="2" stroke-opacity="0.6"/>
-    <circle cx="512" cy="592" r="90" fill="none" stroke="#FEF08A" stroke-width="2" stroke-opacity="0.7"/>
+  <!-- Iconic Grandmaster Chess Knight Silhouette -->
+  <g filter="url(#softGlow)">
+    <polygon points="502,322 487,352 537,332 587,382 617,462 627,552 637,662 387,662 407,592 427,532 397,472 382,432 432,402 472,362" fill="#0F172A" stroke="url(#goldGrad)" stroke-width="3"/>
+    <line x1="502" y1="322" x2="472" y2="402" stroke="#FDE68A" stroke-width="2" stroke-opacity="0.6"/>
+    <line x1="472" y1="402" x2="382" y2="432" stroke="#FDE68A" stroke-width="2" stroke-opacity="0.6"/>
+    <line x1="472" y1="402" x2="482" y2="502" stroke="#FDE68A" stroke-width="2" stroke-opacity="0.6"/>
+    <line x1="482" y1="502" x2="407" y2="592" stroke="#FDE68A" stroke-width="2" stroke-opacity="0.6"/>
+    <line x1="482" y1="502" x2="562" y2="462" stroke="#FDE68A" stroke-width="2" stroke-opacity="0.6"/>
+    <line x1="562" y1="462" x2="587" y2="382" stroke="#FDE68A" stroke-width="2" stroke-opacity="0.6"/>
+    <line x1="562" y1="462" x2="627" y2="552" stroke="#FDE68A" stroke-width="2" stroke-opacity="0.6"/>
+    <line x1="482" y1="502" x2="522" y2="662" stroke="#FDE68A" stroke-width="2" stroke-opacity="0.6"/>
+    <circle cx="458" cy="418" r="6" fill="#FFFFFF"/>
   </g>
 </svg>
