@@ -8,121 +8,125 @@ def generate_heavensgate_icon():
     center_x = width // 2
     center_y = height // 2
 
-    # 1. Base Image Canvas (Deep Obsidian Space)
-    img = Image.new("RGBA", (width, height), (9, 11, 16, 255))
+    # 1. Base Image Canvas (Matte Titanium Charcoal)
+    img = Image.new("RGBA", (width, height), (11, 13, 19, 255))
 
-    # 2. Draw Subtle Background Radial Glow (Celestial Atmosphere)
+    # 2. Subtle Sapphire Ambient Atmosphere (Radial Glow)
     glow_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     glow_draw = ImageDraw.Draw(glow_layer)
-    for r in range(480, 0, -6):
-        alpha = int(35 * (1.0 - r / 480.0)**2.0)
-        glow_draw.ellipse([center_x - r, center_y - r + 30, center_x + r, center_y + r + 30], fill=(0, 240, 255, alpha))
-        glow_draw.ellipse([center_x - r * 0.7, center_y - r * 0.7, center_x + r * 0.7, center_y + r * 0.7], fill=(255, 215, 0, alpha // 3))
+    for r in range(460, 0, -5):
+        alpha = int(28 * (1.0 - r / 460.0)**2.2)
+        glow_draw.ellipse([center_x - r, center_y - r + 20, center_x + r, center_y + r + 20], fill=(56, 189, 248, alpha))
+        glow_draw.ellipse([center_x - r * 0.6, center_y - r * 0.6, center_x + r * 0.6, center_y + r * 0.6], fill=(2, 132, 199, alpha // 2))
     img = Image.alpha_composite(img, glow_layer)
 
-    # 3. Draw Sleek Golden Archway ("Heaven's Gate")
+    # 3. Precision Vector Archway Threshold (The "Heaven's Gate")
     gate_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     gate_draw = ImageDraw.Draw(gate_layer)
 
-    # Outer Archway Geometry
+    gate_w = 270
+    gate_h = 340
     arch_cx = center_x
-    arch_cy = center_y + 40
-    arch_rx = 260
-    arch_ry = 320
-    top_y = arch_cy - arch_ry
+    arch_cy = center_y + 30
     bot_y = arch_cy + 220
+    top_y = arch_cy - gate_h
 
-    # Main Outer Golden Arch (Smooth Tapered Arc)
-    gate_draw.arc([arch_cx - arch_rx, arch_cy - arch_ry, arch_cx + arch_rx, arch_cy + arch_ry], start=180, end=360, fill=(255, 215, 0, 240), width=18)
-    gate_draw.line([arch_cx - arch_rx + 9, arch_cy, arch_cx - arch_rx + 9, bot_y], fill=(255, 215, 0, 240), width=18)
-    gate_draw.line([arch_cx + arch_rx - 9, arch_cy, arch_cx + arch_rx - 9, bot_y], fill=(255, 215, 0, 240), width=18)
+    # Outer Platinum Arch
+    gate_draw.arc([arch_cx - gate_w, arch_cy - gate_h, arch_cx + gate_w, arch_cy + gate_h], start=180, end=360, fill=(226, 232, 240, 230), width=10)
+    gate_draw.line([arch_cx - gate_w + 5, arch_cy, arch_cx - gate_w + 5, bot_y], fill=(226, 232, 240, 230), width=10)
+    gate_draw.line([arch_cx + gate_w - 5, arch_cy, arch_cx + gate_w - 5, bot_y], fill=(226, 232, 240, 230), width=10)
 
-    # Inner Cyan Accent Line (Spectral Boundary)
-    in_rx = arch_rx - 24
-    in_ry = arch_ry - 24
-    gate_draw.arc([arch_cx - in_rx, arch_cy - in_ry, arch_cx + in_rx, arch_cy + in_ry], start=180, end=360, fill=(0, 240, 255, 220), width=5)
-    gate_draw.line([arch_cx - in_rx + 2, arch_cy, arch_cx - in_rx + 2, bot_y], fill=(0, 240, 255, 220), width=5)
-    gate_draw.line([arch_cx + in_rx - 2, arch_cy, arch_cx + in_rx - 2, bot_y], fill=(0, 240, 255, 220), width=5)
+    # Inner Sapphire Accent Line
+    in_w = gate_w - 18
+    in_h = gate_h - 18
+    gate_draw.arc([arch_cx - in_w, arch_cy - in_h, arch_cx + in_w, arch_cy + in_h], start=180, end=360, fill=(56, 189, 248, 180), width=3)
+    gate_draw.line([arch_cx - in_w + 1, arch_cy, arch_cx - in_w + 1, bot_y], fill=(56, 189, 248, 180), width=3)
+    gate_draw.line([arch_cx + in_w - 1, arch_cy, arch_cx + in_w - 1, bot_y], fill=(56, 189, 248, 180), width=3)
 
-    # Base Golden Pedestal Threshold
-    gate_draw.line([arch_cx - arch_rx - 30, bot_y, arch_cx + arch_rx + 30, bot_y], fill=(255, 215, 0, 255), width=12)
-    gate_draw.line([arch_cx - arch_rx - 10, bot_y + 16, arch_cx + arch_rx + 10, bot_y + 16], fill=(0, 240, 255, 200), width=6)
+    # Base Platinum Threshold Line
+    gate_draw.line([arch_cx - gate_w - 30, bot_y, arch_cx + gate_w + 30, bot_y], fill=(226, 232, 240, 255), width=8)
 
-    # Soft Arch Ambient Glow
-    gate_glow = gate_layer.filter(ImageFilter.GaussianBlur(14))
+    gate_glow = gate_layer.filter(ImageFilter.GaussianBlur(10))
     img = Image.alpha_composite(img, gate_glow)
     img = Image.alpha_composite(img, gate_layer)
 
-    # 4. Draw Geometric Faceted Vector Chess King Silhouette inside Gate
-    king_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    king_draw = ImageDraw.Draw(king_layer)
+    # 4. Stylized Grandmaster Vector Knight / King Chess Emblem Inside Gate
+    emblem_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    emblem_draw = ImageDraw.Draw(emblem_layer)
 
-    # Cross Top
-    cross_y = arch_cy - 210
-    king_draw.rectangle([center_x - 6, cross_y - 30, center_x + 6, cross_y + 20], fill=(255, 215, 0, 255))
-    king_draw.rectangle([center_x - 22, cross_y - 14, center_x + 22, cross_y - 2], fill=(255, 215, 0, 255))
-    king_draw.ellipse([center_x - 6, cross_y - 36, center_x + 6, cross_y - 24], fill=(0, 240, 255, 255))
+    # Geometric Faceted Knight / King Coordinates
+    # Modern luxury polygonal silhouette
+    head_top = (center_x - 30, arch_cy - 210)
+    crown_cross = (center_x, arch_cy - 240)
+    snout = (center_x - 140, arch_cy - 120)
+    jaw = (center_x - 110, arch_cy - 30)
+    mane_top = (center_x + 90, arch_cy - 180)
+    mane_mid = (center_x + 130, arch_cy - 80)
+    chest = (center_x - 80, arch_cy + 90)
+    back = (center_x + 120, arch_cy + 90)
+    base_left = (center_x - 160, bot_y - 10)
+    base_right = (center_x + 160, bot_y - 10)
 
-    # Crown Crown Points (Faceted Polygons)
-    # Left Wing
-    king_draw.polygon([(center_x, cross_y + 25), (center_x - 130, cross_y + 70), (center_x - 70, cross_y + 120), (center_x, cross_y + 90)], fill=(0, 240, 255, 140), outline=(255, 215, 0, 220))
-    # Right Wing
-    king_draw.polygon([(center_x, cross_y + 25), (center_x + 130, cross_y + 70), (center_x + 70, cross_y + 120), (center_x, cross_y + 90)], fill=(0, 200, 255, 160), outline=(255, 215, 0, 220))
-    # Center Gem
-    king_draw.polygon([(center_x, cross_y + 20), (center_x - 45, cross_y + 75), (center_x, cross_y + 130), (center_x + 45, cross_y + 75)], fill=(255, 215, 0, 230), outline=(255, 255, 255, 255))
+    # Facet Polygons (Translucent Glassmorphic Sapphire)
+    # Head & Mane Facets
+    emblem_draw.polygon([crown_cross, head_top, snout, (center_x - 40, arch_cy - 110)], fill=(30, 58, 138, 200), outline=(226, 232, 240, 220))
+    emblem_draw.polygon([crown_cross, (center_x - 40, arch_cy - 110), (center_x + 20, arch_cy - 100), mane_top], fill=(2, 132, 199, 180), outline=(226, 232, 240, 220))
+    emblem_draw.polygon([mane_top, (center_x + 20, arch_cy - 100), (center_x + 30, arch_cy - 10), mane_mid], fill=(14, 116, 144, 170), outline=(226, 232, 240, 220))
 
-    # King Body / Robe Facets
-    body_y = cross_y + 130
-    king_draw.polygon([(center_x - 70, body_y), (center_x + 70, body_y), (center_x + 95, body_y + 90), (center_x - 95, body_y + 90)], fill=(15, 25, 45, 240), outline=(0, 240, 255, 220))
-    king_draw.polygon([(center_x - 95, body_y + 90), (center_x + 95, body_y + 90), (center_x + 135, body_y + 190), (center_x - 135, body_y + 190)], fill=(12, 20, 36, 240), outline=(255, 215, 0, 240))
+    # Snout & Jaw Facets
+    emblem_draw.polygon([snout, jaw, (center_x - 30, arch_cy - 40), (center_x - 40, arch_cy - 110)], fill=(56, 189, 248, 140), outline=(226, 232, 240, 220))
 
-    # Inner Core Radiant Lattice Lines (Spectral Graph Interactions)
-    lattice_nodes = [
-        (center_x, cross_y + 50),
-        (center_x - 60, cross_y + 90), (center_x + 60, cross_y + 90),
-        (center_x - 45, body_y + 45), (center_x + 45, body_y + 45),
-        (center_x - 80, body_y + 140), (center_x, body_y + 130), (center_x + 80, body_y + 140)
+    # Neck & Chest Facets
+    emblem_draw.polygon([(center_x - 40, arch_cy - 110), (center_x - 30, arch_cy - 40), chest, (center_x, arch_cy + 20)], fill=(30, 58, 138, 220), outline=(226, 232, 240, 220))
+    emblem_draw.polygon([(center_x - 30, arch_cy - 40), mane_mid, back, (center_x, arch_cy + 20)], fill=(15, 23, 42, 240), outline=(226, 232, 240, 220))
+
+    # Base Pedestal Facet
+    emblem_draw.polygon([chest, back, base_right, base_left], fill=(11, 19, 36, 250), outline=(56, 189, 248, 240))
+
+    # Spectral Graph Nodes & Connection Threads (Subtle Graph Physics Overlay)
+    graph_nodes = [
+        crown_cross, head_top, snout, jaw, mane_top, mane_mid, chest, back, (center_x, arch_cy - 100), (center_x - 30, arch_cy - 40)
     ]
-    for n1 in lattice_nodes:
-        for n2 in lattice_nodes:
+    for n1 in graph_nodes:
+        for n2 in graph_nodes:
             d = math.hypot(n1[0] - n2[0], n1[1] - n2[1])
-            if 30 < d < 110:
-                king_draw.line([n1, n2], fill=(0, 240, 255, 120), width=1)
+            if 40 < d < 140:
+                emblem_draw.line([n1, n2], fill=(56, 189, 248, 90), width=1)
 
-    for nx, ny in lattice_nodes:
-        king_draw.ellipse([nx - 5, ny - 5, nx + 5, ny + 5], fill=(255, 215, 0, 255))
+    for nx, ny in graph_nodes:
+        emblem_draw.ellipse([nx - 5, ny - 5, nx + 5, ny + 5], fill=(226, 232, 240, 255), outline=(56, 189, 248, 255))
 
-    # Soft Glow for King Silhouette
-    king_glow = king_layer.filter(ImageFilter.GaussianBlur(8))
-    img = Image.alpha_composite(img, king_glow)
-    img = Image.alpha_composite(img, king_layer)
+    # Apply Ambient Soft Glow
+    emblem_glow = emblem_layer.filter(ImageFilter.GaussianBlur(6))
+    img = Image.alpha_composite(img, emblem_glow)
+    img = Image.alpha_composite(img, emblem_layer)
 
     # Save High-Res PNG
     os.makedirs("assets", exist_ok=True)
     png_path = "assets/heavensgate_icon.png"
     img.save(png_path, "PNG")
-    print(f"[SUCCESS] Generated Minimalist Luxury 1024x1024 PNG Icon at {png_path}")
+    print(f"[SUCCESS] Generated Executive Sapphire Platinum 1024x1024 PNG Icon at {png_path}")
 
-    # Generate Crisp Vector SVG
+    # Generate Precision SVG Vector
     svg_path = "assets/heavensgate_icon.svg"
     svg_content = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
     <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#00F0FF" stop-opacity="0.30"/>
-      <stop offset="60%" stop-color="#9D4EDD" stop-opacity="0.10"/>
-      <stop offset="100%" stop-color="#090B10" stop-opacity="1.0"/>
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.25"/>
+      <stop offset="60%" stop-color="#0284C7" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#0B0D13" stop-opacity="1.0"/>
     </radialGradient>
-    <linearGradient id="goldArch" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFF3B0"/>
-      <stop offset="50%" stop-color="#FFD700"/>
-      <stop offset="100%" stop-color="#DAA520"/>
+    <linearGradient id="platGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="50%" stop-color="#E2E8F0"/>
+      <stop offset="100%" stop-color="#94A3B8"/>
     </linearGradient>
-    <linearGradient id="cyanAccent" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#00F0FF"/>
-      <stop offset="100%" stop-color="#7000FF"/>
+    <linearGradient id="sapphireGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#1E3A8A"/>
     </linearGradient>
     <filter id="glow">
-      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
       <feMerge>
         <feMergeNode in="coloredBlur"/>
         <feMergeNode in="SourceGraphic"/>
@@ -130,36 +134,30 @@ def generate_heavensgate_icon():
     </filter>
   </defs>
 
-  <!-- Deep Obsidian Space Canvas -->
-  <rect width="1024" height="1024" fill="#090B10"/>
-  <circle cx="512" cy="550" r="480" fill="url(#bgGlow)"/>
+  <!-- Titanium Space Canvas -->
+  <rect width="1024" height="1024" fill="#0B0D13"/>
+  <circle cx="512" cy="540" r="460" fill="url(#bgGlow)"/>
 
-  <!-- Celestial Golden Archway -->
-  <path d="M {arch_cx - arch_rx + 9} {bot_y} L {arch_cx - arch_rx + 9} {arch_cy} A {arch_rx} {arch_ry} 0 0 1 {arch_cx + arch_rx - 9} {arch_cy} L {arch_cx + arch_rx - 9} {bot_y}" fill="none" stroke="url(#goldArch)" stroke-width="18" stroke-linecap="round" filter="url(#glow)"/>
-  <path d="M {arch_cx - in_rx + 2} {bot_y} L {arch_cx - in_rx + 2} {arch_cy} A {in_rx} {in_ry} 0 0 1 {arch_cx + in_rx - 2} {arch_cy} L {arch_cx + in_rx - 2} {bot_y}" fill="none" stroke="url(#cyanAccent)" stroke-width="5" stroke-linecap="round" opacity="0.85"/>
-  <line x1="{arch_cx - arch_rx - 30}" y1="{bot_y}" x2="{arch_cx + arch_rx + 30}" y2="{bot_y}" stroke="url(#goldArch)" stroke-width="12" stroke-linecap="round"/>
+  <!-- Celestial Platinum Archway Threshold -->
+  <path d="M {arch_cx - gate_w + 5} {bot_y} L {arch_cx - gate_w + 5} {arch_cy} A {gate_w} {gate_h} 0 0 1 {arch_cx + gate_w - 5} {arch_cy} L {arch_cx + gate_w - 5} {bot_y}" fill="none" stroke="url(#platGrad)" stroke-width="10" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M {arch_cx - in_w + 1} {bot_y} L {arch_cx - in_w + 1} {arch_cy} A {in_w} {in_h} 0 0 1 {arch_cx + in_w - 1} {arch_cy} L {arch_cx + in_w - 1} {bot_y}" fill="none" stroke="url(#sapphireGrad)" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <line x1="{arch_cx - gate_w - 30}" y1="{bot_y}" x2="{arch_cx + gate_w + 30}" y2="{bot_y}" stroke="url(#platGrad)" stroke-width="8" stroke-linecap="round"/>
 
-  <!-- Vector Faceted Chess King Silhouette -->
+  <!-- Faceted Vector Grandmaster Emblem -->
   <g filter="url(#glow)">
-    <!-- Cross Top -->
-    <rect x="{center_x - 6}" y="{cross_y - 30}" width="12" height="50" fill="#FFD700"/>
-    <rect x="{center_x - 22}" y="{cross_y - 14}" width="44" height="12" fill="#FFD700"/>
-    <circle cx="{center_x}" cy="{cross_y - 30}" r="6" fill="#00F0FF"/>
-
-    <!-- Crown Wings -->
-    <polygon points="{center_x},{cross_y + 25} {center_x - 130},{cross_y + 70} {center_x - 70},{cross_y + 120} {center_x},{cross_y + 90}" fill="#00F0FF" fill-opacity="0.5" stroke="#FFD700" stroke-width="2"/>
-    <polygon points="{center_x},{cross_y + 25} {center_x + 130},{cross_y + 70} {center_x + 70},{cross_y + 120} {center_x},{cross_y + 90}" fill="#00C8FF" fill-opacity="0.6" stroke="#FFD700" stroke-width="2"/>
-    <polygon points="{center_x},{cross_y + 20} {center_x - 45},{cross_y + 75} {center_x},{cross_y + 130} {center_x + 45},{cross_y + 75}" fill="#FFD700" fill-opacity="0.9" stroke="#FFFFFF" stroke-width="2"/>
-
-    <!-- King Body -->
-    <polygon points="{center_x - 70},{body_y} {center_x + 70},{body_y} {center_x + 95},{body_y + 90} {center_x - 95},{body_y + 90}" fill="#0F192D" stroke="#00F0FF" stroke-width="3"/>
-    <polygon points="{center_x - 95},{body_y + 90} {center_x + 95},{body_y + 90} {center_x + 135},{body_y + 190} {center_x - 135},{body_y + 190}" fill="#0C1424" stroke="#FFD700" stroke-width="3"/>
+    <polygon points="{crown_cross[0]},{crown_cross[1]} {head_top[0]},{head_top[1]} {snout[0]},{snout[1]} {center_x - 40},{arch_cy - 110}" fill="#1E3A8A" fill-opacity="0.8" stroke="#E2E8F0" stroke-width="2"/>
+    <polygon points="{crown_cross[0]},{crown_cross[1]} {center_x - 40},{arch_cy - 110} {center_x + 20},{arch_cy - 100} {mane_top[0]},{mane_top[1]}" fill="#0284C7" fill-opacity="0.7" stroke="#E2E8F0" stroke-width="2"/>
+    <polygon points="{mane_top[0]},{mane_top[1]} {center_x + 20},{arch_cy - 100} {center_x + 30},{arch_cy - 10} {mane_mid[0]},{mane_mid[1]}" fill="#0E7490" fill-opacity="0.7" stroke="#E2E8F0" stroke-width="2"/>
+    <polygon points="{snout[0]},{snout[1]} {jaw[0]},{jaw[1]} {center_x - 30},{arch_cy - 40} {center_x - 40},{arch_cy - 110}" fill="#38BDF8" fill-opacity="0.6" stroke="#E2E8F0" stroke-width="2"/>
+    <polygon points="{center_x - 40},{arch_cy - 110} {center_x - 30},{arch_cy - 40} {chest[0]},{chest[1]} {center_x},{arch_cy + 20}" fill="#1E3A8A" fill-opacity="0.85" stroke="#E2E8F0" stroke-width="2"/>
+    <polygon points="{center_x - 30},{arch_cy - 40} {mane_mid[0]},{mane_mid[1]} {back[0]},{back[1]} {center_x},{arch_cy + 20}" fill="#0F172A" fill-opacity="0.9" stroke="#E2E8F0" stroke-width="2"/>
+    <polygon points="{chest[0]},{chest[1]} {back[0]},{back[1]} {base_right[0]},{base_right[1]} {base_left[0]},{base_left[1]}" fill="#0B1324" fill-opacity="0.95" stroke="#38BDF8" stroke-width="3"/>
   </g>
 </svg>
 '''
     with open(svg_path, "w", encoding="utf-8") as f:
         f.write(svg_content)
-    print(f"[SUCCESS] Generated Minimalist Luxury SVG Icon at {svg_path}")
+    print(f"[SUCCESS] Generated Executive Sapphire Platinum SVG Icon at {svg_path}")
 
 if __name__ == "__main__":
     generate_heavensgate_icon()

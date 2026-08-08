@@ -1,21 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
     <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#00F0FF" stop-opacity="0.30"/>
-      <stop offset="60%" stop-color="#9D4EDD" stop-opacity="0.10"/>
-      <stop offset="100%" stop-color="#090B10" stop-opacity="1.0"/>
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.25"/>
+      <stop offset="60%" stop-color="#0284C7" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#0B0D13" stop-opacity="1.0"/>
     </radialGradient>
-    <linearGradient id="goldArch" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFF3B0"/>
-      <stop offset="50%" stop-color="#FFD700"/>
-      <stop offset="100%" stop-color="#DAA520"/>
+    <linearGradient id="platGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="50%" stop-color="#E2E8F0"/>
+      <stop offset="100%" stop-color="#94A3B8"/>
     </linearGradient>
-    <linearGradient id="cyanAccent" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#00F0FF"/>
-      <stop offset="100%" stop-color="#7000FF"/>
+    <linearGradient id="sapphireGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#1E3A8A"/>
     </linearGradient>
     <filter id="glow">
-      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
       <feMerge>
         <feMergeNode in="coloredBlur"/>
         <feMergeNode in="SourceGraphic"/>
@@ -23,29 +23,23 @@
     </filter>
   </defs>
 
-  <!-- Deep Obsidian Space Canvas -->
-  <rect width="1024" height="1024" fill="#090B10"/>
-  <circle cx="512" cy="550" r="480" fill="url(#bgGlow)"/>
+  <!-- Titanium Space Canvas -->
+  <rect width="1024" height="1024" fill="#0B0D13"/>
+  <circle cx="512" cy="540" r="460" fill="url(#bgGlow)"/>
 
-  <!-- Celestial Golden Archway -->
-  <path d="M 261 772 L 261 552 A 260 320 0 0 1 763 552 L 763 772" fill="none" stroke="url(#goldArch)" stroke-width="18" stroke-linecap="round" filter="url(#glow)"/>
-  <path d="M 278 772 L 278 552 A 236 296 0 0 1 746 552 L 746 772" fill="none" stroke="url(#cyanAccent)" stroke-width="5" stroke-linecap="round" opacity="0.85"/>
-  <line x1="222" y1="772" x2="802" y2="772" stroke="url(#goldArch)" stroke-width="12" stroke-linecap="round"/>
+  <!-- Celestial Platinum Archway Threshold -->
+  <path d="M 247 762 L 247 542 A 270 340 0 0 1 777 542 L 777 762" fill="none" stroke="url(#platGrad)" stroke-width="10" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M 261 762 L 261 542 A 252 322 0 0 1 763 542 L 763 762" fill="none" stroke="url(#sapphireGrad)" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <line x1="212" y1="762" x2="812" y2="762" stroke="url(#platGrad)" stroke-width="8" stroke-linecap="round"/>
 
-  <!-- Vector Faceted Chess King Silhouette -->
+  <!-- Faceted Vector Grandmaster Emblem -->
   <g filter="url(#glow)">
-    <!-- Cross Top -->
-    <rect x="506" y="312" width="12" height="50" fill="#FFD700"/>
-    <rect x="490" y="328" width="44" height="12" fill="#FFD700"/>
-    <circle cx="512" cy="312" r="6" fill="#00F0FF"/>
-
-    <!-- Crown Wings -->
-    <polygon points="512,367 382,412 442,462 512,432" fill="#00F0FF" fill-opacity="0.5" stroke="#FFD700" stroke-width="2"/>
-    <polygon points="512,367 642,412 582,462 512,432" fill="#00C8FF" fill-opacity="0.6" stroke="#FFD700" stroke-width="2"/>
-    <polygon points="512,362 467,417 512,472 557,417" fill="#FFD700" fill-opacity="0.9" stroke="#FFFFFF" stroke-width="2"/>
-
-    <!-- King Body -->
-    <polygon points="442,472 582,472 607,562 417,562" fill="#0F192D" stroke="#00F0FF" stroke-width="3"/>
-    <polygon points="417,562 607,562 647,662 377,662" fill="#0C1424" stroke="#FFD700" stroke-width="3"/>
+    <polygon points="512,302 482,332 372,422 472,432" fill="#1E3A8A" fill-opacity="0.8" stroke="#E2E8F0" stroke-width="2"/>
+    <polygon points="512,302 472,432 532,442 602,362" fill="#0284C7" fill-opacity="0.7" stroke="#E2E8F0" stroke-width="2"/>
+    <polygon points="602,362 532,442 542,532 642,462" fill="#0E7490" fill-opacity="0.7" stroke="#E2E8F0" stroke-width="2"/>
+    <polygon points="372,422 402,512 482,502 472,432" fill="#38BDF8" fill-opacity="0.6" stroke="#E2E8F0" stroke-width="2"/>
+    <polygon points="472,432 482,502 432,632 512,562" fill="#1E3A8A" fill-opacity="0.85" stroke="#E2E8F0" stroke-width="2"/>
+    <polygon points="482,502 642,462 632,632 512,562" fill="#0F172A" fill-opacity="0.9" stroke="#E2E8F0" stroke-width="2"/>
+    <polygon points="432,632 632,632 672,752 352,752" fill="#0B1324" fill-opacity="0.95" stroke="#38BDF8" stroke-width="3"/>
   </g>
 </svg>
