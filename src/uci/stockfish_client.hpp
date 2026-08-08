@@ -133,44 +133,54 @@ public:
             if (ReadFile(hChildStd_OUT_Rd, &ch, 1, &dwRead, NULL) && dwRead > 0) {
                 current_line += ch;
                 if (ch == '\n') {
-                    // Parse info lines for score, nodes, time
+                    // Parse info lines for score, nodes, time (exception-safe!)
                     if (current_line.rfind("info ", 0) == 0) {
-                        size_t score_pos = current_line.find("score cp ");
-                        if (score_pos != std::string::npos) {
-                            last_score = std::stoi(current_line.substr(score_pos + 9));
-                        } else {
-                            size_t mate_pos = current_line.find("score mate ");
-                            if (mate_pos != std::string::npos) {
-                                int m_val = std::stoi(current_line.substr(mate_pos + 11));
-                                last_score = (m_val > 0) ? (30000 - m_val) : (-30000 - m_val);
+                        try {
+                            size_t score_pos = current_line.find("score cp ");
+                            if (score_pos != std::string::npos) {
+                                last_score = std::stoi(current_line.substr(score_pos + 9));
+                            } else {
+                                size_t mate_pos = current_line.find("score mate ");
+                                if (mate_pos != std::string::npos) {
+                                    int m_val = std::stoi(current_line.substr(mate_pos + 11));
+                                    last_score = (m_val > 0) ? (30000 - m_val) : (-30000 - m_val);
+                                }
                             }
-                        }
 
-                        size_t nodes_pos = current_line.find("nodes ");
-                        if (nodes_pos != std::string::npos) {
-                            last_nodes = std::stoull(current_line.substr(nodes_pos + 6));
-                        }
+                            size_t nodes_pos = current_line.find("nodes ");
+                            if (nodes_pos != std::string::npos) {
+                                last_nodes = std::stoull(current_line.substr(nodes_pos + 6));
+                            }
 
-                        size_t time_pos = current_line.find("time ");
-                        if (time_pos != std::string::npos) {
-                            last_time_ms = std::stod(current_line.substr(time_pos + 5));
+                            size_t time_pos = current_line.find("time ");
+                            if (time_pos != std::string::npos) {
+                                last_time_ms = std::stod(current_line.substr(time_pos + 5));
+                            }
+                        } catch (...) {
+                            // Safely ignore malformed UCI info lines
                         }
                     }
 
                     if (current_line.rfind("bestmove", 0) == 0) {
-                        std::stringstream ss(current_line);
-                        std::string tag, move_str;
-                        ss >> tag >> move_str;
+                        try {
+                            std::stringstream ss(current_line);
+                            std::string tag, move_str;
+                            ss >> tag >> move_str;
 
-                        MoveList moves;
-                        MoveGenerator::generate_legal_moves(board, moves);
-                        for (const auto& m : moves) {
-                            if (move_to_uci(m) == move_str) {
-                                res.best_move = m;
-                                break;
+                            MoveList moves;
+                            MoveGenerator::generate_legal_moves(board, moves);
+                            for (const auto& m : moves) {
+                                if (move_to_uci(m) == move_str) {
+                                    res.best_move = m;
+                                    break;
+                                }
                             }
+                            if (!res.best_move && !moves.empty()) res.best_move = moves[0];
+                        } catch (...) {
+                            MoveList moves;
+                            MoveGenerator::generate_legal_moves(board, moves);
+                            if (!moves.empty()) res.best_move = moves[0];
                         }
-                        if (!res.best_move && !moves.empty()) res.best_move = moves[0];
 
                         res.best_score = last_score;
                         res.metrics.elapsed_seconds = std::max(0.001, last_time_ms / 1000.0);
@@ -182,9 +192,19 @@ public:
                 }
             } else {
                 close();
+                // Attempt 1-time pipe re-initialization if Stockfish pipe died
+                if (init(2400)) {
+                    return get_search_result(board, depth);
+                }
                 break;
             }
         }
+
+        // Ultimate fallback: if Stockfish returns no move, pick legal move 0
+        MoveList moves;
+        MoveGenerator::generate_legal_moves(board, moves);
+        if (!moves.empty()) res.best_move = moves[0];
+
         return res;
     }
 
