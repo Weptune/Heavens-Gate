@@ -305,6 +305,50 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     feat.fiedler_them = compute_side_fiedler(them_nodes);
 
     // =========================================================================
+    // Phase 3: 4-Zone Spatial Subgraph Fiedler Computation
+    //   1. Kingside Zone (files f, g, h -> file_of(sq) >= 5)
+    //   2. Queenside Zone (files a, b, c -> file_of(sq) <= 2)
+    //   3. Center Zone (files d, e -> file_of(sq) == 3 || file_of(sq) == 4)
+    //   4. Back-Rank Zone (ranks 1, 2 for White, ranks 7, 8 for Black)
+    // =========================================================================
+    std::vector<std::pair<Piece, Square>> ks_us, ks_them;
+    std::vector<std::pair<Piece, Square>> qs_us, qs_them;
+    std::vector<std::pair<Piece, Square>> ctr_us, ctr_them;
+    std::vector<std::pair<Piece, Square>> br_us, br_them;
+
+    int us_br_min = (us == Color::White) ? 0 : 6;
+    int us_br_max = (us == Color::White) ? 1 : 7;
+    int them_br_min = (them == Color::White) ? 0 : 6;
+    int them_br_max = (them == Color::White) ? 1 : 7;
+
+    for (const auto& item : us_nodes) {
+        int f = static_cast<int>(file_of(item.second));
+        int r = static_cast<int>(rank_of(item.second));
+        if (f >= 5) ks_us.push_back(item);
+        if (f <= 2) qs_us.push_back(item);
+        if (f == 3 || f == 4) ctr_us.push_back(item);
+        if (r >= us_br_min && r <= us_br_max) br_us.push_back(item);
+    }
+
+    for (const auto& item : them_nodes) {
+        int f = static_cast<int>(file_of(item.second));
+        int r = static_cast<int>(rank_of(item.second));
+        if (f >= 5) ks_them.push_back(item);
+        if (f <= 2) qs_them.push_back(item);
+        if (f == 3 || f == 4) ctr_them.push_back(item);
+        if (r >= them_br_min && r <= them_br_max) br_them.push_back(item);
+    }
+
+    feat.fiedler_ks_us = compute_side_fiedler(ks_us);
+    feat.fiedler_ks_them = compute_side_fiedler(ks_them);
+    feat.fiedler_qs_us = compute_side_fiedler(qs_us);
+    feat.fiedler_qs_them = compute_side_fiedler(qs_them);
+    feat.fiedler_ctr_us = compute_side_fiedler(ctr_us);
+    feat.fiedler_ctr_them = compute_side_fiedler(ctr_them);
+    feat.fiedler_br_us = compute_side_fiedler(br_us);
+    feat.fiedler_br_them = compute_side_fiedler(br_them);
+
+    // =========================================================================
     // Per-Side Features: Cohesion, King Pressure, Battery, Pawn Structure,
     //                    Mobility, Center Control, King Shield, Game Phase
     // =========================================================================

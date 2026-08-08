@@ -90,6 +90,14 @@ void TropicalEvaluator::initialize_weights(uint32_t /*seed*/) {
             sec.w[19] = 0.5f  + 0.2f  * std::fabs(std::cos(jf * 0.7f + bf));   // PassXCenter
             sec.w[20] = 0.4f  + 0.15f * std::fabs(std::sin(jf * 1.3f + bf));   // KingXBat
             sec.w[21] = 0.3f  + 0.1f  * std::fabs(std::cos(jf * 0.8f + bf));   // ShldXPWN
+
+            // Phase 3 4-Zone Localized Spatial Fiedler Features (x22..x27)
+            sec.w[22] = 0.4f  + 0.15f * std::fabs(std::sin(jf * 0.5f + bf));   // KS_Fiedler
+            sec.w[23] = 0.4f  + 0.15f * std::fabs(std::cos(jf * 0.6f + bf));   // QS_Fiedler
+            sec.w[24] = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.7f + bf));   // CTR_Fiedler
+            sec.w[25] = 0.3f  + 0.1f  * std::fabs(std::cos(jf * 0.8f + bf));   // KSFiedXPress
+            sec.w[26] = 0.3f  + 0.1f  * std::fabs(std::sin(jf * 0.9f + bf));   // CTRFiedXCenter
+            sec.w[27] = 0.4f  + 0.15f * std::fabs(std::cos(jf * 1.0f + bf));   // BR_Fiedler
         }
     }
 }
@@ -199,8 +207,6 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     x[15] = (feat.king_pressure_us / (feat.king_pressure_them + 1.0f)) * 5.0f; // Attack Ratio
 
     // Phase 2 Residual Skip-Connection Cross-Terms (x16..x21)
-    // Residual formulation guarantees base features (x0..x15) are 100% protected,
-    // while cross-terms provide strictly positive non-linear boosters.
     float pos_center   = std::max(0.0f, x[10]);
     float pos_pawncoh  = std::max(0.0f, x[7]);
     float pos_battery  = std::max(0.0f, x[6]);
@@ -211,6 +217,14 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     x[19] = x[13] * (pos_center / 10.0f);                                       // PassXCenter Residual Boost
     x[20] = x[5]  * (pos_battery / 10.0f);                                      // KingXBat Residual Boost
     x[21] = x[12] * (pos_pawncoh / 10.0f);                                      // ShldXPWN Residual Boost
+
+    // Phase 3 4-Zone Spatial Fiedler Features & Cross-Terms (x22..x27)
+    x[22] = (feat.fiedler_ks_us - feat.fiedler_ks_them) * 5.0f;                 // Relative Kingside Fiedler
+    x[23] = (feat.fiedler_qs_us - feat.fiedler_qs_them) * 5.0f;                 // Relative Queenside Fiedler
+    x[24] = (feat.fiedler_ctr_us - feat.fiedler_ctr_them) * 5.0f;               // Relative Center Fiedler
+    x[25] = x[22] * (x[5] / 10.0f);                                             // KSFiedXPress
+    x[26] = x[24] * (pos_center / 10.0f);                                       // CTRFiedXCenter
+    x[27] = (feat.fiedler_br_us - feat.fiedler_br_them) * 3.0f;                 // Relative Back-Rank Fiedler
 
     return x;
 }
@@ -346,11 +360,17 @@ bool TropicalEvaluator::load_weights(const std::string& path) {
     in.read(reinterpret_cast<char*>(&num_sec), sizeof(num_sec));
     in.read(reinterpret_cast<char*>(&num_feat), sizeof(num_feat));
 
-    if (num_sec != TOTAL_SECTORS || num_feat != NUM_FEATURES) return false;
+    bool is_22_feat = (num_feat == 22);
+    if (num_sec != TOTAL_SECTORS || (num_feat != NUM_FEATURES && !is_22_feat)) return false;
 
     sectors_.resize(TOTAL_SECTORS);
     for (auto& sec : sectors_) {
-        in.read(reinterpret_cast<char*>(sec.w.data()), NUM_FEATURES * sizeof(float));
+        if (is_22_feat) {
+            in.read(reinterpret_cast<char*>(sec.w.data()), 22 * sizeof(float));
+            for (size_t k = 22; k < NUM_FEATURES; k++) sec.w[k] = 0.0f;
+        } else {
+            in.read(reinterpret_cast<char*>(sec.w.data()), NUM_FEATURES * sizeof(float));
+        }
         in.read(reinterpret_cast<char*>(&sec.b), sizeof(sec.b));
     }
 
