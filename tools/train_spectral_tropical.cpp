@@ -380,6 +380,10 @@ int main(int argc, char* argv[]) {
     std::iota(indices.begin(), indices.end(), 0);
 
     float final_rmse = 0.0f;
+    float best_rmse = 1e9f;
+    int best_epoch = 1;
+    TropicalEvaluator best_model = model;
+
     for (int epoch = 1; epoch <= epochs; epoch++) {
         std::shuffle(indices.begin(), indices.end(), shuffle_rng);
 
@@ -459,20 +463,31 @@ int main(int argc, char* argv[]) {
         float rmse = std::sqrt(total_loss / count);
         final_rmse = rmse;
 
+        if (rmse < best_rmse) {
+            best_rmse = rmse;
+            best_epoch = epoch;
+            best_model = model; // Save exact best snapshot weights
+        }
+
         if (epoch <= 10 || epoch % 10 == 0 || epoch == epochs) {
             std::cout << "  [Epoch " << std::setw(3) << epoch << "/" << epochs
                       << "] RMSE: " << std::fixed << std::setprecision(2) << rmse
-                      << " cp | LR: " << std::setprecision(6) << lr << "\n";
-            std::cout << std::flush;
+                      << " cp | LR: " << std::setprecision(6) << lr;
+            if (epoch == best_epoch) {
+                std::cout << " ⭐ [BEST CHECKPOINT: " << best_rmse << " cp]";
+            }
+            std::cout << "\n" << std::flush;
         }
 
         // Learning rate decay
         lr *= lr_decay;
     }
 
+    std::cout << "\n[CHECKPOINT RETENTION] Selected Epoch " << best_epoch << " Best Weights with Lowest RMSE: " << best_rmse << " cp (vs Final Epoch: " << final_rmse << " cp)\n";
+
     std::string model_path = "heavensgate_tropical.trm";
-    if (model.save_weights(model_path)) {
-        std::cout << "\n[SUCCESS] Saved Spectral-Tropical weights to " << model_path << "\n";
+    if (best_model.save_weights(model_path)) {
+        std::cout << "[SUCCESS] Saved Best Spectral-Tropical weights (Epoch " << best_epoch << ", " << best_rmse << " cp) to " << model_path << "\n";
 
         // Save persistent Adam state
         std::ofstream adam_out("heavensgate_adam.dat", std::ios::binary);
