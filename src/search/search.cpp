@@ -261,10 +261,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         int score = 0;
 
-        // 4. Principal Variation Search (PVS / NegaScout), Singular Extensions & LMR
+        // 4. Principal Variation Search (PVS / NegaScout), Singular Extensions & Passed Pawn Extensions
         int extension = 0;
-        if (i == 0 && depth >= 6 && static_cast<bool>(tt_move) && !in_chk) {
-            // Singular Extension Check: Extend by +1 ply if move is uniquely singular
+        if (m.is_promotion()) {
+            extension = 1;
+        } else if (i == 0 && depth >= 6 && static_cast<bool>(tt_move) && !in_chk) {
             extension = 1;
         }
 
