@@ -102,8 +102,21 @@ public:
         return "";
     }
 
+    void new_game() {
+        if (!is_running) {
+            init(2400);
+            return;
+        }
+        send_cmd("ucinewgame");
+        send_cmd("isready");
+        wait_for("readyok");
+    }
+
     Move get_bestmove(const Board& board, int depth = 8) {
-        if (!is_running) return Move();
+        if (!is_running) {
+            if (!init(2400)) return Move();
+        }
+
         std::string fen = FEN::to_string(board);
         send_cmd("position fen " + fen);
         send_cmd("go depth " + std::to_string(depth));
@@ -134,6 +147,8 @@ public:
                     current_line.clear();
                 }
             } else {
+                // Handle process exit gracefully by auto-restarting
+                close();
                 break;
             }
         }
