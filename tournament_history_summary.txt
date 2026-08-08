@@ -136,3 +136,10 @@
   * Phase Avg Evals   : Opening=+50cp | Middlegame=+74cp | Endgame=+72cp
   * Pawn Promotions   : 40 promotions
 
+=== PHASE 2 ROUND 17 (Overall Round 25) SUMMARY ===
+  * Win Rate / Score  : 67.0% (63 Wins / 29 Losses / 8 Draws in 100 games)
+  * Sustained Leads   : Held >=+150cp in 69/100 games (69%)
+  * Conversion Rate   : Converted 46/69 (66.7% Conversion Efficiency)
+  * Phase Avg Evals   : Opening=+54cp | Middlegame=+72cp | Endgame=+117cp
+  * Pawn Promotions   : 70 promotions
+
