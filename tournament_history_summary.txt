@@ -171,10 +171,21 @@
   * Phase Avg Evals   : Opening=+64cp | Middlegame=-165cp | Endgame=-144cp
   * Pawn Promotions   : 0 promotions
 
-=== PHASE 2 ROUND 22 (Overall Round 30) SUMMARY ===
+=========================================================================
+  PHASE 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features, 9,520 Params)
+=========================================================================
+
+=== PHASE 3 ROUND 1 (Overall Round 30) SUMMARY ===
   * Win Rate / Score  : 33.3% (0 Wins / 1 Losses / 2 Draws in 3 games)
   * Sustained Leads   : Held >=+150cp in 2/3 games (67%)
   * Conversion Rate   : Converted 0/2 (0.0% Conversion Efficiency)
   * Phase Avg Evals   : Opening=+116cp | Middlegame=+39cp | Endgame=-57cp
   * Pawn Promotions   : 0 promotions
+
+=== PHASE 3 ROUND 2 (Overall Round 31) SUMMARY ===
+  * Win Rate / Score  : 32.7% (7 Wins / 16 Losses / 3 Draws in 26 games)
+  * Sustained Leads   : Held >=+150cp in 19/26 games (73%)
+  * Conversion Rate   : Converted 6/19 (31.6% Conversion Efficiency)
+  * Phase Avg Evals   : Opening=+107cp | Middlegame=-30cp | Endgame=+23cp
+  * Pawn Promotions   : 11 promotions
 
