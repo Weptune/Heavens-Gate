@@ -92,14 +92,6 @@ void TropicalEvaluator::initialize_weights(uint32_t /*seed*/) {
             sec.w[19] = 0.5f  + 0.2f  * std::fabs(std::cos(jf * 0.7f + bf));   // PassXCenter
             sec.w[20] = 0.4f  + 0.15f * std::fabs(std::sin(jf * 1.3f + bf));   // KingXBat
             sec.w[21] = 0.3f  + 0.1f  * std::fabs(std::cos(jf * 0.8f + bf));   // ShldXPWN
-
-            // Phase 3 4-Zone Localized Spatial Fiedler Features (x22..x27)
-            sec.w[22] = 0.4f  + 0.15f * std::fabs(std::sin(jf * 0.5f + bf));   // KS_Fiedler
-            sec.w[23] = 0.4f  + 0.15f * std::fabs(std::cos(jf * 0.6f + bf));   // QS_Fiedler
-            sec.w[24] = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.7f + bf));   // CTR_Fiedler
-            sec.w[25] = 0.3f  + 0.1f  * std::fabs(std::cos(jf * 0.8f + bf));   // KSFiedXPress
-            sec.w[26] = 0.3f  + 0.1f  * std::fabs(std::sin(jf * 0.9f + bf));   // CTRFiedXCenter
-            sec.w[27] = 0.4f  + 0.15f * std::fabs(std::cos(jf * 1.0f + bf));   // BR_Fiedler
         }
     }
 }
