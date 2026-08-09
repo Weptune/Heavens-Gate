@@ -137,6 +137,7 @@ void run_automated_tournament(int num_games, int depth) {
                 start_game++;
             }
         }
+    }
 
     SearchEngine master_engine;
     SearchEngine baseline_engine;
