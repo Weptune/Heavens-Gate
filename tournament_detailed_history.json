@@ -2916,5 +2916,61 @@
       "Safety400": 6,
       "Other": 0
     }
+  },
+  {
+    "round": 53,
+    "phase": 3,
+    "phase_round": 24,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 100,
+    "score_pct": 23.0,
+    "master_wins": 11,
+    "baseline_wins": 65,
+    "draws": 24,
+    "as_white": {
+      "wins": 3,
+      "losses": 36
+    },
+    "as_black": {
+      "wins": 8,
+      "losses": 29
+    },
+    "avg_eval": {
+      "opening": 61.0,
+      "middlegame": 12.2,
+      "endgame": 12.6
+    },
+    "blunders": {
+      "total": 4124,
+      "by_phase": {
+        "Opening": 449,
+        "Middlegame": 1038,
+        "Endgame": 2637
+      },
+      "recovered_count": 73,
+      "recovery_rate_pct": 1.8
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 80,
+      "converted_wins": 11,
+      "squandered": 69,
+      "conversion_rate_pct": 13.8
+    },
+    "game_length": {
+      "avg_win_moves": 46.3,
+      "avg_loss_moves": 79.7
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 23104.3
+    },
+    "pawn_promotions": 80,
+    "draw_reasons": {
+      "Stalemate": 1,
+      "50MoveRule": 15,
+      "Material": 1,
+      "Safety400": 7,
+      "Other": 0
+    }
   }
 ]
