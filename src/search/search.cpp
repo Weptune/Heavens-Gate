@@ -1,6 +1,7 @@
 #include "search.hpp"
 #include "../core/fen.hpp"
 #include "../evaluation/eval.hpp"
+#include "../evaluation/spectral_graph.hpp"
 #include <iostream>
 #include <algorithm>
 #include <cmath>
