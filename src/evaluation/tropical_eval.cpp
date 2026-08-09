@@ -353,7 +353,7 @@ bool TropicalEvaluator::load_weights(const std::string& path) {
     in.read(reinterpret_cast<char*>(&num_feat), sizeof(num_feat));
 
     bool is_22_feat = (num_feat == 22);
-    if (num_sec != TOTAL_SECTORS || (num_feat != NUM_FEATURES && !is_22_feat)) return false;
+    if (num_sec != TOTAL_SECTORS || num_feat != NUM_FEATURES) return false;
 
     sectors_.resize(TOTAL_SECTORS);
     for (auto& sec : sectors_) {

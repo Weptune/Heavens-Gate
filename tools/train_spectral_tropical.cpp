@@ -336,17 +336,26 @@ int main(int argc, char* argv[]) {
     std::vector<SectorAdam> adam_state(TropicalEvaluator::TOTAL_SECTORS);
     int timestep = 0;
 
-    // Load persistent Adam momentum and variance state
-    std::ifstream adam_in("heavensgate_adam.dat", std::ios::binary);
+    // Load persistent Adam momentum and variance state (with strict binary size validation)
+    std::ifstream adam_in("heavensgate_adam.dat", std::ios::binary | std::ios::ate);
+    constexpr size_t EXPECTED_ADAM_SIZE = sizeof(int) + TropicalEvaluator::TOTAL_SECTORS * (2 * TropicalEvaluator::NUM_FEATURES * sizeof(float) + 2 * sizeof(float));
     if (adam_in.is_open()) {
-        adam_in.read(reinterpret_cast<char*>(&timestep), sizeof(timestep));
-        for (auto& sec : adam_state) {
-            adam_in.read(reinterpret_cast<char*>(sec.m_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
-            adam_in.read(reinterpret_cast<char*>(sec.v_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
-            adam_in.read(reinterpret_cast<char*>(&sec.m_b), sizeof(sec.m_b));
-            adam_in.read(reinterpret_cast<char*>(&sec.v_b), sizeof(sec.v_b));
+        size_t file_size = static_cast<size_t>(adam_in.tellg());
+        adam_in.seekg(0, std::ios::beg);
+        if (file_size == EXPECTED_ADAM_SIZE) {
+            adam_in.read(reinterpret_cast<char*>(&timestep), sizeof(timestep));
+            for (auto& sec : adam_state) {
+                adam_in.read(reinterpret_cast<char*>(sec.m_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
+                adam_in.read(reinterpret_cast<char*>(sec.v_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
+                adam_in.read(reinterpret_cast<char*>(&sec.m_b), sizeof(sec.m_b));
+                adam_in.read(reinterpret_cast<char*>(&sec.v_b), sizeof(sec.v_b));
+            }
+            std::cout << "[SpectralTropical] Loaded persistent Adam state (Timestep: " << timestep << ")\n";
+        } else {
+            std::cout << "[SpectralTropical] Adam state binary size mismatch (" << file_size << " != " << EXPECTED_ADAM_SIZE << " bytes). Resetting Adam state.\n";
+            adam_in.close();
+            std::remove("heavensgate_adam.dat");
         }
-        std::cout << "[SpectralTropical] Loaded persistent Adam state (Timestep: " << timestep << ")\n";
     }
 
     float beta1 = 0.9f;
