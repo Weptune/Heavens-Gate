@@ -17,7 +17,9 @@ TropicalEvaluator& TropicalEvaluator::instance() {
     static TropicalEvaluator inst;
     static bool initialized = false;
     if (!initialized) {
-        inst.load_weights("heavensgate_tropical.trm");
+        if (!inst.load_weights("heavensgate_tropical.trm")) {
+            inst.initialize_weights(42);
+        }
         initialized = true;
     }
     return inst;

@@ -19,7 +19,9 @@ void Evaluator::init() {
     TensorMPS::instance().load_weights("heavensgate.tnw");
     TensorMPSQuantized::instance().quantize_from(TensorMPS::instance());
     TensorNNUE::instance().load_weights("heavensgate_tnnue.nnue");
-    TropicalEvaluator::instance().load_weights("heavensgate_tropical.trm");
+    if (!TropicalEvaluator::instance().load_weights("heavensgate_tropical.trm")) {
+        TropicalEvaluator::instance().initialize_weights(42);
+    }
 }
 
 int Evaluator::evaluate_side(const Board& board, Color side) {
