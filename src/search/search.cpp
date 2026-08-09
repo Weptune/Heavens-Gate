@@ -17,8 +17,7 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
     Color us = board.side_to_move();
     bool in_chk = MoveGenerator::in_check(board, us);
 
-    int static_eval = Evaluator::evaluate_incremental(board, ply);
-    int stand_pat = static_eval + get_cor_history(board);
+    int stand_pat = Evaluator::evaluate_incremental(board, ply);
     if (!in_chk) {
         if (stand_pat >= beta) {
             return beta;
@@ -198,10 +197,9 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         return q_eval;
     }
 
-    // 2. Reverse Futility Pruning (Static Null Move Pruning with CorHist)
+    // 2. Reverse Futility Pruning (Static Null Move Pruning)
     if (depth <= 3 && !in_chk && std::abs(beta) < ScoreMate - 1000) {
-        int static_eval = Evaluator::evaluate_incremental(board, ply);
-        int eval = static_eval + get_cor_history(board);
+        int eval = Evaluator::evaluate_incremental(board, ply);
         int margin = 120 * depth;
         if (eval - margin >= beta) {
             metrics_tracker_.add_cut();
@@ -330,11 +328,6 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     if (use_tt && !time_stop_flag_) {
         TTBound bound = (best_score <= orig_alpha) ? TTBound::Upper : TTBound::Exact;
         tt_.store(board.zobrist_key(), best_move, best_score, depth, bound, ply);
-    }
-
-    if (depth >= 2 && !in_chk && std::abs(best_score) < ScoreMate - 1000) {
-        int static_eval = Evaluator::evaluate_incremental(board, ply);
-        update_cor_history(board, depth, best_score, static_eval);
     }
 
     if (json_node) {

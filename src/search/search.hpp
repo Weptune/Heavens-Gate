@@ -69,22 +69,6 @@ private:
     GameTreeExporter exporter_;
     MetricsTracker metrics_tracker_;
 
-    // Correction History (CorHist) table (16,384 entries)
-    std::array<int, 16384> cor_history_table_{};
-
-    int get_cor_history(const Board& board) const {
-        size_t idx = static_cast<size_t>(board.zobrist_key() & 16383);
-        return cor_history_table_[idx];
-    }
-
-    void update_cor_history(const Board& board, int depth, int search_score, int static_eval) {
-        if (std::abs(search_score) > ScoreMate - 1000) return;
-        size_t idx = static_cast<size_t>(board.zobrist_key() & 16383);
-        int diff = search_score - static_eval;
-        diff = std::clamp(diff, -300, 300);
-        cor_history_table_[idx] += (diff - cor_history_table_[idx]) / 16;
-    }
-
     std::chrono::high_resolution_clock::time_point search_start_time_;
     double max_time_ms_ = 0.0;
     bool time_stop_flag_ = false;
