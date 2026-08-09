@@ -354,21 +354,25 @@ bool TropicalEvaluator::load_weights(const std::string& path) {
     in.read(reinterpret_cast<char*>(&num_sec), sizeof(num_sec));
     in.read(reinterpret_cast<char*>(&num_feat), sizeof(num_feat));
 
-    bool is_22_feat = (num_feat == 22);
-    if (num_sec != TOTAL_SECTORS || num_feat != NUM_FEATURES) return false;
+    if (num_sec != TOTAL_SECTORS || num_feat != NUM_FEATURES) {
+        in.close();
+        std::remove(path.c_str()); // Auto-clean incompatible weights from old phase
+        return false;
+    }
 
     sectors_.resize(TOTAL_SECTORS);
     for (auto& sec : sectors_) {
-        if (is_22_feat) {
-            in.read(reinterpret_cast<char*>(sec.w.data()), 22 * sizeof(float));
-            for (size_t k = 22; k < NUM_FEATURES; k++) sec.w[k] = 0.0f;
-        } else {
-            in.read(reinterpret_cast<char*>(sec.w.data()), NUM_FEATURES * sizeof(float));
-        }
+        in.read(reinterpret_cast<char*>(sec.w.data()), NUM_FEATURES * sizeof(float));
         in.read(reinterpret_cast<char*>(&sec.b), sizeof(sec.b));
     }
 
-    return in.good();
+    bool ok = in.good();
+    in.close();
+    if (!ok) {
+        std::remove(path.c_str());
+        return false;
+    }
+    return true;
 }
 
 } // namespace heavensgate
