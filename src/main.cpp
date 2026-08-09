@@ -94,6 +94,49 @@ void run_automated_tournament(int num_games, int depth) {
     int a_wins = 0;
     int b_wins = 0;
     int draws  = 0;
+    int start_game = 1;
+
+    // Check for existing partial tournament results to resume seamlessly
+    std::ifstream existing_pgn("tournament_results.pgn");
+    if (existing_pgn.is_open()) {
+        std::string content((std::istreambuf_iterator<char>(existing_pgn)), std::istreambuf_iterator<char>());
+        existing_pgn.close();
+
+        auto count_occurrences = [](const std::string& str, const std::string& sub) {
+            size_t count = 0, pos = 0;
+            while ((pos = str.find(sub, pos)) != std::string::npos) {
+                count++;
+                pos += sub.length();
+            }
+            return count;
+        };
+
+        // Split into game blocks
+        std::vector<std::string> existing_games;
+        size_t pos = 0;
+        while ((pos = content.find("[Event ", pos)) != std::string::npos) {
+            size_t next_pos = content.find("[Event ", pos + 7);
+            std::string g_block = (next_pos == std::string::npos) ? content.substr(pos) : content.substr(pos, next_pos - pos);
+            existing_games.push_back(g_block);
+            if (next_pos == std::string::npos) break;
+            pos = next_pos;
+        }
+
+        for (const auto& g_str : existing_games) {
+            bool white_is_master = (g_str.find("[White \"Master Edition\"]") != std::string::npos);
+            bool black_is_master = (g_str.find("[Black \"Master Edition\"]") != std::string::npos);
+
+            if (g_str.find("1-0\n") != std::string::npos || g_str.find("1-0\r\n") != std::string::npos) {
+                if (white_is_master) a_wins++; else b_wins++;
+                start_game++;
+            } else if (g_str.find("0-1\n") != std::string::npos || g_str.find("0-1\r\n") != std::string::npos) {
+                if (black_is_master) a_wins++; else b_wins++;
+                start_game++;
+            } else if (g_str.find("1/2-1/2") != std::string::npos) {
+                draws++;
+                start_game++;
+            }
+        }
 
     SearchEngine master_engine;
     SearchEngine baseline_engine;
@@ -103,9 +146,18 @@ void run_automated_tournament(int num_games, int depth) {
     master_engine.polyglot_book().load("performance.bin");
     baseline_engine.polyglot_book().load("performance.bin");
 
-    std::ofstream pgn_file("tournament_results.pgn");
+    if (start_game > 1 && start_game <= num_games) {
+        std::cout << "[RESUMING TOURNAMENT] Found " << (start_game - 1) << " existing completed games (Master " 
+                  << a_wins << " - " << b_wins << " Stockfish, " << draws << " draws).\n";
+        std::cout << "[RESUMING TOURNAMENT] Continuing seamlessly from Game " << start_game << "/" << num_games << "...\n\n";
+    } else if (start_game > num_games) {
+        std::cout << "[TOURNAMENT COMPLETE] All " << num_games << " games already completed in tournament_results.pgn!\n\n";
+        return;
+    }
 
-    for (int g = 1; g <= num_games; ++g) {
+    std::ofstream pgn_file("tournament_results.pgn", std::ios::app);
+
+    for (int g = start_game; g <= num_games; ++g) {
         try {
             if (sf_ok) stockfish.new_game();
             Board board;
