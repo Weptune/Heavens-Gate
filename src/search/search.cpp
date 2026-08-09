@@ -16,7 +16,8 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
     Color us = board.side_to_move();
     bool in_chk = MoveGenerator::in_check(board, us);
 
-    int stand_pat = Evaluator::evaluate_incremental(board, ply);
+    int static_eval = Evaluator::evaluate_incremental(board, ply);
+    int stand_pat = static_eval + get_cor_history(board);
     if (!in_chk) {
         if (stand_pat >= beta) {
             return beta;
@@ -196,9 +197,10 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         return q_eval;
     }
 
-    // 2. Reverse Futility Pruning (Static Null Move Pruning)
+    // 2. Reverse Futility Pruning (Static Null Move Pruning with CorHist)
     if (depth <= 3 && !in_chk && std::abs(beta) < ScoreMate - 1000) {
-        int eval = Evaluator::evaluate_incremental(board, ply);
+        int static_eval = Evaluator::evaluate_incremental(board, ply);
+        int eval = static_eval + get_cor_history(board);
         int margin = 120 * depth;
         if (eval - margin >= beta) {
             metrics_tracker_.add_cut();
@@ -327,6 +329,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     if (use_tt && !time_stop_flag_) {
         TTBound bound = (best_score <= orig_alpha) ? TTBound::Upper : TTBound::Exact;
         tt_.store(board.zobrist_key(), best_move, best_score, depth, bound, ply);
+    }
+
+    if (depth >= 2 && !in_chk && std::abs(best_score) < ScoreMate - 1000) {
+        int static_eval = Evaluator::evaluate_incremental(board, ply);
+        update_cor_history(board, depth, best_score, static_eval);
     }
 
     if (json_node) {
@@ -511,6 +518,10 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
     int last_score = 0;
     int stable_move_count = 0;
 
+    SpectralFeatures root_spec = SpectralGraph::compute_spectrum(board);
+    float last_fiedler = root_spec.fiedler_val;
+    float last_gap = root_spec.spectral_gap;
+
     for (int d = 1; d <= max_depth; ++d) {
         metrics_tracker_.set_depth(d);
 
@@ -585,7 +596,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 
         if (interrupted) break;
 
-        // 2. Smart Move Stability Check: Count how many depths best_move remained stable
+        // 2. Smart Move Stability & Spectral Volatility Check
         if (current_best_move == best_pv_move) {
             stable_move_count++;
         } else {
@@ -596,14 +607,18 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
         int eval_diff = std::abs(current_best_score - last_score);
         last_score   = current_best_score;
 
+        // Spectral Volatility Check: Extend allocated time if board graph connectivity is undergoing volatile transition
+        float volatility = std::abs(root_spec.fiedler_val - last_fiedler) + std::abs(root_spec.spectral_gap - last_gap);
+        if (volatility > 1.5f && max_time_ms_ > 0.0) {
+            max_time_ms_ = std::min(2000.0, max_time_ms * 1.5);
+        }
+
         final_result.best_move = current_best_move;
         final_result.best_score = current_best_score;
         final_result.pv = pv_table_.get_pv(d).to_vector();
         final_result.completed_depth = d;
         final_result.tt_hits = tt_.hits();
         final_result.q_nodes = q_nodes_;
-
-        // Always complete full depth 8 search to prevent tactical blunders!
 
         if (is_time_up()) break;
     }
