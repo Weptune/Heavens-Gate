@@ -1647,7 +1647,7 @@
     "round": 53,
     "phase": 2,
     "phase_round": 45,
-    "commit": "LOCAL",
+    "commit": "7bed9e8",
     "weights": {
       "Material": 0.801,
       "Fiedler": 0.411,
@@ -1677,6 +1677,36 @@
       "KSFiedXPress": 0.7977,
       "CTRFiedXCtr": 0.7359,
       "BR_Fiedler": 0.6007
+    }
+  },
+  {
+    "round": 54,
+    "phase": 2,
+    "phase_round": 46,
+    "commit": "LOCAL",
+    "weights": {
+      "Material": -22.0472,
+      "Fiedler": 0.8016,
+      "Cohesion": 0.3266,
+      "Gap": 0.0087,
+      "PST": 0.0082,
+      "KingPress": 0.7385,
+      "Battery": 0.2894,
+      "PawnCoh": 0.0773,
+      "Trace": 0.3081,
+      "Mobility": 0.0183,
+      "Center": 0.0236,
+      "Phase": 0.1863,
+      "Shield": 1.2051,
+      "Passed": 0.1535,
+      "EG_Passed": 0.2312,
+      "Attack_Ratio": 0.0791,
+      "BatXCenter": 0.0593,
+      "FiedXPWN": 0.5313,
+      "EG_Mobility": 0.4004,
+      "PassXCenter": 0.016,
+      "KingXBat": 0.117,
+      "ShldXPWN": 0.2103
     }
   }
 ]
