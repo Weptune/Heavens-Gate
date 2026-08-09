@@ -357,7 +357,7 @@ int main(int argc, char* argv[]) {
     std::cout << "[SpectralTropical] Training via Adam Optimizer (Epochs=" << epochs
               << ", LR=" << lr << ", Decay=" << lr_decay << ")...\n\n";
 
-    std::cout << "[SpectralTropical] Pre-computing 22D Feature Vectors for " << active_dataset.size() << " positions...\n";
+    std::cout << "[SpectralTropical] Pre-computing " << TropicalEvaluator::NUM_FEATURES << "D Feature Vectors for " << active_dataset.size() << " positions...\n";
     struct CachedSample {
         std::array<float, TropicalEvaluator::NUM_FEATURES> features;
         size_t bucket;
