@@ -49,9 +49,24 @@ while ($true) {
     Write-Host "[3/4] Recompiling Engine (AVX2 SIMD & OpenMP Accelerated)..." -ForegroundColor Yellow
     g++ -std=c++20 -O3 -mavx2 -mfma -fopenmp -Isrc src/main.cpp src/board/board.cpp src/core/fen.cpp src/core/zobrist.cpp src/core/polyglot.cpp src/movegen/magic.cpp src/movegen/attack_masks.cpp src/movegen/movegen.cpp src/movegen/perft.cpp src/evaluation/pst.cpp src/evaluation/eval_features.cpp src/evaluation/nnue.cpp src/evaluation/tensor_eval.cpp src/evaluation/tensor_train.cpp src/evaluation/tensor_quant.cpp src/evaluation/tensor_nnue.cpp src/evaluation/spectral_graph.cpp src/evaluation/tropical_eval.cpp src/evaluation/eval.cpp src/search/move_picker.cpp src/search/tt.cpp src/search/search.cpp src/visualization/exporter.cpp src/benchmark/metrics.cpp src/uci/uci.cpp -o heavensgate.exe
 
-    # 5. Run 100-Game Depth 8 Grandmaster Tournament
+    # 5. Run 100-Game Depth 8 Grandmaster Tournament (with strict 100-game verification)
     Write-Host "[4/4] Running 100-Game Depth 8 Grandmaster Tournament..." -ForegroundColor Yellow
-    .\heavensgate.exe tournament 100 8
+    if (Test-Path -Path "tournament_results.pgn") { Remove-Item -Path "tournament_results.pgn" -Force }
+    
+    $game_count = 0
+    while ($game_count -lt 100) {
+        .\heavensgate.exe tournament 100 8
+        if (Test-Path -Path "tournament_results.pgn") {
+            $pgn_content = Get-Content -Path "tournament_results.pgn" -Raw
+            $matches = [regex]::Matches($pgn_content, '\[Event ')
+            $game_count = $matches.Count
+            Write-Host "[TOURNAMENT STATUS] Played $game_count / 100 games." -ForegroundColor Cyan
+        }
+        if ($game_count -lt 100) {
+            Write-Host "[TOURNAMENT VERIFIER] Tournament played $game_count / 100 games. Resuming to complete 100 games..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 2
+        }
+    }
 
     # Archive PGN per round into pgn_history/ folder
     if (!(Test-Path -Path "pgn_history")) { New-Item -ItemType Directory -Path "pgn_history" }
