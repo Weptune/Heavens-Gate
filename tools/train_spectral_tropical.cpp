@@ -379,10 +379,22 @@ int main(int argc, char* argv[]) {
     std::vector<size_t> indices(cached_dataset.size());
     std::iota(indices.begin(), indices.end(), 0);
 
-    float final_rmse = 0.0f;
-    float best_rmse = 1e9f;
-    int best_epoch = 1;
+    // 0. Compute Epoch 0 Baseline RMSE on current dataset using loaded model
+    float init_loss = 0.0f;
+    for (size_t i = 0; i < cached_dataset.size(); i++) {
+        auto eval_res = model.evaluate_detailed_from_features(cached_dataset[i].features, cached_dataset[i].bucket);
+        float err = std::max(-1000.0f, std::min(1000.0f, static_cast<float>(eval_res.score) - cached_dataset[i].target));
+        init_loss += err * err;
+    }
+    float initial_rmse = std::sqrt(init_loss / cached_dataset.size());
+
+    float final_rmse = initial_rmse;
+    float best_rmse = initial_rmse;
+    int best_epoch = 0;
     TropicalEvaluator best_model = model;
+
+    std::cout << "[SpectralTropical] Loaded Checkpoint Baseline RMSE (Epoch 0): " 
+              << std::fixed << std::setprecision(2) << initial_rmse << " cp\n\n";
 
     for (int epoch = 1; epoch <= epochs; epoch++) {
         std::shuffle(indices.begin(), indices.end(), shuffle_rng);
