@@ -218,13 +218,13 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     x[20] = x[5]  * (pos_battery / 10.0f);                                      // KingXBat Residual Boost
     x[21] = x[12] * (pos_pawncoh / 10.0f);                                      // ShldXPWN Residual Boost
 
-    // Phase 3 4-Zone Spatial Fiedler Features & Cross-Terms (x22..x27)
-    x[22] = (feat.fiedler_ks_us - feat.fiedler_ks_them) * 5.0f;                 // Relative Kingside Fiedler
-    x[23] = (feat.fiedler_qs_us - feat.fiedler_qs_them) * 5.0f;                 // Relative Queenside Fiedler
-    x[24] = (feat.fiedler_ctr_us - feat.fiedler_ctr_them) * 5.0f;               // Relative Center Fiedler
-    x[25] = x[22] * (x[5] / 10.0f);                                             // KSFiedXPress
-    x[26] = x[24] * (pos_center / 10.0f);                                       // CTRFiedXCenter
-    x[27] = (feat.fiedler_br_us - feat.fiedler_br_them) * 3.0f;                 // Relative Back-Rank Fiedler
+    // Phase 3 4-Zone Spatial Fiedler Features & Cross-Terms (Strictly Normalized [-2, +2])
+    x[22] = std::clamp((feat.fiedler_ks_us  - feat.fiedler_ks_them)  * 0.5f, -2.0f, 2.0f);
+    x[23] = std::clamp((feat.fiedler_qs_us  - feat.fiedler_qs_them)  * 0.5f, -2.0f, 2.0f);
+    x[24] = std::clamp((feat.fiedler_ctr_us - feat.fiedler_ctr_them) * 0.5f, -2.0f, 2.0f);
+    x[25] = std::clamp(x[22] * (x[5] / 10.0f), -2.0f, 2.0f);
+    x[26] = std::clamp(x[24] * (pos_center / 10.0f), -2.0f, 2.0f);
+    x[27] = std::clamp((feat.fiedler_br_us  - feat.fiedler_br_them)  * 0.3f, -2.0f, 2.0f);
 
     return x;
 }
