@@ -1,324 +1,210 @@
-=========================================================================
-            HEAVEN'S GATE — CONTINUOUS TRAINING HISTORY SUMMARY
-=========================================================================
+=== ROUND 1 COMPREHENSIVE METRICS REPORT ===
+  Score: 21.0% (16W / 74L / 10D in 100 games)
+  Sustained Advantage: Held >=+150cp in 60/100 games (60%)
+  Advantage Conversion: Converted 16/60 (26.7% Conversion Rate)
+  Tactical Resiliency: Recovered from 62/2348 tactical drops (2.6% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 22888 cp
+  Avg Eval: Op=+43cp | Mid=+57cp | End=+35cp
+  Avg Game Length: Wins=68 moves | Losses=54 moves
+  Promotions: 78 Queens/Rooks promoted
 
-=========================================================================
-  PHASE 1: 10 Spatial King-Bucket Partitioning (16 Features, 5,440 Params)
-=========================================================================
+=== ROUND 2 COMPREHENSIVE METRICS REPORT ===
+  Score: 37.0% (34W / 60L / 6D in 100 games)
+  Sustained Advantage: Held >=+150cp in 68/100 games (68%)
+  Advantage Conversion: Converted 26/68 (38.2% Conversion Rate)
+  Tactical Resiliency: Recovered from 62/1820 tactical drops (3.4% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 23663 cp
+  Avg Eval: Op=+33cp | Mid=+71cp | End=+42cp
+  Avg Game Length: Wins=65 moves | Losses=60 moves
+  Promotions: 92 Queens/Rooks promoted
 
-=== PHASE 1 ROUND 1 (Overall Round 1) SUMMARY ===
-  * Win Rate / Score  : 21.0% (16 Wins / 74 Losses / 10 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 60/100 games (60%)
-  * Conversion Rate   : Converted 16/60 (26.7% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+43cp | Middlegame=+57cp | Endgame=+35cp
-  * Pawn Promotions   : 78 promotions
+=== ROUND 3 COMPREHENSIVE METRICS REPORT ===
+  Score: 28.0% (26W / 70L / 4D in 100 games)
+  Sustained Advantage: Held >=+150cp in 62/100 games (62%)
+  Advantage Conversion: Converted 24/62 (38.7% Conversion Rate)
+  Tactical Resiliency: Recovered from 70/2150 tactical drops (3.3% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 24279 cp
+  Avg Eval: Op=+54cp | Mid=+42cp | End=+55cp
+  Avg Game Length: Wins=67 moves | Losses=59 moves
+  Promotions: 104 Queens/Rooks promoted
 
-=== PHASE 1 ROUND 2 (Overall Round 2) SUMMARY ===
-  * Win Rate / Score  : 37.0% (34 Wins / 60 Losses / 6 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 68/100 games (68%)
-  * Conversion Rate   : Converted 26/68 (38.2% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+33cp | Middlegame=+71cp | Endgame=+42cp
-  * Pawn Promotions   : 92 promotions
+=== ROUND 4 COMPREHENSIVE METRICS REPORT ===
+  Score: 39.0% (34W / 56L / 10D in 100 games)
+  Sustained Advantage: Held >=+150cp in 72/100 games (72%)
+  Advantage Conversion: Converted 34/72 (47.2% Conversion Rate)
+  Tactical Resiliency: Recovered from 68/2012 tactical drops (3.4% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 22669 cp
+  Avg Eval: Op=+66cp | Mid=+36cp | End=-2cp
+  Avg Game Length: Wins=59 moves | Losses=52 moves
+  Promotions: 92 Queens/Rooks promoted
 
-=== PHASE 1 ROUND 3 (Overall Round 3) SUMMARY ===
-  * Win Rate / Score  : 28.0% (26 Wins / 70 Losses / 4 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 62/100 games (62%)
-  * Conversion Rate   : Converted 24/62 (38.7% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+54cp | Middlegame=+42cp | Endgame=+55cp
-  * Pawn Promotions   : 104 promotions
+=== ROUND 5 COMPREHENSIVE METRICS REPORT ===
+  Score: 41.0% (40W / 58L / 2D in 100 games)
+  Sustained Advantage: Held >=+150cp in 68/100 games (68%)
+  Advantage Conversion: Converted 38/68 (55.9% Conversion Rate)
+  Tactical Resiliency: Recovered from 52/1854 tactical drops (2.8% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 24620 cp
+  Avg Eval: Op=+45cp | Mid=+45cp | End=-2cp
+  Avg Game Length: Wins=63 moves | Losses=51 moves
+  Promotions: 82 Queens/Rooks promoted
 
-=== PHASE 1 ROUND 4 (Overall Round 4) SUMMARY ===
-  * Win Rate / Score  : 39.0% (34 Wins / 56 Losses / 10 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 72/100 games (72%)
-  * Conversion Rate   : Converted 34/72 (47.2% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+66cp | Middlegame=+36cp | Endgame=-2cp
-  * Pawn Promotions   : 92 promotions
+=== ROUND 6 COMPREHENSIVE METRICS REPORT ===
+  Score: 36.0% (32W / 60L / 8D in 100 games)
+  Sustained Advantage: Held >=+150cp in 62/100 games (62%)
+  Advantage Conversion: Converted 28/62 (45.2% Conversion Rate)
+  Tactical Resiliency: Recovered from 56/1816 tactical drops (3.1% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 23205 cp
+  Avg Eval: Op=+25cp | Mid=+3cp | End=+40cp
+  Avg Game Length: Wins=66 moves | Losses=50 moves
+  Promotions: 68 Queens/Rooks promoted
 
-=== PHASE 1 ROUND 5 (Overall Round 5) SUMMARY ===
-  * Win Rate / Score  : 41.0% (40 Wins / 58 Losses / 2 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 68/100 games (68%)
-  * Conversion Rate   : Converted 38/68 (55.9% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+45cp | Middlegame=+45cp | Endgame=-1cp
-  * Pawn Promotions   : 82 promotions
+=== ROUND 7 COMPREHENSIVE METRICS REPORT ===
+  Score: 35.0% (32W / 62L / 6D in 100 games)
+  Sustained Advantage: Held >=+150cp in 64/100 games (64%)
+  Advantage Conversion: Converted 28/64 (43.8% Conversion Rate)
+  Tactical Resiliency: Recovered from 64/1922 tactical drops (3.3% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 23687 cp
+  Avg Eval: Op=+27cp | Mid=+21cp | End=+146cp
+  Avg Game Length: Wins=74 moves | Losses=54 moves
+  Promotions: 110 Queens/Rooks promoted
 
-=== PHASE 1 ROUND 6 (Overall Round 6) SUMMARY ===
-  * Win Rate / Score  : 36.0% (32 Wins / 60 Losses / 8 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 62/100 games (62%)
-  * Conversion Rate   : Converted 28/62 (45.2% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+25cp | Middlegame=+3cp | Endgame=+40cp
-  * Pawn Promotions   : 68 promotions
+=== ROUND 8 COMPREHENSIVE METRICS REPORT ===
+  Score: 26.0% (24W / 72L / 4D in 100 games)
+  Sustained Advantage: Held >=+150cp in 54/100 games (54%)
+  Advantage Conversion: Converted 20/54 (37.0% Conversion Rate)
+  Tactical Resiliency: Recovered from 46/1476 tactical drops (3.1% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 24287 cp
+  Avg Eval: Op=+22cp | Mid=+57cp | End=-22cp
+  Avg Game Length: Wins=62 moves | Losses=62 moves
+  Promotions: 112 Queens/Rooks promoted
 
-=== PHASE 1 ROUND 7 (Overall Round 7) SUMMARY ===
-  * Win Rate / Score  : 35.0% (32 Wins / 62 Losses / 6 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 64/100 games (64%)
-  * Conversion Rate   : Converted 28/64 (43.8% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+27cp | Middlegame=+21cp | Endgame=+147cp
-  * Pawn Promotions   : 110 promotions
+=== ROUND 9 COMPREHENSIVE METRICS REPORT ===
+  Score: 31.0% (26W / 64L / 10D in 100 games)
+  Sustained Advantage: Held >=+150cp in 60/100 games (60%)
+  Advantage Conversion: Converted 20/60 (33.3% Conversion Rate)
+  Tactical Resiliency: Recovered from 50/1200 tactical drops (4.2% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 22729 cp
+  Avg Eval: Op=+28cp | Mid=+30cp | End=+55cp
+  Avg Game Length: Wins=61 moves | Losses=51 moves
+  Promotions: 58 Queens/Rooks promoted
 
-=== PHASE 1 ROUND 8 (Overall Round 8) SUMMARY ===
-  * Win Rate / Score  : 26.0% (24 Wins / 72 Losses / 4 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 54/100 games (54%)
-  * Conversion Rate   : Converted 20/54 (37.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+23cp | Middlegame=+57cp | Endgame=-22cp
-  * Pawn Promotions   : 112 promotions
+=== ROUND 10 COMPREHENSIVE METRICS REPORT ===
+  Score: 33.0% (30W / 64L / 6D in 100 games)
+  Sustained Advantage: Held >=+150cp in 50/100 games (50%)
+  Advantage Conversion: Converted 20/50 (40.0% Conversion Rate)
+  Tactical Resiliency: Recovered from 60/1974 tactical drops (3.0% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 23720 cp
+  Avg Eval: Op=+25cp | Mid=-0cp | End=+12cp
+  Avg Game Length: Wins=62 moves | Losses=56 moves
+  Promotions: 78 Queens/Rooks promoted
 
-=========================================================================
-  PHASE 2: Hand-Selected Feature Cross-Terms (22 Features, 7,480 Params)
-=========================================================================
+=== ROUND 11 COMPREHENSIVE METRICS REPORT ===
+  Score: 35.0% (32W / 62L / 6D in 100 games)
+  Sustained Advantage: Held >=+150cp in 58/100 games (58%)
+  Advantage Conversion: Converted 24/58 (41.4% Conversion Rate)
+  Tactical Resiliency: Recovered from 56/2130 tactical drops (2.6% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 23682 cp
+  Avg Eval: Op=+44cp | Mid=+36cp | End=+6cp
+  Avg Game Length: Wins=80 moves | Losses=63 moves
+  Promotions: 94 Queens/Rooks promoted
 
-=== PHASE 2 ROUND 1 (Overall Round 9) SUMMARY ===
-  * Win Rate / Score  : 31.0% (26 Wins / 64 Losses / 10 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 60/100 games (60%)
-  * Conversion Rate   : Converted 20/60 (33.3% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+28cp | Middlegame=+31cp | Endgame=+55cp
-  * Pawn Promotions   : 58 promotions
+=== ROUND 12 COMPREHENSIVE METRICS REPORT ===
+  Score: 39.0% (36W / 58L / 6D in 100 games)
+  Sustained Advantage: Held >=+150cp in 60/100 games (60%)
+  Advantage Conversion: Converted 26/60 (43.3% Conversion Rate)
+  Tactical Resiliency: Recovered from 60/2644 tactical drops (2.3% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 23642 cp
+  Avg Eval: Op=+40cp | Mid=+8cp | End=+39cp
+  Avg Game Length: Wins=58 moves | Losses=56 moves
+  Promotions: 98 Queens/Rooks promoted
 
-=== PHASE 2 ROUND 2 (Overall Round 10) SUMMARY ===
-  * Win Rate / Score  : 33.0% (30 Wins / 64 Losses / 6 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 50/100 games (50%)
-  * Conversion Rate   : Converted 20/50 (40.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+25cp | Middlegame=-0cp | Endgame=+12cp
-  * Pawn Promotions   : 78 promotions
+=== ROUND 13 COMPREHENSIVE METRICS REPORT ===
+  Score: 32.0% (30W / 66L / 4D in 100 games)
+  Sustained Advantage: Held >=+150cp in 56/100 games (56%)
+  Advantage Conversion: Converted 24/56 (42.9% Conversion Rate)
+  Tactical Resiliency: Recovered from 60/2550 tactical drops (2.4% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 24217 cp
+  Avg Eval: Op=+34cp | Mid=+22cp | End=+18cp
+  Avg Game Length: Wins=77 moves | Losses=55 moves
+  Promotions: 74 Queens/Rooks promoted
 
-=== PHASE 2 ROUND 3 (Overall Round 11) SUMMARY ===
-  * Win Rate / Score  : 35.0% (32 Wins / 62 Losses / 6 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 58/100 games (58%)
-  * Conversion Rate   : Converted 24/58 (41.4% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+44cp | Middlegame=+36cp | Endgame=+6cp
-  * Pawn Promotions   : 94 promotions
+=== ROUND 14 COMPREHENSIVE METRICS REPORT ===
+  Score: 57.0% (55W / 41L / 4D in 100 games)
+  Sustained Advantage: Held >=+150cp in 74/100 games (74%)
+  Advantage Conversion: Converted 48/74 (64.9% Conversion Rate)
+  Tactical Resiliency: Recovered from 69/2370 tactical drops (2.9% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 23917 cp
+  Avg Eval: Op=+46cp | Mid=+74cp | End=+70cp
+  Avg Game Length: Wins=57 moves | Losses=53 moves
+  Promotions: 60 Queens/Rooks promoted
 
-=== PHASE 2 ROUND 10 (Overall Round 18) SUMMARY ===
-  * Win Rate / Score  : 39.0% (36 Wins / 58 Losses / 6 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 60/100 games (60%)
-  * Conversion Rate   : Converted 26/60 (43.3% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+39cp | Middlegame=+8cp | Endgame=+39cp
-  * Pawn Promotions   : 98 promotions
+=== ROUND 15 COMPREHENSIVE METRICS REPORT ===
+  Score: 64.5% (63W / 34L / 3D in 100 games)
+  Sustained Advantage: Held >=+150cp in 75/100 games (75%)
+  Advantage Conversion: Converted 54/75 (72.0% Conversion Rate)
+  Tactical Resiliency: Recovered from 78/2363 tactical drops (3.3% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 24078 cp
+  Avg Eval: Op=+54cp | Mid=+72cp | End=+158cp
+  Avg Game Length: Wins=55 moves | Losses=55 moves
+  Promotions: 64 Queens/Rooks promoted
 
-=== PHASE 2 ROUND 11 (Overall Round 19) SUMMARY ===
-  * Win Rate / Score  : 32.0% (30 Wins / 66 Losses / 4 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 56/100 games (56%)
-  * Conversion Rate   : Converted 24/56 (42.9% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+35cp | Middlegame=+22cp | Endgame=+18cp
-  * Pawn Promotions   : 74 promotions
+=== ROUND 16 COMPREHENSIVE METRICS REPORT ===
+  Score: 65.5% (61W / 30L / 9D in 100 games)
+  Sustained Advantage: Held >=+150cp in 74/100 games (74%)
+  Advantage Conversion: Converted 48/74 (64.9% Conversion Rate)
+  Tactical Resiliency: Recovered from 76/2384 tactical drops (3.2% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 22825 cp
+  Avg Eval: Op=+56cp | Mid=+79cp | End=+113cp
+  Avg Game Length: Wins=60 moves | Losses=57 moves
+  Promotions: 72 Queens/Rooks promoted
 
-=== PHASE 2 ROUND 12 (Overall Round 20) SUMMARY ===
-  * Win Rate / Score  : 60.0% (5 Wins / 3 Losses / 2 Draws in 10 games)
-  * Sustained Leads   : Held >=+150cp in 8/10 games (80%)
-  * Conversion Rate   : Converted 5/8 (62.5% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+65cp | Middlegame=+142cp | Endgame=+202cp
-  * Pawn Promotions   : 6 promotions
+=== ROUND 17 COMPREHENSIVE METRICS REPORT ===
+  Score: 32.5% (25W / 60L / 15D in 100 games)
+  Sustained Advantage: Held >=+150cp in 68/100 games (68%)
+  Advantage Conversion: Converted 16/68 (23.5% Conversion Rate)
+  Tactical Resiliency: Recovered from 70/3468 tactical drops (2.0% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 24444 cp
+  Avg Eval: Op=+52cp | Mid=-24cp | End=-59cp
+  Avg Game Length: Wins=50 moves | Losses=79 moves
+  Promotions: 76 Queens/Rooks promoted
 
-=== PHASE 2 ROUND 13 (Overall Round 21) SUMMARY ===
-  * Win Rate / Score  : 39.4% (12 Wins / 19 Losses / 2 Draws in 33 games)
-  * Sustained Leads   : Held >=+150cp in 25/33 games (76%)
-  * Conversion Rate   : Converted 12/25 (48.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+59cp | Middlegame=+85cp | Endgame=+33cp
-  * Pawn Promotions   : 20 promotions
+=== ROUND 18 COMPREHENSIVE METRICS REPORT ===
+  Score: 19.5% (5W / 66L / 29D in 100 games)
+  Sustained Advantage: Held >=+150cp in 79/100 games (79%)
+  Advantage Conversion: Converted 5/79 (6.3% Conversion Rate)
+  Tactical Resiliency: Recovered from 73/4092 tactical drops (1.8% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 22211 cp
+  Avg Eval: Op=+27cp | Mid=-18cp | End=+13cp
+  Avg Game Length: Wins=71 moves | Losses=78 moves
+  Promotions: 84 Queens/Rooks promoted
 
-=== PHASE 2 ROUND 14 (Overall Round 22) SUMMARY ===
-  * Win Rate / Score  : 68.0% (66 Wins / 30 Losses / 4 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 75/100 games (75%)
-  * Conversion Rate   : Converted 54/75 (72.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+48cp | Middlegame=+70cp | Endgame=+84cp
-  * Pawn Promotions   : 60 promotions
+=== ROUND 19 COMPREHENSIVE METRICS REPORT ===
+  Score: 15.5% (8W / 77L / 15D in 100 games)
+  Sustained Advantage: Held >=+150cp in 84/100 games (84%)
+  Advantage Conversion: Converted 8/84 (9.5% Conversion Rate)
+  Tactical Resiliency: Recovered from 68/3853 tactical drops (1.8% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 25517 cp
+  Avg Eval: Op=+61cp | Mid=+16cp | End=-13cp
+  Avg Game Length: Wins=58 moves | Losses=83 moves
+  Promotions: 100 Queens/Rooks promoted
 
-=== PHASE 2 ROUND 15 (Overall Round 23) SUMMARY ===
-  * Win Rate / Score  : 56.8% (12 Wins / 9 Losses / 1 Draws in 22 games)
-  * Sustained Leads   : Held >=+150cp in 15/22 games (68%)
-  * Conversion Rate   : Converted 10/15 (66.7% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+38cp | Middlegame=+83cp | Endgame=+127cp
-  * Pawn Promotions   : 17 promotions
+=== ROUND 20 COMPREHENSIVE METRICS REPORT ===
+  Score: 20.0% (10W / 70L / 20D in 100 games)
+  Sustained Advantage: Held >=+150cp in 79/100 games (79%)
+  Advantage Conversion: Converted 9/79 (11.4% Conversion Rate)
+  Tactical Resiliency: Recovered from 71/4151 tactical drops (1.7% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 24130 cp
+  Avg Eval: Op=+54cp | Mid=+7cp | End=+7cp
+  Avg Game Length: Wins=66 moves | Losses=79 moves
+  Promotions: 80 Queens/Rooks promoted
 
-=== PHASE 2 ROUND 16 (Overall Round 24) SUMMARY ===
-  * Win Rate / Score  : 60.5% (33 Wins / 21 Losses / 3 Draws in 57 games)
-  * Sustained Leads   : Held >=+150cp in 41/57 games (72%)
-  * Conversion Rate   : Converted 28/41 (68.3% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+50cp | Middlegame=+74cp | Endgame=+72cp
-  * Pawn Promotions   : 40 promotions
-
-=== PHASE 2 ROUND 17 (Overall Round 25) SUMMARY ===
-  * Win Rate / Score  : 67.0% (63 Wins / 29 Losses / 8 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 69/100 games (69%)
-  * Conversion Rate   : Converted 46/69 (66.7% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+54cp | Middlegame=+72cp | Endgame=+117cp
-  * Pawn Promotions   : 70 promotions
-
-=== PHASE 2 ROUND 18 (Overall Round 26) SUMMARY ===
-  * Win Rate / Score  : 50.0% (0 Wins / 0 Losses / 2 Draws in 2 games)
-  * Sustained Leads   : Held >=+150cp in 2/2 games (100%)
-  * Conversion Rate   : Converted 0/2 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+86cp | Middlegame=+27cp | Endgame=-310cp
-  * Pawn Promotions   : 1 promotions
-
-=== PHASE 2 ROUND 19 (Overall Round 27) SUMMARY ===
-  * Win Rate / Score  : 25.0% (0 Wins / 1 Losses / 1 Draws in 2 games)
-  * Sustained Leads   : Held >=+150cp in 2/2 games (100%)
-  * Conversion Rate   : Converted 0/2 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+133cp | Middlegame=-9cp | Endgame=-13cp
-  * Pawn Promotions   : 1 promotions
-
-=== PHASE 2 ROUND 20 (Overall Round 28) SUMMARY ===
-  * Win Rate / Score  : 30.0% (1 Wins / 3 Losses / 1 Draws in 5 games)
-  * Sustained Leads   : Held >=+150cp in 4/5 games (80%)
-  * Conversion Rate   : Converted 1/4 (25.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+91cp | Middlegame=+68cp | Endgame=-143cp
-  * Pawn Promotions   : 6 promotions
-
-=== PHASE 2 ROUND 21 (Overall Round 29) SUMMARY ===
-  * Win Rate / Score  : 83.3% (2 Wins / 0 Losses / 1 Draws in 3 games)
-  * Sustained Leads   : Held >=+150cp in 2/3 games (67%)
-  * Conversion Rate   : Converted 2/2 (100.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+64cp | Middlegame=-165cp | Endgame=-144cp
-  * Pawn Promotions   : 0 promotions
-
-=========================================================================
-  PHASE 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features, 9,520 Params)
-=========================================================================
-
-=== PHASE 3 ROUND 1 (Overall Round 30) SUMMARY ===
-  * Win Rate / Score  : 33.3% (0 Wins / 1 Losses / 2 Draws in 3 games)
-  * Sustained Leads   : Held >=+150cp in 2/3 games (67%)
-  * Conversion Rate   : Converted 0/2 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+116cp | Middlegame=+39cp | Endgame=-57cp
-  * Pawn Promotions   : 0 promotions
-
-=== PHASE 3 ROUND 2 (Overall Round 31) SUMMARY ===
-  * Win Rate / Score  : 32.7% (7 Wins / 16 Losses / 3 Draws in 26 games)
-  * Sustained Leads   : Held >=+150cp in 19/26 games (73%)
-  * Conversion Rate   : Converted 6/19 (31.6% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+107cp | Middlegame=-30cp | Endgame=+23cp
-  * Pawn Promotions   : 11 promotions
-
-=== PHASE 3 ROUND 3 (Overall Round 32) SUMMARY ===
-  * Win Rate / Score  : 50.0% (0 Wins / 0 Losses / 1 Draws in 1 games)
-  * Sustained Leads   : Held >=+150cp in 1/1 games (100%)
-  * Conversion Rate   : Converted 0/1 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+133cp | Middlegame=+164cp | Endgame=+200cp
-  * Pawn Promotions   : 0 promotions
-
-=== PHASE 3 ROUND 4 (Overall Round 33) SUMMARY ===
-  * Win Rate / Score  : 17.0% (5 Wins / 71 Losses / 24 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 72/100 games (72%)
-  * Conversion Rate   : Converted 4/72 (5.6% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=-6cp | Middlegame=-55cp | Endgame=-44cp
-  * Pawn Promotions   : 88 promotions
-
-=== PHASE 3 ROUND 5 (Overall Round 34) SUMMARY ===
-  * Win Rate / Score  : 50.0% (0 Wins / 0 Losses / 1 Draws in 1 games)
-  * Sustained Leads   : Held >=+150cp in 1/1 games (100%)
-  * Conversion Rate   : Converted 0/1 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+230cp | Middlegame=-74cp | Endgame=-219cp
-  * Pawn Promotions   : 0 promotions
-
-=== PHASE 3 ROUND 6 (Overall Round 35) SUMMARY ===
-  * Win Rate / Score  : 20.0% (0 Wins / 6 Losses / 4 Draws in 10 games)
-  * Sustained Leads   : Held >=+150cp in 8/10 games (80%)
-  * Conversion Rate   : Converted 0/8 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+7cp | Middlegame=-76cp | Endgame=-51cp
-  * Pawn Promotions   : 8 promotions
-
-=== PHASE 3 ROUND 7 (Overall Round 36) SUMMARY ===
-  * Win Rate / Score  : 18.5% (8 Wins / 71 Losses / 21 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 85/100 games (85%)
-  * Conversion Rate   : Converted 8/85 (9.4% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+56cp | Middlegame=+14cp | Endgame=+6cp
-  * Pawn Promotions   : 103 promotions
-
-=== PHASE 3 ROUND 8 (Overall Round 37) SUMMARY ===
-  * Win Rate / Score  : 22.5% (11 Wins / 66 Losses / 23 Draws in 100 games)
-  * Sustained Leads   : Held >=+150cp in 82/100 games (82%)
-  * Conversion Rate   : Converted 10/82 (12.2% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+73cp | Middlegame=+48cp | Endgame=+28cp
-  * Pawn Promotions   : 81 promotions
-
-=== PHASE 3 ROUND 9 (Overall Round 38) SUMMARY ===
-  * Win Rate / Score  : 75.0% (1 Wins / 0 Losses / 1 Draws in 2 games)
-  * Sustained Leads   : Held >=+150cp in 1/2 games (50%)
-  * Conversion Rate   : Converted 1/1 (100.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+5cp | Middlegame=+12cp | Endgame=-17cp
-  * Pawn Promotions   : 2 promotions
-
-=== PHASE 3 ROUND 10 (Overall Round 39) SUMMARY ===
-  * Win Rate / Score  : 6.2% (0 Wins / 7 Losses / 1 Draws in 8 games)
-  * Sustained Leads   : Held >=+150cp in 6/8 games (75%)
-  * Conversion Rate   : Converted 0/6 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+85cp | Middlegame=-3cp | Endgame=-38cp
-  * Pawn Promotions   : 5 promotions
-
-=== PHASE 3 ROUND 11 (Overall Round 40) SUMMARY ===
-  * Win Rate / Score  : 25.0% (0 Wins / 2 Losses / 2 Draws in 4 games)
-  * Sustained Leads   : Held >=+150cp in 2/4 games (50%)
-  * Conversion Rate   : Converted 0/2 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=-1cp | Middlegame=-50cp | Endgame=-78cp
-  * Pawn Promotions   : 3 promotions
-
-=== PHASE 3 ROUND 12 (Overall Round 41) SUMMARY ===
-  * Win Rate / Score  : 25.0% (0 Wins / 1 Losses / 1 Draws in 2 games)
-  * Sustained Leads   : Held >=+150cp in 2/2 games (100%)
-  * Conversion Rate   : Converted 0/2 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=-27cp | Middlegame=-15cp | Endgame=+103cp
-  * Pawn Promotions   : 0 promotions
-
-=== PHASE 3 ROUND 13 (Overall Round 42) SUMMARY ===
-  * Win Rate / Score  : 12.5% (0 Wins / 6 Losses / 2 Draws in 8 games)
-  * Sustained Leads   : Held >=+150cp in 6/8 games (75%)
-  * Conversion Rate   : Converted 0/6 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+26cp | Middlegame=-53cp | Endgame=+26cp
-  * Pawn Promotions   : 6 promotions
-
-=== PHASE 3 ROUND 14 (Overall Round 43) SUMMARY ===
-  * Win Rate / Score  : 18.2% (1 Wins / 8 Losses / 2 Draws in 11 games)
-  * Sustained Leads   : Held >=+150cp in 10/11 games (91%)
-  * Conversion Rate   : Converted 1/10 (10.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+26cp | Middlegame=-1cp | Endgame=-14cp
-  * Pawn Promotions   : 9 promotions
-
-=== PHASE 3 ROUND 15 (Overall Round 44) SUMMARY ===
-  * Win Rate / Score  : 7.1% (0 Wins / 6 Losses / 1 Draws in 7 games)
-  * Sustained Leads   : Held >=+150cp in 5/7 games (71%)
-  * Conversion Rate   : Converted 0/5 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+12cp | Middlegame=-92cp | Endgame=-115cp
-  * Pawn Promotions   : 9 promotions
-
-=== PHASE 3 ROUND 16 (Overall Round 45) SUMMARY ===
-  * Win Rate / Score  : 25.0% (0 Wins / 1 Losses / 1 Draws in 2 games)
-  * Sustained Leads   : Held >=+150cp in 1/2 games (50%)
-  * Conversion Rate   : Converted 0/1 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+15cp | Middlegame=-2cp | Endgame=-87cp
-  * Pawn Promotions   : 2 promotions
-
-=== PHASE 3 ROUND 17 (Overall Round 46) SUMMARY ===
-  * Win Rate / Score  : 26.7% (7 Wins / 27 Losses / 9 Draws in 43 games)
-  * Sustained Leads   : Held >=+150cp in 36/43 games (84%)
-  * Conversion Rate   : Converted 7/36 (19.4% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+60cp | Middlegame=-15cp | Endgame=-26cp
-  * Pawn Promotions   : 36 promotions
-
-=== PHASE 3 ROUND 18 (Overall Round 47) SUMMARY ===
-  * Win Rate / Score  : 25.0% (2 Wins / 8 Losses / 2 Draws in 12 games)
-  * Sustained Leads   : Held >=+150cp in 10/12 games (83%)
-  * Conversion Rate   : Converted 2/10 (20.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+25cp | Middlegame=+12cp | Endgame=-128cp
-  * Pawn Promotions   : 8 promotions
-
-=== PHASE 3 ROUND 19 (Overall Round 48) SUMMARY ===
-  * Win Rate / Score  : 50.0% (0 Wins / 0 Losses / 1 Draws in 1 games)
-  * Sustained Leads   : Held >=+150cp in 1/1 games (100%)
-  * Conversion Rate   : Converted 0/1 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+175cp | Middlegame=-12cp | Endgame=-287cp
-  * Pawn Promotions   : 0 promotions
-
-=== PHASE 3 ROUND 20 (Overall Round 49) SUMMARY ===
-  * Win Rate / Score  : 12.5% (0 Wins / 3 Losses / 1 Draws in 4 games)
-  * Sustained Leads   : Held >=+150cp in 3/4 games (75%)
-  * Conversion Rate   : Converted 0/3 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+83cp | Middlegame=-11cp | Endgame=-133cp
-  * Pawn Promotions   : 1 promotions
-
-=== PHASE 3 ROUND 21 (Overall Round 50) SUMMARY ===
-  * Win Rate / Score  : 50.0% (0 Wins / 0 Losses / 1 Draws in 1 games)
-  * Sustained Leads   : Held >=+150cp in 1/1 games (100%)
-  * Conversion Rate   : Converted 0/1 (0.0% Conversion Efficiency)
-  * Phase Avg Evals   : Opening=+24cp | Middlegame=-119cp | Endgame=-205cp
-  * Pawn Promotions   : 2 promotions
+=== ROUND 21 COMPREHENSIVE METRICS REPORT ===
+  Score: 24.5% (9W / 37L / 9D in 55 games)
+  Sustained Advantage: Held >=+150cp in 45/55 games (82%)
+  Advantage Conversion: Converted 9/45 (20.0% Conversion Rate)
+  Tactical Resiliency: Recovered from 40/2087 tactical drops (1.9% Recovery Rate)
+  Eval Calibration: Avg Outcome Error = 25058 cp
+  Avg Eval: Op=+49cp | Mid=-12cp | End=-36cp
+  Avg Game Length: Wins=45 moves | Losses=73 moves
+  Promotions: 41 Queens/Rooks promoted
 
