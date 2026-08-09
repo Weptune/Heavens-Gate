@@ -526,8 +526,9 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 
         // 1. Single Legal Move Fast Path (0ms spent on forced moves)
         if (moves.size() == 1) {
+            int eval = Evaluator::evaluate_incremental(board, 0);
             final_result.best_move = moves[0];
-            final_result.best_score = last_score;
+            final_result.best_score = eval;
             final_result.completed_depth = d;
             metrics_tracker_.stop_timer();
             final_result.metrics = metrics_tracker_.get_metrics();
