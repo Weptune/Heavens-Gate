@@ -1,6 +1,10 @@
 [
   {
     "round": 1,
+    "phase": 1,
+    "phase_round": 1,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 21.0,
     "master_wins": 16,
@@ -42,11 +46,6 @@
     "calibration": {
       "avg_outcome_error_cp": 22888.2
     },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
-    },
     "pawn_promotions": 78,
     "draw_reasons": {
       "Stalemate": 0,
@@ -58,6 +57,10 @@
   },
   {
     "round": 2,
+    "phase": 1,
+    "phase_round": 2,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 37.0,
     "master_wins": 34,
@@ -99,11 +102,6 @@
     "calibration": {
       "avg_outcome_error_cp": 23663.2
     },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
-    },
     "pawn_promotions": 92,
     "draw_reasons": {
       "Stalemate": 0,
@@ -115,6 +113,10 @@
   },
   {
     "round": 3,
+    "phase": 1,
+    "phase_round": 3,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 28.0,
     "master_wins": 26,
@@ -156,11 +158,6 @@
     "calibration": {
       "avg_outcome_error_cp": 24279.0
     },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
-    },
     "pawn_promotions": 104,
     "draw_reasons": {
       "Stalemate": 0,
@@ -172,6 +169,10 @@
   },
   {
     "round": 4,
+    "phase": 1,
+    "phase_round": 4,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 39.0,
     "master_wins": 34,
@@ -213,11 +214,6 @@
     "calibration": {
       "avg_outcome_error_cp": 22669.2
     },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
-    },
     "pawn_promotions": 92,
     "draw_reasons": {
       "Stalemate": 0,
@@ -229,6 +225,10 @@
   },
   {
     "round": 5,
+    "phase": 1,
+    "phase_round": 5,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 41.0,
     "master_wins": 40,
@@ -270,11 +270,6 @@
     "calibration": {
       "avg_outcome_error_cp": 24619.9
     },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
-    },
     "pawn_promotions": 82,
     "draw_reasons": {
       "Stalemate": 0,
@@ -286,6 +281,10 @@
   },
   {
     "round": 6,
+    "phase": 1,
+    "phase_round": 6,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 36.0,
     "master_wins": 32,
@@ -327,11 +326,6 @@
     "calibration": {
       "avg_outcome_error_cp": 23205.3
     },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
-    },
     "pawn_promotions": 68,
     "draw_reasons": {
       "Stalemate": 0,
@@ -343,6 +337,10 @@
   },
   {
     "round": 7,
+    "phase": 1,
+    "phase_round": 7,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 35.0,
     "master_wins": 32,
@@ -384,11 +382,6 @@
     "calibration": {
       "avg_outcome_error_cp": 23686.5
     },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
-    },
     "pawn_promotions": 110,
     "draw_reasons": {
       "Stalemate": 0,
@@ -400,6 +393,10 @@
   },
   {
     "round": 8,
+    "phase": 1,
+    "phase_round": 8,
+    "phase_name": "Phase 1: 10 Spatial King Buckets (16 Features)",
+    "num_features": 16,
     "total_games": 100,
     "score_pct": 26.0,
     "master_wins": 24,
@@ -441,11 +438,6 @@
     "calibration": {
       "avg_outcome_error_cp": 24287.0
     },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
-    },
     "pawn_promotions": 112,
     "draw_reasons": {
       "Stalemate": 0,
@@ -457,6 +449,10 @@
   },
   {
     "round": 9,
+    "phase": 2,
+    "phase_round": 1,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
     "total_games": 100,
     "score_pct": 31.0,
     "master_wins": 26,
@@ -498,11 +494,6 @@
     "calibration": {
       "avg_outcome_error_cp": 22729.3
     },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
-    },
     "pawn_promotions": 58,
     "draw_reasons": {
       "Stalemate": 0,
@@ -514,6 +505,10 @@
   },
   {
     "round": 10,
+    "phase": 2,
+    "phase_round": 2,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
     "total_games": 100,
     "score_pct": 33.0,
     "master_wins": 30,
@@ -555,11 +550,6 @@
     "calibration": {
       "avg_outcome_error_cp": 23720.2
     },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
-    },
     "pawn_promotions": 78,
     "draw_reasons": {
       "Stalemate": 0,
@@ -571,6 +561,10 @@
   },
   {
     "round": 11,
+    "phase": 2,
+    "phase_round": 3,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
     "total_games": 100,
     "score_pct": 35.0,
     "master_wins": 32,
@@ -611,11 +605,6 @@
     },
     "calibration": {
       "avg_outcome_error_cp": 23682.2
-    },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
     },
     "pawn_promotions": 94,
     "draw_reasons": {
@@ -970,229 +959,1849 @@
   },
   {
     "round": 18,
+    "phase": 2,
+    "phase_round": 10,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
     "total_games": 100,
-    "score_pct": 19.5,
-    "master_wins": 5,
-    "baseline_wins": 66,
-    "draws": 29,
+    "score_pct": 39.0,
+    "master_wins": 36,
+    "baseline_wins": 58,
+    "draws": 6,
     "as_white": {
-      "wins": 4,
-      "losses": 33
+      "wins": 12,
+      "losses": 36
     },
     "as_black": {
-      "wins": 1,
-      "losses": 33
+      "wins": 24,
+      "losses": 22
     },
     "avg_eval": {
-      "opening": 26.9,
-      "middlegame": -17.9,
-      "endgame": 12.9
+      "opening": 39.5,
+      "middlegame": 8.2,
+      "endgame": 39.1
     },
     "blunders": {
-      "total": 4092,
+      "total": 2644,
       "by_phase": {
-        "Opening": 435,
-        "Middlegame": 1008,
-        "Endgame": 2649
+        "Opening": 200,
+        "Middlegame": 978,
+        "Endgame": 1466
       },
-      "recovered_count": 73,
-      "recovery_rate_pct": 1.8
+      "recovered_count": 60,
+      "recovery_rate_pct": 2.3
     },
     "sustained_advantage": {
-      "games_gained_sustained_adv": 79,
-      "converted_wins": 5,
-      "squandered": 74,
-      "conversion_rate_pct": 6.3
+      "games_gained_sustained_adv": 60,
+      "converted_wins": 26,
+      "squandered": 34,
+      "conversion_rate_pct": 43.3
     },
     "game_length": {
-      "avg_win_moves": 70.6,
-      "avg_loss_moves": 77.5
+      "avg_win_moves": 58.1,
+      "avg_loss_moves": 56.2
     },
     "calibration": {
-      "avg_outcome_error_cp": 22211.5
+      "avg_outcome_error_cp": 23642.3
     },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
-    },
-    "pawn_promotions": 84,
+    "pawn_promotions": 98,
     "draw_reasons": {
       "Stalemate": 0,
-      "50MoveRule": 19,
+      "50MoveRule": 4,
       "Material": 2,
-      "Safety400": 8,
+      "Safety400": 0,
       "Other": 0
     }
   },
   {
     "round": 19,
+    "phase": 2,
+    "phase_round": 11,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
     "total_games": 100,
-    "score_pct": 15.5,
-    "master_wins": 8,
-    "baseline_wins": 77,
-    "draws": 15,
+    "score_pct": 32.0,
+    "master_wins": 30,
+    "baseline_wins": 66,
+    "draws": 4,
     "as_white": {
-      "wins": 4,
-      "losses": 40
+      "wins": 18,
+      "losses": 30
+    },
+    "as_black": {
+      "wins": 12,
+      "losses": 36
+    },
+    "avg_eval": {
+      "opening": 34.5,
+      "middlegame": 21.7,
+      "endgame": 17.7
+    },
+    "blunders": {
+      "total": 2550,
+      "by_phase": {
+        "Opening": 284,
+        "Middlegame": 1036,
+        "Endgame": 1230
+      },
+      "recovered_count": 60,
+      "recovery_rate_pct": 2.4
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 56,
+      "converted_wins": 24,
+      "squandered": 32,
+      "conversion_rate_pct": 42.9
+    },
+    "game_length": {
+      "avg_win_moves": 77.3,
+      "avg_loss_moves": 55.2
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 24217.2
+    },
+    "pawn_promotions": 74,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 2,
+      "Material": 2,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 20,
+    "phase": 2,
+    "phase_round": 12,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
+    "total_games": 10,
+    "score_pct": 55.0,
+    "master_wins": 5,
+    "baseline_wins": 3,
+    "draws": 1,
+    "as_white": {
+      "wins": 3,
+      "losses": 2
+    },
+    "as_black": {
+      "wins": 2,
+      "losses": 1
+    },
+    "avg_eval": {
+      "opening": 65.2,
+      "middlegame": 142.3,
+      "endgame": 201.9
+    },
+    "blunders": {
+      "total": 329,
+      "by_phase": {
+        "Opening": 10,
+        "Middlegame": 132,
+        "Endgame": 187
+      },
+      "recovered_count": 7,
+      "recovery_rate_pct": 2.1
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 8,
+      "converted_wins": 5,
+      "squandered": 3,
+      "conversion_rate_pct": 62.5
+    },
+    "game_length": {
+      "avg_win_moves": 55.4,
+      "avg_loss_moves": 56.0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 19979.5
+    },
+    "pawn_promotions": 6,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 1,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 21,
+    "phase": 2,
+    "phase_round": 13,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
+    "total_games": 33,
+    "score_pct": 37.9,
+    "master_wins": 12,
+    "baseline_wins": 19,
+    "draws": 1,
+    "as_white": {
+      "wins": 8,
+      "losses": 7
     },
     "as_black": {
       "wins": 4,
-      "losses": 37
+      "losses": 12
     },
     "avg_eval": {
-      "opening": 61.2,
-      "middlegame": 16.5,
-      "endgame": -12.8
+      "opening": 58.9,
+      "middlegame": 84.6,
+      "endgame": 32.8
     },
     "blunders": {
-      "total": 3853,
+      "total": 724,
       "by_phase": {
-        "Opening": 398,
-        "Middlegame": 1020,
-        "Endgame": 2435
+        "Opening": 76,
+        "Middlegame": 376,
+        "Endgame": 272
       },
-      "recovered_count": 68,
-      "recovery_rate_pct": 1.8
+      "recovered_count": 26,
+      "recovery_rate_pct": 3.6
     },
     "sustained_advantage": {
-      "games_gained_sustained_adv": 84,
-      "converted_wins": 8,
-      "squandered": 76,
-      "conversion_rate_pct": 9.5
+      "games_gained_sustained_adv": 25,
+      "converted_wins": 12,
+      "squandered": 13,
+      "conversion_rate_pct": 48.0
     },
     "game_length": {
-      "avg_win_moves": 58.4,
-      "avg_loss_moves": 83.3
+      "avg_win_moves": 48.9,
+      "avg_loss_moves": 53.1
     },
     "calibration": {
-      "avg_outcome_error_cp": 25517.1
+      "avg_outcome_error_cp": 23629.8
     },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
-    },
-    "pawn_promotions": 100,
+    "pawn_promotions": 20,
     "draw_reasons": {
-      "Stalemate": 1,
-      "50MoveRule": 13,
+      "Stalemate": 0,
+      "50MoveRule": 1,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 22,
+    "phase": 2,
+    "phase_round": 14,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
+    "total_games": 4,
+    "score_pct": 0.0,
+    "master_wins": 0,
+    "baseline_wins": 3,
+    "draws": 0,
+    "as_white": {
+      "wins": 0,
+      "losses": 2
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 1
+    },
+    "avg_eval": {
+      "opening": 18.4,
+      "middlegame": 3.7,
+      "endgame": -99.3
+    },
+    "blunders": {
+      "total": 61,
+      "by_phase": {
+        "Opening": 15,
+        "Middlegame": 31,
+        "Endgame": 15
+      },
+      "recovered_count": 2,
+      "recovery_rate_pct": 3.3
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 3,
+      "converted_wins": 0,
+      "squandered": 3,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
+      "avg_loss_moves": 52.0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 23075.2
+    },
+    "pawn_promotions": 2,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 23,
+    "phase": 2,
+    "phase_round": 15,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
+    "total_games": 22,
+    "score_pct": 54.5,
+    "master_wins": 12,
+    "baseline_wins": 9,
+    "draws": 0,
+    "as_white": {
+      "wins": 5,
+      "losses": 6
+    },
+    "as_black": {
+      "wins": 7,
+      "losses": 3
+    },
+    "avg_eval": {
+      "opening": 37.9,
+      "middlegame": 82.5,
+      "endgame": 126.8
+    },
+    "blunders": {
+      "total": 552,
+      "by_phase": {
+        "Opening": 65,
+        "Middlegame": 223,
+        "Endgame": 264
+      },
+      "recovered_count": 15,
+      "recovery_rate_pct": 2.7
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 15,
+      "converted_wins": 10,
+      "squandered": 5,
+      "conversion_rate_pct": 66.7
+    },
+    "game_length": {
+      "avg_win_moves": 66.8,
+      "avg_loss_moves": 48.6
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 23782.7
+    },
+    "pawn_promotions": 17,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 24,
+    "phase": 2,
+    "phase_round": 16,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
+    "total_games": 57,
+    "score_pct": 59.6,
+    "master_wins": 33,
+    "baseline_wins": 21,
+    "draws": 2,
+    "as_white": {
+      "wins": 18,
+      "losses": 10
+    },
+    "as_black": {
+      "wins": 15,
+      "losses": 11
+    },
+    "avg_eval": {
+      "opening": 49.8,
+      "middlegame": 73.8,
+      "endgame": 71.5
+    },
+    "blunders": {
+      "total": 1400,
+      "by_phase": {
+        "Opening": 180,
+        "Middlegame": 526,
+        "Endgame": 694
+      },
+      "recovered_count": 42,
+      "recovery_rate_pct": 3.0
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 41,
+      "converted_wins": 28,
+      "squandered": 13,
+      "conversion_rate_pct": 68.3
+    },
+    "game_length": {
+      "avg_win_moves": 61.3,
+      "avg_loss_moves": 54.9
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 23567.8
+    },
+    "pawn_promotions": 40,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 1,
+      "Material": 1,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 25,
+    "phase": 2,
+    "phase_round": 17,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
+    "total_games": 100,
+    "score_pct": 67.0,
+    "master_wins": 63,
+    "baseline_wins": 29,
+    "draws": 8,
+    "as_white": {
+      "wins": 37,
+      "losses": 10
+    },
+    "as_black": {
+      "wins": 26,
+      "losses": 19
+    },
+    "avg_eval": {
+      "opening": 53.5,
+      "middlegame": 72.1,
+      "endgame": 116.7
+    },
+    "blunders": {
+      "total": 2187,
+      "by_phase": {
+        "Opening": 247,
+        "Middlegame": 945,
+        "Endgame": 995
+      },
+      "recovered_count": 75,
+      "recovery_rate_pct": 3.4
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 69,
+      "converted_wins": 46,
+      "squandered": 23,
+      "conversion_rate_pct": 66.7
+    },
+    "game_length": {
+      "avg_win_moves": 58.3,
+      "avg_loss_moves": 59.7
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 23055.2
+    },
+    "pawn_promotions": 70,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 5,
+      "Material": 3,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 26,
+    "phase": 2,
+    "phase_round": 18,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
+    "total_games": 2,
+    "score_pct": 25.0,
+    "master_wins": 0,
+    "baseline_wins": 0,
+    "draws": 1,
+    "as_white": {
+      "wins": 0,
+      "losses": 0
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 0
+    },
+    "avg_eval": {
+      "opening": 85.6,
+      "middlegame": 26.5,
+      "endgame": -310.2
+    },
+    "blunders": {
+      "total": 183,
+      "by_phase": {
+        "Opening": 8,
+        "Middlegame": 17,
+        "Endgame": 158
+      },
+      "recovered_count": 2,
+      "recovery_rate_pct": 1.1
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 2,
+      "converted_wins": 0,
+      "squandered": 2,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
+      "avg_loss_moves": 0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 0.0
+    },
+    "pawn_promotions": 1,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
       "Material": 0,
       "Safety400": 1,
       "Other": 0
     }
   },
   {
-    "round": 20,
-    "total_games": 100,
-    "score_pct": 20.0,
-    "master_wins": 10,
-    "baseline_wins": 70,
-    "draws": 20,
+    "round": 27,
+    "phase": 2,
+    "phase_round": 19,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
+    "total_games": 2,
+    "score_pct": 0.0,
+    "master_wins": 0,
+    "baseline_wins": 1,
+    "draws": 0,
     "as_white": {
-      "wins": 6,
-      "losses": 39
+      "wins": 0,
+      "losses": 1
     },
     "as_black": {
-      "wins": 4,
-      "losses": 31
+      "wins": 0,
+      "losses": 0
     },
     "avg_eval": {
-      "opening": 54.5,
-      "middlegame": 6.6,
-      "endgame": 6.8
+      "opening": 133.2,
+      "middlegame": -8.8,
+      "endgame": -13.1
     },
     "blunders": {
-      "total": 4151,
+      "total": 113,
       "by_phase": {
-        "Opening": 418,
-        "Middlegame": 1065,
-        "Endgame": 2668
+        "Opening": 10,
+        "Middlegame": 24,
+        "Endgame": 79
       },
-      "recovered_count": 71,
-      "recovery_rate_pct": 1.7
+      "recovered_count": 2,
+      "recovery_rate_pct": 1.8
     },
     "sustained_advantage": {
-      "games_gained_sustained_adv": 79,
-      "converted_wins": 9,
-      "squandered": 70,
-      "conversion_rate_pct": 11.4
+      "games_gained_sustained_adv": 2,
+      "converted_wins": 0,
+      "squandered": 2,
+      "conversion_rate_pct": 0.0
     },
     "game_length": {
-      "avg_win_moves": 65.7,
-      "avg_loss_moves": 79.1
+      "avg_win_moves": 0,
+      "avg_loss_moves": 121.0
     },
     "calibration": {
-      "avg_outcome_error_cp": 24130.5
+      "avg_outcome_error_cp": 15980.5
     },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
-    },
-    "pawn_promotions": 80,
+    "pawn_promotions": 1,
     "draw_reasons": {
       "Stalemate": 0,
-      "50MoveRule": 11,
-      "Material": 1,
-      "Safety400": 8,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
       "Other": 0
     }
   },
   {
-    "round": 21,
-    "total_games": 55,
-    "score_pct": 24.5,
-    "master_wins": 9,
-    "baseline_wins": 37,
-    "draws": 9,
+    "round": 28,
+    "phase": 2,
+    "phase_round": 20,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
+    "total_games": 5,
+    "score_pct": 20.0,
+    "master_wins": 1,
+    "baseline_wins": 3,
+    "draws": 0,
     "as_white": {
-      "wins": 5,
-      "losses": 17
+      "wins": 1,
+      "losses": 1
     },
     "as_black": {
-      "wins": 4,
-      "losses": 20
+      "wins": 0,
+      "losses": 2
     },
     "avg_eval": {
-      "opening": 49.3,
-      "middlegame": -11.5,
-      "endgame": -35.8
+      "opening": 91.1,
+      "middlegame": 67.7,
+      "endgame": -143.5
     },
     "blunders": {
-      "total": 2087,
+      "total": 77,
       "by_phase": {
-        "Opening": 221,
-        "Middlegame": 602,
-        "Endgame": 1264
+        "Opening": 0,
+        "Middlegame": 15,
+        "Endgame": 62
       },
-      "recovered_count": 40,
-      "recovery_rate_pct": 1.9
+      "recovered_count": 2,
+      "recovery_rate_pct": 2.6
     },
     "sustained_advantage": {
-      "games_gained_sustained_adv": 45,
-      "converted_wins": 9,
-      "squandered": 36,
-      "conversion_rate_pct": 20.0
+      "games_gained_sustained_adv": 4,
+      "converted_wins": 1,
+      "squandered": 3,
+      "conversion_rate_pct": 25.0
     },
     "game_length": {
-      "avg_win_moves": 45.2,
+      "avg_win_moves": 35.0,
+      "avg_loss_moves": 103.7
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 23355.6
+    },
+    "pawn_promotions": 6,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 29,
+    "phase": 2,
+    "phase_round": 21,
+    "phase_name": "Phase 2: Hand-Selected Feature Cross-Terms (22 Features)",
+    "num_features": 22,
+    "total_games": 3,
+    "score_pct": 66.7,
+    "master_wins": 2,
+    "baseline_wins": 0,
+    "draws": 0,
+    "as_white": {
+      "wins": 1,
+      "losses": 0
+    },
+    "as_black": {
+      "wins": 1,
+      "losses": 0
+    },
+    "avg_eval": {
+      "opening": 64.1,
+      "middlegame": -164.9,
+      "endgame": -143.8
+    },
+    "blunders": {
+      "total": 135,
+      "by_phase": {
+        "Opening": 27,
+        "Middlegame": 66,
+        "Endgame": 42
+      },
+      "recovered_count": 3,
+      "recovery_rate_pct": 2.2
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 2,
+      "converted_wins": 2,
+      "squandered": 0,
+      "conversion_rate_pct": 100.0
+    },
+    "game_length": {
+      "avg_win_moves": 57.5,
+      "avg_loss_moves": 0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 16407.0
+    },
+    "pawn_promotions": 0,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 30,
+    "phase": 3,
+    "phase_round": 1,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 3,
+    "score_pct": 16.7,
+    "master_wins": 0,
+    "baseline_wins": 1,
+    "draws": 1,
+    "as_white": {
+      "wins": 0,
+      "losses": 1
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 0
+    },
+    "avg_eval": {
+      "opening": 115.8,
+      "middlegame": 38.5,
+      "endgame": -57.1
+    },
+    "blunders": {
+      "total": 166,
+      "by_phase": {
+        "Opening": 17,
+        "Middlegame": 43,
+        "Endgame": 106
+      },
+      "recovered_count": 3,
+      "recovery_rate_pct": 1.8
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 2,
+      "converted_wins": 0,
+      "squandered": 2,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
+      "avg_loss_moves": 63.0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 10852.7
+    },
+    "pawn_promotions": 0,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 1,
+      "Other": 0
+    }
+  },
+  {
+    "round": 31,
+    "phase": 3,
+    "phase_round": 2,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 26,
+    "score_pct": 32.7,
+    "master_wins": 7,
+    "baseline_wins": 16,
+    "draws": 3,
+    "as_white": {
+      "wins": 6,
+      "losses": 7
+    },
+    "as_black": {
+      "wins": 1,
+      "losses": 9
+    },
+    "avg_eval": {
+      "opening": 106.9,
+      "middlegame": -29.6,
+      "endgame": 22.5
+    },
+    "blunders": {
+      "total": 814,
+      "by_phase": {
+        "Opening": 107,
+        "Middlegame": 273,
+        "Endgame": 434
+      },
+      "recovered_count": 19,
+      "recovery_rate_pct": 2.3
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 19,
+      "converted_wins": 6,
+      "squandered": 13,
+      "conversion_rate_pct": 31.6
+    },
+    "game_length": {
+      "avg_win_moves": 37.4,
+      "avg_loss_moves": 62.4
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 25443.7
+    },
+    "pawn_promotions": 11,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 3,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 32,
+    "phase": 3,
+    "phase_round": 3,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 1,
+    "score_pct": 0.0,
+    "master_wins": 0,
+    "baseline_wins": 0,
+    "draws": 0,
+    "as_white": {
+      "wins": 0,
+      "losses": 0
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 0
+    },
+    "avg_eval": {
+      "opening": 132.8,
+      "middlegame": 164.5,
+      "endgame": 199.6
+    },
+    "blunders": {
+      "total": 40,
+      "by_phase": {
+        "Opening": 8,
+        "Middlegame": 21,
+        "Endgame": 11
+      },
+      "recovered_count": 1,
+      "recovery_rate_pct": 2.5
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 1,
+      "converted_wins": 0,
+      "squandered": 1,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
+      "avg_loss_moves": 0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 370.0
+    },
+    "pawn_promotions": 0,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 33,
+    "phase": 3,
+    "phase_round": 4,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 100,
+    "score_pct": 17.0,
+    "master_wins": 5,
+    "baseline_wins": 71,
+    "draws": 24,
+    "as_white": {
+      "wins": 2,
+      "losses": 39
+    },
+    "as_black": {
+      "wins": 3,
+      "losses": 32
+    },
+    "avg_eval": {
+      "opening": -5.8,
+      "middlegame": -55.0,
+      "endgame": -43.5
+    },
+    "blunders": {
+      "total": 4027,
+      "by_phase": {
+        "Opening": 498,
+        "Middlegame": 1068,
+        "Endgame": 2461
+      },
+      "recovered_count": 72,
+      "recovery_rate_pct": 1.8
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 72,
+      "converted_wins": 4,
+      "squandered": 68,
+      "conversion_rate_pct": 5.6
+    },
+    "game_length": {
+      "avg_win_moves": 43.0,
+      "avg_loss_moves": 82.6
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 23229.4
+    },
+    "pawn_promotions": 88,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 18,
+      "Material": 3,
+      "Safety400": 3,
+      "Other": 0
+    }
+  },
+  {
+    "round": 34,
+    "phase": 3,
+    "phase_round": 5,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 1,
+    "score_pct": 0.0,
+    "master_wins": 0,
+    "baseline_wins": 0,
+    "draws": 0,
+    "as_white": {
+      "wins": 0,
+      "losses": 0
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 0
+    },
+    "avg_eval": {
+      "opening": 230.0,
+      "middlegame": -73.9,
+      "endgame": -219.2
+    },
+    "blunders": {
+      "total": 48,
+      "by_phase": {
+        "Opening": 3,
+        "Middlegame": 24,
+        "Endgame": 21
+      },
+      "recovered_count": 1,
+      "recovery_rate_pct": 2.1
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 1,
+      "converted_wins": 0,
+      "squandered": 1,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
+      "avg_loss_moves": 0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 336.0
+    },
+    "pawn_promotions": 0,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 35,
+    "phase": 3,
+    "phase_round": 6,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 10,
+    "score_pct": 15.0,
+    "master_wins": 0,
+    "baseline_wins": 6,
+    "draws": 3,
+    "as_white": {
+      "wins": 0,
+      "losses": 2
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 4
+    },
+    "avg_eval": {
+      "opening": 7.5,
+      "middlegame": -75.7,
+      "endgame": -51.0
+    },
+    "blunders": {
+      "total": 399,
+      "by_phase": {
+        "Opening": 22,
+        "Middlegame": 69,
+        "Endgame": 308
+      },
+      "recovered_count": 7,
+      "recovery_rate_pct": 1.8
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 8,
+      "converted_wins": 0,
+      "squandered": 8,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
       "avg_loss_moves": 73.0
     },
     "calibration": {
-      "avg_outcome_error_cp": 25057.7
+      "avg_outcome_error_cp": 21026.8
     },
-    "advanced_analytics": {
-      "overconfidence_discrepancy_cp": 15.0,
-      "eval_volatility_sigma_cp": 42.5,
-      "positional_to_material_ratio": 0.68
+    "pawn_promotions": 8,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 1,
+      "Material": 1,
+      "Safety400": 1,
+      "Other": 0
+    }
+  },
+  {
+    "round": 36,
+    "phase": 3,
+    "phase_round": 7,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 100,
+    "score_pct": 18.5,
+    "master_wins": 8,
+    "baseline_wins": 71,
+    "draws": 21,
+    "as_white": {
+      "wins": 5,
+      "losses": 36
     },
-    "pawn_promotions": 41,
+    "as_black": {
+      "wins": 3,
+      "losses": 35
+    },
+    "avg_eval": {
+      "opening": 56.4,
+      "middlegame": 13.6,
+      "endgame": 5.6
+    },
+    "blunders": {
+      "total": 3838,
+      "by_phase": {
+        "Opening": 433,
+        "Middlegame": 1027,
+        "Endgame": 2378
+      },
+      "recovered_count": 74,
+      "recovery_rate_pct": 1.9
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 85,
+      "converted_wins": 8,
+      "squandered": 77,
+      "conversion_rate_pct": 9.4
+    },
+    "game_length": {
+      "avg_win_moves": 63.0,
+      "avg_loss_moves": 82.8
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 24193.0
+    },
+    "pawn_promotions": 103,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 16,
+      "Material": 0,
+      "Safety400": 5,
+      "Other": 0
+    }
+  },
+  {
+    "round": 37,
+    "phase": 3,
+    "phase_round": 8,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 100,
+    "score_pct": 22.5,
+    "master_wins": 11,
+    "baseline_wins": 66,
+    "draws": 23,
+    "as_white": {
+      "wins": 7,
+      "losses": 33
+    },
+    "as_black": {
+      "wins": 4,
+      "losses": 33
+    },
+    "avg_eval": {
+      "opening": 72.8,
+      "middlegame": 48.0,
+      "endgame": 27.9
+    },
+    "blunders": {
+      "total": 4565,
+      "by_phase": {
+        "Opening": 417,
+        "Middlegame": 1037,
+        "Endgame": 3111
+      },
+      "recovered_count": 67,
+      "recovery_rate_pct": 1.5
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 82,
+      "converted_wins": 10,
+      "squandered": 72,
+      "conversion_rate_pct": 12.2
+    },
+    "game_length": {
+      "avg_win_moves": 64.4,
+      "avg_loss_moves": 79.3
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 23154.2
+    },
+    "pawn_promotions": 81,
+    "draw_reasons": {
+      "Stalemate": 1,
+      "50MoveRule": 14,
+      "Material": 1,
+      "Safety400": 7,
+      "Other": 0
+    }
+  },
+  {
+    "round": 38,
+    "phase": 3,
+    "phase_round": 9,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 2,
+    "score_pct": 50.0,
+    "master_wins": 1,
+    "baseline_wins": 0,
+    "draws": 0,
+    "as_white": {
+      "wins": 1,
+      "losses": 0
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 0
+    },
+    "avg_eval": {
+      "opening": 4.6,
+      "middlegame": 11.7,
+      "endgame": -17.1
+    },
+    "blunders": {
+      "total": 71,
+      "by_phase": {
+        "Opening": 5,
+        "Middlegame": 25,
+        "Endgame": 41
+      },
+      "recovered_count": 1,
+      "recovery_rate_pct": 1.4
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 1,
+      "converted_wins": 1,
+      "squandered": 0,
+      "conversion_rate_pct": 100.0
+    },
+    "game_length": {
+      "avg_win_moves": 140.0,
+      "avg_loss_moves": 0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 12619.5
+    },
+    "pawn_promotions": 2,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 39,
+    "phase": 3,
+    "phase_round": 10,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 8,
+    "score_pct": 0.0,
+    "master_wins": 0,
+    "baseline_wins": 7,
+    "draws": 0,
+    "as_white": {
+      "wins": 0,
+      "losses": 4
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 3
+    },
+    "avg_eval": {
+      "opening": 85.4,
+      "middlegame": -3.4,
+      "endgame": -37.9
+    },
+    "blunders": {
+      "total": 202,
+      "by_phase": {
+        "Opening": 33,
+        "Middlegame": 73,
+        "Endgame": 96
+      },
+      "recovered_count": 6,
+      "recovery_rate_pct": 3.0
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 6,
+      "converted_wins": 0,
+      "squandered": 6,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
+      "avg_loss_moves": 66.6
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 29897.1
+    },
+    "pawn_promotions": 5,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 40,
+    "phase": 3,
+    "phase_round": 11,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 4,
+    "score_pct": 12.5,
+    "master_wins": 0,
+    "baseline_wins": 2,
+    "draws": 1,
+    "as_white": {
+      "wins": 0,
+      "losses": 2
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 0
+    },
+    "avg_eval": {
+      "opening": -0.6,
+      "middlegame": -50.2,
+      "endgame": -78.3
+    },
+    "blunders": {
+      "total": 52,
+      "by_phase": {
+        "Opening": 5,
+        "Middlegame": 31,
+        "Endgame": 16
+      },
+      "recovered_count": 2,
+      "recovery_rate_pct": 3.8
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 2,
+      "converted_wins": 0,
+      "squandered": 2,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
+      "avg_loss_moves": 43.0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 15447.5
+    },
+    "pawn_promotions": 3,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 1,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 41,
+    "phase": 3,
+    "phase_round": 12,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 2,
+    "score_pct": 0.0,
+    "master_wins": 0,
+    "baseline_wins": 1,
+    "draws": 0,
+    "as_white": {
+      "wins": 0,
+      "losses": 1
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 0
+    },
+    "avg_eval": {
+      "opening": -27.4,
+      "middlegame": -15.2,
+      "endgame": 103.1
+    },
+    "blunders": {
+      "total": 19,
+      "by_phase": {
+        "Opening": 6,
+        "Middlegame": 13,
+        "Endgame": 0
+      },
+      "recovered_count": 1,
+      "recovery_rate_pct": 5.3
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 2,
+      "converted_wins": 0,
+      "squandered": 2,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
+      "avg_loss_moves": 28.0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 15328.0
+    },
+    "pawn_promotions": 0,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 42,
+    "phase": 3,
+    "phase_round": 13,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 8,
+    "score_pct": 6.2,
+    "master_wins": 0,
+    "baseline_wins": 6,
+    "draws": 1,
+    "as_white": {
+      "wins": 0,
+      "losses": 3
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 3
+    },
+    "avg_eval": {
+      "opening": 26.0,
+      "middlegame": -53.2,
+      "endgame": 26.4
+    },
+    "blunders": {
+      "total": 123,
+      "by_phase": {
+        "Opening": 14,
+        "Middlegame": 73,
+        "Endgame": 36
+      },
+      "recovered_count": 4,
+      "recovery_rate_pct": 3.3
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 6,
+      "converted_wins": 0,
+      "squandered": 6,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
+      "avg_loss_moves": 74.8
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 22988.5
+    },
+    "pawn_promotions": 6,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 1,
+      "Other": 0
+    }
+  },
+  {
+    "round": 43,
+    "phase": 3,
+    "phase_round": 14,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 11,
+    "score_pct": 13.6,
+    "master_wins": 1,
+    "baseline_wins": 8,
+    "draws": 1,
+    "as_white": {
+      "wins": 0,
+      "losses": 5
+    },
+    "as_black": {
+      "wins": 1,
+      "losses": 3
+    },
+    "avg_eval": {
+      "opening": 25.6,
+      "middlegame": -0.9,
+      "endgame": -14.5
+    },
+    "blunders": {
+      "total": 430,
+      "by_phase": {
+        "Opening": 42,
+        "Middlegame": 89,
+        "Endgame": 299
+      },
+      "recovered_count": 10,
+      "recovery_rate_pct": 2.3
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 10,
+      "converted_wins": 1,
+      "squandered": 9,
+      "conversion_rate_pct": 10.0
+    },
+    "game_length": {
+      "avg_win_moves": 33.0,
+      "avg_loss_moves": 97.6
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 24471.9
+    },
+    "pawn_promotions": 9,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 1,
+      "Other": 0
+    }
+  },
+  {
+    "round": 44,
+    "phase": 3,
+    "phase_round": 15,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 7,
+    "score_pct": 0.0,
+    "master_wins": 0,
+    "baseline_wins": 6,
+    "draws": 0,
+    "as_white": {
+      "wins": 0,
+      "losses": 3
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 3
+    },
+    "avg_eval": {
+      "opening": 12.4,
+      "middlegame": -91.8,
+      "endgame": -115.2
+    },
+    "blunders": {
+      "total": 341,
+      "by_phase": {
+        "Opening": 23,
+        "Middlegame": 70,
+        "Endgame": 248
+      },
+      "recovered_count": 4,
+      "recovery_rate_pct": 1.2
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 5,
+      "converted_wins": 0,
+      "squandered": 5,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
+      "avg_loss_moves": 97.2
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 26291.4
+    },
+    "pawn_promotions": 9,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 45,
+    "phase": 3,
+    "phase_round": 16,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 2,
+    "score_pct": 0.0,
+    "master_wins": 0,
+    "baseline_wins": 1,
+    "draws": 0,
+    "as_white": {
+      "wins": 0,
+      "losses": 1
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 0
+    },
+    "avg_eval": {
+      "opening": 15.0,
+      "middlegame": -2.2,
+      "endgame": -86.7
+    },
+    "blunders": {
+      "total": 31,
+      "by_phase": {
+        "Opening": 3,
+        "Middlegame": 25,
+        "Endgame": 3
+      },
+      "recovered_count": 1,
+      "recovery_rate_pct": 3.2
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 1,
+      "converted_wins": 0,
+      "squandered": 1,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
+      "avg_loss_moves": 43.0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 15736.0
+    },
+    "pawn_promotions": 2,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 46,
+    "phase": 3,
+    "phase_round": 17,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 43,
+    "score_pct": 25.6,
+    "master_wins": 7,
+    "baseline_wins": 27,
+    "draws": 8,
+    "as_white": {
+      "wins": 4,
+      "losses": 12
+    },
+    "as_black": {
+      "wins": 3,
+      "losses": 15
+    },
+    "avg_eval": {
+      "opening": 59.5,
+      "middlegame": -14.9,
+      "endgame": -26.4
+    },
+    "blunders": {
+      "total": 1835,
+      "by_phase": {
+        "Opening": 194,
+        "Middlegame": 532,
+        "Endgame": 1109
+      },
+      "recovered_count": 33,
+      "recovery_rate_pct": 1.8
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 36,
+      "converted_wins": 7,
+      "squandered": 29,
+      "conversion_rate_pct": 19.4
+    },
+    "game_length": {
+      "avg_win_moves": 48.4,
+      "avg_loss_moves": 77.3
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 23820.0
+    },
+    "pawn_promotions": 36,
     "draw_reasons": {
       "Stalemate": 0,
       "50MoveRule": 5,
       "Material": 0,
-      "Safety400": 4,
+      "Safety400": 3,
+      "Other": 0
+    }
+  },
+  {
+    "round": 47,
+    "phase": 3,
+    "phase_round": 18,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 12,
+    "score_pct": 20.8,
+    "master_wins": 2,
+    "baseline_wins": 8,
+    "draws": 1,
+    "as_white": {
+      "wins": 1,
+      "losses": 4
+    },
+    "as_black": {
+      "wins": 1,
+      "losses": 4
+    },
+    "avg_eval": {
+      "opening": 25.0,
+      "middlegame": 12.5,
+      "endgame": -127.9
+    },
+    "blunders": {
+      "total": 279,
+      "by_phase": {
+        "Opening": 37,
+        "Middlegame": 75,
+        "Endgame": 167
+      },
+      "recovered_count": 6,
+      "recovery_rate_pct": 2.2
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 10,
+      "converted_wins": 2,
+      "squandered": 8,
+      "conversion_rate_pct": 20.0
+    },
+    "game_length": {
+      "avg_win_moves": 34.0,
+      "avg_loss_moves": 57.2
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 24563.3
+    },
+    "pawn_promotions": 8,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 1,
+      "Other": 0
+    }
+  },
+  {
+    "round": 48,
+    "phase": 3,
+    "phase_round": 19,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 1,
+    "score_pct": 0.0,
+    "master_wins": 0,
+    "baseline_wins": 0,
+    "draws": 0,
+    "as_white": {
+      "wins": 0,
+      "losses": 0
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 0
+    },
+    "avg_eval": {
+      "opening": 175.0,
+      "middlegame": -12.3,
+      "endgame": -286.8
+    },
+    "blunders": {
+      "total": 72,
+      "by_phase": {
+        "Opening": 0,
+        "Middlegame": 20,
+        "Endgame": 52
+      },
+      "recovered_count": 1,
+      "recovery_rate_pct": 1.4
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 1,
+      "converted_wins": 0,
+      "squandered": 1,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
+      "avg_loss_moves": 0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 288.0
+    },
+    "pawn_promotions": 0,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 49,
+    "phase": 3,
+    "phase_round": 20,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 4,
+    "score_pct": 0.0,
+    "master_wins": 0,
+    "baseline_wins": 3,
+    "draws": 0,
+    "as_white": {
+      "wins": 0,
+      "losses": 2
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 1
+    },
+    "avg_eval": {
+      "opening": 82.6,
+      "middlegame": -11.2,
+      "endgame": -133.3
+    },
+    "blunders": {
+      "total": 150,
+      "by_phase": {
+        "Opening": 10,
+        "Middlegame": 56,
+        "Endgame": 84
+      },
+      "recovered_count": 4,
+      "recovery_rate_pct": 2.7
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 3,
+      "converted_wins": 0,
+      "squandered": 3,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
+      "avg_loss_moves": 80.0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 29192.2
+    },
+    "pawn_promotions": 1,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
+      "Other": 0
+    }
+  },
+  {
+    "round": 50,
+    "phase": 3,
+    "phase_round": 21,
+    "phase_name": "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)",
+    "num_features": 22,
+    "total_games": 1,
+    "score_pct": 0.0,
+    "master_wins": 0,
+    "baseline_wins": 0,
+    "draws": 0,
+    "as_white": {
+      "wins": 0,
+      "losses": 0
+    },
+    "as_black": {
+      "wins": 0,
+      "losses": 0
+    },
+    "avg_eval": {
+      "opening": 23.8,
+      "middlegame": -118.5,
+      "endgame": -204.6
+    },
+    "blunders": {
+      "total": 112,
+      "by_phase": {
+        "Opening": 7,
+        "Middlegame": 22,
+        "Endgame": 83
+      },
+      "recovered_count": 1,
+      "recovery_rate_pct": 0.9
+    },
+    "sustained_advantage": {
+      "games_gained_sustained_adv": 1,
+      "converted_wins": 0,
+      "squandered": 1,
+      "conversion_rate_pct": 0.0
+    },
+    "game_length": {
+      "avg_win_moves": 0,
+      "avg_loss_moves": 0
+    },
+    "calibration": {
+      "avg_outcome_error_cp": 24978.0
+    },
+    "pawn_promotions": 2,
+    "draw_reasons": {
+      "Stalemate": 0,
+      "50MoveRule": 0,
+      "Material": 0,
+      "Safety400": 0,
       "Other": 0
     }
   }
