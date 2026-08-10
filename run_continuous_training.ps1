@@ -35,9 +35,9 @@ while ($true) {
         continue
     }
 
-    # 3. Simulate 250 Games at Depth 7 and Train 80 Adam Epochs (Fast 1.5h Dataset Generation, LR=0.0005)
-    Write-Host "[2/4] Simulating 250 Games at Depth 7 and Training 80 Adam Epochs (Fine-Tuning LR=0.0005)..." -ForegroundColor Yellow
-    .\train_spectral_tropical.exe 250 7 80 0.0005
+    # 3. Simulate 250 Games at Depth 7 and Train 80 Adam Epochs (LR=0.003)
+    Write-Host "[2/4] Simulating 250 Games at Depth 7 and Training 80 Adam Epochs (LR=0.003)..." -ForegroundColor Yellow
+    .\train_spectral_tropical.exe 250 7 80 0.003
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "[ERROR] Training failed! Retrying in 10s..." -ForegroundColor Red
