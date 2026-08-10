@@ -15,14 +15,13 @@ TropicalEvaluator::TropicalEvaluator() {
 }
 
 TropicalEvaluator& TropicalEvaluator::instance() {
-    static TropicalEvaluator inst;
-    static bool initialized = false;
-    if (!initialized) {
-        if (!inst.load_weights("heavensgate_tropical.trm")) {
-            inst.initialize_weights(42);
+    static TropicalEvaluator inst = []() {
+        TropicalEvaluator obj;
+        if (!obj.load_weights("heavensgate_tropical.trm")) {
+            obj.initialize_weights(42);
         }
-        initialized = true;
-    }
+        return obj;
+    }();
     return inst;
 }
 
