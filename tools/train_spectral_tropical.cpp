@@ -233,15 +233,15 @@ int main(int argc, char* argv[]) {
             for (size_t idx = 5; idx < history.size(); idx++) {
                 const auto& item = history[idx];
                 float side_outcome = (item.first.side_to_move() == Color::White) ? static_cast<float>(result_score) : -static_cast<float>(result_score);
-                float outcome_cp = side_outcome * 600.0f;
+                float outcome_cp = side_outcome * 400.0f;
 
                 // Ground Truth Evaluation: Blend positional engine ground truth with game outcome
                 Evaluator::set_mode(EvalMode::MasterPositional);
                 float master_score = static_cast<float>(Evaluator::evaluate(item.first));
                 Evaluator::set_mode(EvalMode::SpectralTropical);
 
-                // 70% Ground Truth (MasterPositional/Stockfish) + 30% Game Outcome
-                float target = 0.70f * master_score + 0.30f * outcome_cp;
+                // 85% Ground Truth Positional Anchor + 15% Game Outcome (Original Phase 2 Proven Ratio)
+                float target = 0.85f * master_score + 0.15f * outcome_cp;
                 local_samples.push_back({item.first, target});
             }
 
