@@ -462,8 +462,32 @@ int main(int argc, char* argv[]) {
                     float m_hat = adam.m_w[i] / denom1;
                     float v_hat = adam.v_w[i] / denom2;
 
-                    sec.w[i] -= (lr * m_hat) / (std::sqrt(v_hat) + eps);
-                    float min_w = (i == 4) ? 0.20f : ((i == 1 || i == 5 || i == 10) ? 0.10f : 0.0f);
+                    // Enforce healthy minimum floor weights so vital chess features (mobility, passed pawns, king shield) are never eroded to zero
+                    static constexpr float feature_floors[22] = {
+                        0.85f, // x[ 0] Material
+                        0.30f, // x[ 1] Fiedler
+                        0.15f, // x[ 2] Cohesion
+                        0.15f, // x[ 3] Spectral Gap
+                        0.40f, // x[ 4] PST
+                        0.30f, // x[ 5] King Press
+                        0.20f, // x[ 6] Battery
+                        0.30f, // x[ 7] Pawn Coh
+                        0.15f, // x[ 8] Trace Energy
+                        0.25f, // x[ 9] Mobility
+                        0.30f, // x[10] Center Control
+                        0.20f, // x[11] Phase
+                        0.25f, // x[12] King Shield
+                        0.40f, // x[13] Passed Pawns
+                        0.40f, // x[14] EG Passed Pawns
+                        0.20f, // x[15] Attack Ratio
+                        0.20f, // x[16] BatXCenter
+                        0.15f, // x[17] FiedXPWN
+                        0.15f, // x[18] EG_Mobility
+                        0.15f, // x[19] PassXCenter
+                        0.15f, // x[20] KingXBat
+                        0.15f  // x[21] ShldXPWN
+                    };
+                    float min_w = feature_floors[i];
                     sec.w[i] = std::max(min_w, std::min(5.0f, sec.w[i]));
                 }
 
