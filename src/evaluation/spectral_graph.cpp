@@ -349,6 +349,35 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     feat.fiedler_br_them = compute_side_fiedler(br_them);
 
     // =========================================================================
+    // Phase 5: Chebyshev Spectral Graph Filter T2(L) = 2*L~^2 - I
+    //   Computes 2-hop indirect battery/support graph convolution across piece network
+    // =========================================================================
+    float cheb_us = 0.0f, cheb_them = 0.0f, cheb_king = 0.0f;
+    Square opp_king_sq = board.king_square(them);
+
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            if (i == j) continue;
+            float indirect_2hop = 0.0f;
+            for (int k = 0; k < N; k++) {
+                indirect_2hop += A[i * N + k] * A[k * N + j];
+            }
+            if (color_of(nodes[i].piece) == us) {
+                cheb_us += indirect_2hop;
+                if (opp_king_sq != Square::None && nodes[j].sq == opp_king_sq) {
+                    cheb_king += indirect_2hop;
+                }
+            } else {
+                cheb_them += indirect_2hop;
+            }
+        }
+    }
+
+    feat.chebyshev_t2_us = cheb_us * 0.01f;
+    feat.chebyshev_t2_them = cheb_them * 0.01f;
+    feat.chebyshev_king_threat = cheb_king * 0.1f;
+
+    // =========================================================================
     // Per-Side Features: Cohesion, King Pressure, Battery, Pawn Structure,
     //                    Mobility, Center Control, King Shield, Game Phase
     // =========================================================================

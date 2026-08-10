@@ -35,7 +35,7 @@ public:
     static constexpr size_t TOTAL_SECTORS_T1        = NUM_KING_BUCKETS * SECTORS_PER_SURFACE; // 160 sectors
     static constexpr size_t TOTAL_SECTORS_T2        = NUM_KING_BUCKETS * SECTORS_PER_SURFACE; // 160 sectors
     static constexpr size_t TOTAL_SECTORS           = TOTAL_SECTORS_T1 + TOTAL_SECTORS_T2;    // 320 sectors total
-    static constexpr size_t NUM_FEATURES             = 22;
+    static constexpr size_t NUM_FEATURES             = 25;
     static constexpr float  SMOOTH_TAU               = 3.0f; // Log-Sum-Exp smoothing temperature
 
     struct SectorWeights {

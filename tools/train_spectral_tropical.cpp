@@ -416,8 +416,9 @@ int main(int argc, char* argv[]) {
     std::cout << "[SpectralTropical] Phase 4 Checkpoint Baseline RMSE (Epoch 0): " 
               << std::fixed << std::setprecision(2) << initial_rmse << " cp\n\n";
 
-    static constexpr float feature_floors[22] = {
-        0.85f, 0.30f, 0.15f, 0.15f, 0.40f, 0.30f, 0.20f, 0.30f, 0.15f, 0.25f, 0.30f, 0.20f, 0.25f, 0.40f, 0.40f, 0.20f, 0.20f, 0.15f, 0.15f, 0.15f, 0.15f, 0.15f
+    static constexpr float feature_floors[25] = {
+        0.85f, 0.30f, 0.15f, 0.15f, 0.40f, 0.30f, 0.20f, 0.30f, 0.15f, 0.25f, 0.30f, 0.20f, 0.25f, 0.40f, 0.40f, 0.20f, 0.20f, 0.15f, 0.15f, 0.15f, 0.15f, 0.15f,
+        0.20f, 0.15f, 0.25f
     };
 
     for (int epoch = 1; epoch <= epochs; epoch++) {
@@ -558,11 +559,12 @@ int main(int argc, char* argv[]) {
             std::cout << "[SUCCESS] Saved persistent Phase 4 Dual-Surface Adam state to heavensgate_adam.dat\n";
         }
 
-        static const char* feat_names[22] = {
+        static const char* feat_names[25] = {
             "Material", "Fiedler", "Cohesion", "Gap", "PST", "KingPress",
             "Battery", "PawnCoh", "Trace", "Mobility", "Center", "Phase",
             "Shield", "Passed", "EG_Passed", "Attack_Ratio",
-            "BatXCenter", "FiedXPWN", "EG_Mobility", "PassXCenter", "KingXBat", "ShldXPWN"
+            "BatXCenter", "FiedXPWN", "EG_Mobility", "PassXCenter", "KingXBat", "ShldXPWN",
+            "Cheb_T2_Us", "Cheb_T2_Them", "Cheb_K_Threat"
         };
         std::cout << "\n======================================================\n";
         std::cout << "  PHASE 4 ADVANTAGE (T1) FEATURE WEIGHT TELEMETRY (160 SECTORS)\n";

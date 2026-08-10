@@ -91,6 +91,9 @@ void TropicalEvaluator::initialize_weights(uint32_t /*seed*/) {
             sec.w[19] = 0.5f  + 0.2f  * std::fabs(std::cos(jf * 0.7f + bf));   // PassXCenter
             sec.w[20] = 0.4f  + 0.15f * std::fabs(std::sin(jf * 1.3f + bf));   // KingXBat
             sec.w[21] = 0.3f  + 0.1f  * std::fabs(std::cos(jf * 0.8f + bf));   // ShldXPWN
+            sec.w[22] = 0.4f  + 0.15f * std::fabs(std::sin(jf * 0.9f));        // Cheb T2 Us
+            sec.w[23] = 0.3f  + 0.10f * std::fabs(std::cos(jf * 1.1f));        // Cheb T2 Them
+            sec.w[24] = 0.5f  + 0.20f * std::fabs(std::sin(jf * 1.3f));        // Cheb King Threat
         }
     }
 
@@ -126,6 +129,9 @@ void TropicalEvaluator::initialize_weights(uint32_t /*seed*/) {
             sec.w[19] = 0.15f + 0.08f * std::fabs(std::cos(jf * 0.6f));
             sec.w[20] = 0.2f  + 0.1f  * std::fabs(std::sin(jf * 1.2f));
             sec.w[21] = 0.1f  + 0.05f * std::fabs(std::cos(jf * 0.7f));
+            sec.w[22] = 0.15f + 0.08f * std::fabs(std::sin(jf * 0.9f));
+            sec.w[23] = 0.10f + 0.05f * std::fabs(std::cos(jf * 1.1f));
+            sec.w[24] = 0.20f + 0.10f * std::fabs(std::sin(jf * 1.3f));
         }
     }
 }
@@ -259,6 +265,11 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     x[19] = x[13] * (pos_center / 10.0f);
     x[20] = x[5]  * (pos_battery / 10.0f);
     x[21] = x[12] * (pos_pawncoh / 10.0f);
+
+    // Phase 5: Chebyshev 2-Hop Graph Convolutions (x22..x24)
+    x[22] = feat.chebyshev_t2_us;
+    x[23] = feat.chebyshev_t2_them;
+    x[24] = feat.chebyshev_king_threat;
 
     return x;
 }

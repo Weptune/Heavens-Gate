@@ -56,6 +56,11 @@ struct SpectralFeatures {
     float fiedler_ctr_them;    // Center zone Fiedler λ₂ for opponent
     float fiedler_br_us;       // Back-rank zone (ranks 1-2 us / 7-8 them) Fiedler λ₂ for us
     float fiedler_br_them;     // Back-rank zone Fiedler λ₂ for opponent
+
+    // Phase 5: Chebyshev Spectral Graph Filter Features (2-Hop Graph Convolutions T2(L))
+    float chebyshev_t2_us;       // 2-Hop indirect battery/support graph convolution for us
+    float chebyshev_t2_them;     // 2-Hop indirect battery/support graph convolution for opponent
+    float chebyshev_king_threat; // 2-Hop indirect graph attack paths targeting opponent King
 };
 
 class SpectralGraph {
