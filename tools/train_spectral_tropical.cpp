@@ -417,7 +417,7 @@ int main(int argc, char* argv[]) {
               << std::fixed << std::setprecision(2) << initial_rmse << " cp\n\n";
 
     static constexpr float feature_floors[25] = {
-        0.85f, 0.30f, 0.15f, 0.15f, 0.40f, 0.30f, 0.20f, 0.30f, 0.15f, 0.25f, 0.30f, 0.20f, 0.25f, 0.40f, 0.40f, 0.20f, 0.20f, 0.15f, 0.15f, 0.15f, 0.15f, 0.15f,
+        10.00f, 0.30f, 0.15f, 0.15f, 0.40f, 0.30f, 0.20f, 0.30f, 0.15f, 0.25f, 0.30f, 0.20f, 0.25f, 0.40f, 0.40f, 0.20f, 0.20f, 0.15f, 0.15f, 0.15f, 0.15f, 0.15f,
         0.20f, 0.15f, 0.25f
     };
 
