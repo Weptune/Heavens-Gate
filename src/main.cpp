@@ -88,6 +88,9 @@ void run_automated_tournament(int num_games, int depth) {
     std::cout << "  Parallelized across CPU cores using OpenMP dynamic work scheduling\n";
     std::cout << "======================================================\n\n";
 
+    StockfishClient global_stockfish;
+    bool sf_ok = global_stockfish.init(2400);
+
     std::atomic<int> atomic_a_wins{0};
     std::atomic<int> atomic_b_wins{0};
     std::atomic<int> atomic_draws{0};
@@ -95,15 +98,8 @@ void run_automated_tournament(int num_games, int depth) {
 
     std::vector<std::string> pgn_records(num_games + 1);
 
-    #pragma omp parallel num_threads(4)
+    #pragma omp parallel
     {
-        StockfishClient stockfish;
-        bool sf_ok = false;
-        #pragma omp critical(stockfish_init)
-        {
-            sf_ok = stockfish.init(2400);
-        }
-
         SearchEngine master_engine;
         SearchEngine baseline_engine;
 
@@ -180,7 +176,12 @@ void run_automated_tournament(int num_games, int depth) {
                         res = master_engine.search_alphabeta(board, depth, true, true);
                     } else {
                         if (sf_ok) {
-                            SearchResult sf_res = stockfish.get_search_result(board, depth);
+                            SearchResult sf_res;
+                            #pragma omp critical(stockfish_uci)
+                            {
+                                sf_res = global_stockfish.get_search_result(board, depth);
+                            }
+
                             if (sf_res.best_move) {
                                 res = sf_res;
                             } else {
@@ -239,19 +240,11 @@ void run_automated_tournament(int num_games, int depth) {
                               << " Baseline (" << atomic_draws.load() << " draws)\r" << std::flush;
                 }
             } catch (const std::exception& e) {
-                std::cerr << "\n[TOURNAMENT SAFETY] Exception in Game " << g << ": " << e.what() << ". Recovering Stockfish & continuing...\n";
+                std::cerr << "\n[TOURNAMENT SAFETY] Exception in Game " << g << ": " << e.what() << ". Continuing...\n";
                 atomic_draws++;
-                if (sf_ok) {
-                    stockfish.close();
-                    sf_ok = stockfish.init(2400);
-                }
             } catch (...) {
-                std::cerr << "\n[TOURNAMENT SAFETY] Unknown Exception in Game " << g << ". Recovering Stockfish & continuing...\n";
+                std::cerr << "\n[TOURNAMENT SAFETY] Unknown Exception in Game " << g << ". Continuing...\n";
                 atomic_draws++;
-                if (sf_ok) {
-                    stockfish.close();
-                    sf_ok = stockfish.init(2400);
-                }
             }
         }
     }
