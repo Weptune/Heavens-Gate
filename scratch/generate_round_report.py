@@ -223,7 +223,18 @@ def generate_round_report(pgn_path, round_num):
         sf.write(f"  Avg Game Length: Wins={avg_win_len:.0f} moves | Losses={avg_loss_len:.0f} moves\n")
         sf.write(f"  Promotions: {promotions} Queens/Rooks promoted\n\n")
 
-    print(f"\n[REPORT GENERATED] Updated {master_json_path} and {summary_path}")
+    print("\n" + "=" * 62)
+    print(f"  🏆 HEAVEN'S GATE — ROUND {round_num} TOURNAMENT SUMMARY")
+    print("=" * 62)
+    print(f"  * Master Wins   : {master_wins}")
+    print(f"  * Baseline Wins : {baseline_wins}")
+    print(f"  * Draws         : {draws}")
+    print(f"  * Win Rate/Score: {score_pct:.1f}% ({master_wins}W / {baseline_wins}L / {draws}D in {total_games} games)")
+    print(f"  * Sustained Lead: {games_with_adv}/{total_games} games ({pct_adv:.0f}%)")
+    print(f"  * Conversion    : {converted_wins}/{games_with_adv} ({conversion_rate:.1f}% Efficiency)")
+    print(f"  * Phase Evals   : Opening={round_data['avg_eval']['opening']:+.0f}cp | Middlegame={round_data['avg_eval']['middlegame']:+.0f}cp | Endgame={round_data['avg_eval']['endgame']:+.0f}cp")
+    print("=" * 62)
+    print(f"[REPORT GENERATED] Updated {master_json_path} and {summary_path}\n")
 
 if __name__ == '__main__':
     p_path = sys.argv[1] if len(sys.argv) > 1 else 'tournament_results.pgn'

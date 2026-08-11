@@ -61,11 +61,10 @@ while ($true) {
     for ($w = 1; $w -le $num_workers; $w++) {
         $worker_dir = "$base_path\worker_$w"
         if (!(Test-Path -Path $worker_dir)) { New-Item -ItemType Directory -Path $worker_dir | Out-Null }
-        if (!(Test-Path -Path "$worker_dir\tools")) { New-Item -ItemType Directory -Path "$worker_dir\tools" | Out-Null }
         Copy-Item -Path "$base_path\heavensgate.exe" -Destination "$worker_dir\heavensgate.exe" -Force
         Copy-Item -Path "$base_path\heavensgate_tropical.trm" -Destination "$worker_dir\heavensgate_tropical.trm" -Force
         if (Test-Path -Path "$base_path\performance.bin") { Copy-Item -Path "$base_path\performance.bin" -Destination "$worker_dir\performance.bin" -Force }
-        if (Test-Path -Path "$base_path\tools\stockfish.exe") { Copy-Item -Path "$base_path\tools\stockfish.exe" -Destination "$worker_dir\tools\stockfish.exe" -Force }
+        if (Test-Path -Path "$base_path\tools") { Copy-Item -Path "$base_path\tools" -Destination "$worker_dir\tools" -Recurse -Force }
         
         $job = Start-Job -ScriptBlock {
             param($dir, $games)
