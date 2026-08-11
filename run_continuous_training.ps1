@@ -70,6 +70,7 @@ while ($true) {
             param($dir, $games)
             Set-Location -Path $dir
             $env:PATH = "$dir\tools;" + $env:PATH
+            $env:OMP_NUM_THREADS = "2"
             .\heavensgate.exe tournament $games 8
         } -ArgumentList $worker_dir, $games_per_worker
         $jobs += $job
