@@ -199,14 +199,14 @@ public:
 
     void close() {
         if (is_running) {
-            send_cmd("quit");
-            CloseHandle(piProcInfo.hProcess);
-            CloseHandle(piProcInfo.hThread);
-            CloseHandle(hChildStd_IN_Rd);
-            CloseHandle(hChildStd_IN_Wr);
-            CloseHandle(hChildStd_OUT_Rd);
-            CloseHandle(hChildStd_OUT_Wr);
             is_running = false;
+            send_cmd("quit");
+            if (piProcInfo.hProcess) { CloseHandle(piProcInfo.hProcess); piProcInfo.hProcess = NULL; }
+            if (piProcInfo.hThread) { CloseHandle(piProcInfo.hThread); piProcInfo.hThread = NULL; }
+            if (hChildStd_IN_Rd) { CloseHandle(hChildStd_IN_Rd); hChildStd_IN_Rd = NULL; }
+            if (hChildStd_IN_Wr) { CloseHandle(hChildStd_IN_Wr); hChildStd_IN_Wr = NULL; }
+            if (hChildStd_OUT_Rd) { CloseHandle(hChildStd_OUT_Rd); hChildStd_OUT_Rd = NULL; }
+            if (hChildStd_OUT_Wr) { CloseHandle(hChildStd_OUT_Wr); hChildStd_OUT_Wr = NULL; }
         }
     }
 };

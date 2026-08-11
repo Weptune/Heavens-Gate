@@ -95,7 +95,7 @@ void run_automated_tournament(int num_games, int depth) {
 
     std::vector<std::string> pgn_records(num_games + 1);
 
-    #pragma omp parallel
+    #pragma omp parallel num_threads(4)
     {
         StockfishClient stockfish;
         bool sf_ok = false;
