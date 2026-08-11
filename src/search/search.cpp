@@ -262,34 +262,13 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         int score = 0;
 
-        // 4. True Singular Extensions: If TT move is uniquely superior to all alternative moves, extend search depth by +1 ply!
+        // 4. Singular Extensions: Extend depth by +1 ply for promotions or strong TT moves
         int extension = 0;
         if (m.is_promotion()) {
             extension = 1;
         } else if (i == 0 && depth >= 6 && static_cast<bool>(tt_move) && !in_chk) {
             TTEntry* entry = tt_.probe(board.zobrist_key());
             if (entry && entry->depth >= depth - 3 && entry->bound != TTBound::Upper && std::abs(entry->score) < ScoreMate - 1000) {
-                int singular_beta = entry->score - 2 * depth;
-                
-                // Temporarily unmake TT move to test alternative moves
-                board.unmake_move(m);
-                
-                int alt_max = -ScoreInfinity;
-                for (size_t alt_i = 1; alt_i < moves.size(); alt_i++) {
-                    Move alt_m = moves[alt_i];
-                    board.make_move(alt_m);
-                    int alt_eval = -negamax_alphabeta(board, (depth - 1) / 2, ply + 1, -singular_beta, -singular_beta + 1, false, false, Move(), alt_m, nullptr);
-                    board.unmake_move(alt_m);
-                    alt_max = std::max(alt_max, alt_eval);
-                    if (alt_max >= singular_beta) break;
-                }
-                
-                board.make_move(m); // Re-make TT move
-                
-                if (alt_max < singular_beta) {
-                    extension = 1; // Singular extension granted!
-                }
-            } else {
                 extension = 1;
             }
         }
