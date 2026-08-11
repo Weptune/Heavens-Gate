@@ -179,12 +179,13 @@ void run_automated_tournament(int num_games, int depth) {
                 res = master_engine.search_iterative_deepening(board, depth, 0.0);
             } else {
                 if (sf_ok) {
-                    Move sf_move = stockfish.get_bestmove(board, depth);
-                    res.best_move = sf_move;
-                    res.best_score = 0;
-                    res.metrics.elapsed_seconds = 0.05;
-                    res.metrics.total_nodes = 50000;
-                    res.metrics.nps = 1000000;
+                    SearchResult sf_res = stockfish.get_search_result(board, depth);
+                    if (sf_res.best_move) {
+                        res = sf_res;
+                    } else {
+                        Evaluator::set_mode(EvalMode::MasterPositional);
+                        res = baseline_engine.search_alphabeta(board, depth, true, true);
+                    }
                 } else {
                     Evaluator::set_mode(EvalMode::MasterPositional);
                     res = baseline_engine.search_alphabeta(board, depth, true, true);
