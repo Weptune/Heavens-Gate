@@ -113,128 +113,144 @@ void run_automated_tournament(int num_games, int depth) {
 
         #pragma omp for schedule(dynamic)
         for (int g = 1; g <= num_games; ++g) {
-            Board board;
-            std::string opening_fen = TournamentOpenings[(g - 1) % TournamentOpenings.size()];
-            FEN::parse(opening_fen, board);
+            try {
+                Board board;
+                std::string opening_fen = TournamentOpenings[(g - 1) % TournamentOpenings.size()];
+                FEN::parse(opening_fen, board);
 
-            bool a_is_white = (g % 2 != 0);
-            int game_moves = 0;
+                bool a_is_white = (g % 2 != 0);
+                int game_moves = 0;
 
-            std::string opp_name = sf_ok ? "Stockfish 16.1 (2400 Elo)" : "Baseline Engine";
-            std::stringstream ss_pgn;
+                std::string opp_name = sf_ok ? "Stockfish 16.1 (2400 Elo)" : "Baseline Engine";
+                std::stringstream ss_pgn;
 
-            ss_pgn << "[Event \"Heaven's Gate Grandmaster Tournament\"]\n";
-            ss_pgn << "[Site \"Localhost\"]\n";
-            ss_pgn << "[Date \"2026.08.08\"]\n";
-            ss_pgn << "[Round \"" << g << "\"]\n";
-            ss_pgn << "[White \"" << (a_is_white ? "Master Edition" : opp_name) << "\"]\n";
-            ss_pgn << "[Black \"" << (a_is_white ? opp_name : "Master Edition") << "\"]\n";
-            ss_pgn << "[FEN \"" << opening_fen << "\"]\n";
+                ss_pgn << "[Event \"Heaven's Gate Grandmaster Tournament\"]\n";
+                ss_pgn << "[Site \"Localhost\"]\n";
+                ss_pgn << "[Date \"2026.08.08\"]\n";
+                ss_pgn << "[Round \"" << g << "\"]\n";
+                ss_pgn << "[White \"" << (a_is_white ? "Master Edition" : opp_name) << "\"]\n";
+                ss_pgn << "[Black \"" << (a_is_white ? opp_name : "Master Edition") << "\"]\n";
+                ss_pgn << "[FEN \"" << opening_fen << "\"]\n";
 
-            std::string result_str = "*";
-            std::string draw_reason_str = "";
+                std::string result_str = "*";
+                std::string draw_reason_str = "";
 
-            while (game_moves < 400) {
-                MoveList legal_moves;
-                MoveGenerator::generate_legal_moves(board, legal_moves);
+                while (game_moves < 400) {
+                    MoveList legal_moves;
+                    MoveGenerator::generate_legal_moves(board, legal_moves);
 
-                if (legal_moves.empty()) {
-                    if (MoveGenerator::in_check(board, board.side_to_move())) {
-                        if (board.side_to_move() == Color::White) {
-                            result_str = "0-1";
-                            if (a_is_white) b_wins++; else a_wins++;
+                    if (legal_moves.empty()) {
+                        if (MoveGenerator::in_check(board, board.side_to_move())) {
+                            if (board.side_to_move() == Color::White) {
+                                result_str = "0-1";
+                                if (a_is_white) b_wins++; else a_wins++;
+                            } else {
+                                result_str = "1-0";
+                                if (a_is_white) a_wins++; else b_wins++;
+                            }
                         } else {
-                            result_str = "1-0";
-                            if (a_is_white) a_wins++; else b_wins++;
+                            result_str = "1/2-1/2";
+                            draw_reason_str = "Stalemate";
+                            draws++;
                         }
-                    } else {
-                        result_str = "1/2-1/2";
-                        draw_reason_str = "Stalemate";
-                        draws++;
+                        break;
                     }
-                    break;
-                }
 
-                if (board.is_insufficient_material()) {
-                    result_str = "1/2-1/2";
-                    draw_reason_str = "Insufficient Material";
-                    draws++;
-                    break;
-                }
+                    if (board.is_insufficient_material()) {
+                        result_str = "1/2-1/2";
+                        draw_reason_str = "Insufficient Material";
+                        draws++;
+                        break;
+                    }
 
-                if (board.halfmove_clock() >= 100) {
-                    result_str = "1/2-1/2";
-                    draw_reason_str = "50-Move Rule";
-                    draws++;
-                    break;
-                }
+                    if (board.halfmove_clock() >= 100) {
+                        result_str = "1/2-1/2";
+                        draw_reason_str = "50-Move Rule";
+                        draws++;
+                        break;
+                    }
 
-                bool current_is_master = (board.side_to_move() == Color::White && a_is_white) ||
-                                         (board.side_to_move() == Color::Black && !a_is_white);
+                    bool current_is_master = (board.side_to_move() == Color::White && a_is_white) ||
+                                             (board.side_to_move() == Color::Black && !a_is_white);
 
-                SearchResult res;
-                if (current_is_master) {
-                    Evaluator::set_mode(EvalMode::SpectralTropical);
-                    res = master_engine.search_alphabeta(board, depth, true, true);
-                } else {
-                    if (sf_ok) {
-                        SearchResult sf_res = stockfish.get_search_result(board, depth);
-                        if (sf_res.best_move) {
-                            res = sf_res;
+                    SearchResult res;
+                    if (current_is_master) {
+                        Evaluator::set_mode(EvalMode::SpectralTropical);
+                        res = master_engine.search_alphabeta(board, depth, true, true);
+                    } else {
+                        if (sf_ok) {
+                            SearchResult sf_res = stockfish.get_search_result(board, depth);
+                            if (sf_res.best_move) {
+                                res = sf_res;
+                            } else {
+                                Evaluator::set_mode(EvalMode::MasterPositional);
+                                res = baseline_engine.search_alphabeta(board, depth, true, true);
+                            }
                         } else {
                             Evaluator::set_mode(EvalMode::MasterPositional);
                             res = baseline_engine.search_alphabeta(board, depth, true, true);
                         }
-                    } else {
-                        Evaluator::set_mode(EvalMode::MasterPositional);
-                        res = baseline_engine.search_alphabeta(board, depth, true, true);
                     }
+
+                    if (!res.best_move) {
+                        result_str = "1/2-1/2";
+                        draw_reason_str = "No Valid Move";
+                        draws++;
+                        break;
+                    }
+
+                    std::string uci_move = move_to_uci(res.best_move);
+                    double move_time_ms = res.metrics.elapsed_seconds * 1000.0;
+                    uint64_t move_nodes = res.metrics.total_nodes;
+                    double move_nps = res.metrics.nps;
+
+                    if (board.side_to_move() == Color::White) {
+                        ss_pgn << (game_moves / 2 + 1) << ". " << uci_move 
+                               << " { [%eval " << res.best_score << "] [%clk " << move_time_ms << "ms] [%nodes " << move_nodes << "] [%nps " << static_cast<uint64_t>(move_nps) << "] } ";
+                    } else {
+                        ss_pgn << uci_move 
+                               << " { [%eval " << res.best_score << "] [%clk " << move_time_ms << "ms] [%nodes " << move_nodes << "] [%nps " << static_cast<uint64_t>(move_nps) << "] }\n";
+                    }
+
+                    board.make_move(res.best_move);
+                    game_moves++;
                 }
 
-                if (!res.best_move) {
+                if (game_moves >= 400 && result_str == "*") {
                     result_str = "1/2-1/2";
-                    draw_reason_str = "No Valid Move";
+                    draw_reason_str = "400-Move Safety Limit";
                     draws++;
-                    break;
                 }
 
-                std::string uci_move = move_to_uci(res.best_move);
-                double move_time_ms = res.metrics.elapsed_seconds * 1000.0;
-                uint64_t move_nodes = res.metrics.total_nodes;
-                double move_nps = res.metrics.nps;
-
-                if (board.side_to_move() == Color::White) {
-                    ss_pgn << (game_moves / 2 + 1) << ". " << uci_move 
-                           << " { [%eval " << res.best_score << "] [%clk " << move_time_ms << "ms] [%nodes " << move_nodes << "] [%nps " << static_cast<uint64_t>(move_nps) << "] } ";
-                } else {
-                    ss_pgn << uci_move 
-                           << " { [%eval " << res.best_score << "] [%clk " << move_time_ms << "ms] [%nodes " << move_nodes << "] [%nps " << static_cast<uint64_t>(move_nps) << "] }\n";
+                if (result_str == "1/2-1/2" && !draw_reason_str.empty()) {
+                    ss_pgn << "{ [%draw_reason \"" << draw_reason_str << "\"] } ";
                 }
+                ss_pgn << result_str << "\n\n";
 
-                board.make_move(res.best_move);
-                game_moves++;
-            }
+                pgn_records[g] = ss_pgn.str();
 
-            if (game_moves >= 400 && result_str == "*") {
-                result_str = "1/2-1/2";
-                draw_reason_str = "400-Move Safety Limit";
+                #pragma omp atomic
+                completed_games++;
+
+                #pragma omp critical
+                {
+                    std::cout << "[TOURNAMENT] Completed " << completed_games << "/" << num_games 
+                              << " games | Master " << a_wins << " - " << b_wins << " Baseline (" << draws << " draws)\r" << std::flush;
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "\n[TOURNAMENT SAFETY] Exception in Game " << g << ": " << e.what() << ". Recovering Stockfish & continuing...\n";
                 draws++;
-            }
-
-            if (result_str == "1/2-1/2" && !draw_reason_str.empty()) {
-                ss_pgn << "{ [%draw_reason \"" << draw_reason_str << "\"] } ";
-            }
-            ss_pgn << result_str << "\n\n";
-
-            pgn_records[g] = ss_pgn.str();
-
-            #pragma omp atomic
-            completed_games++;
-
-            #pragma omp critical
-            {
-                std::cout << "[TOURNAMENT] Completed " << completed_games << "/" << num_games 
-                          << " games | Master " << a_wins << " - " << b_wins << " Baseline (" << draws << " draws)\r" << std::flush;
+                if (sf_ok) {
+                    stockfish.close();
+                    sf_ok = stockfish.init(2400);
+                }
+            } catch (...) {
+                std::cerr << "\n[TOURNAMENT SAFETY] Unknown Exception in Game " << g << ". Recovering Stockfish & continuing...\n";
+                draws++;
+                if (sf_ok) {
+                    stockfish.close();
+                    sf_ok = stockfish.init(2400);
+                }
             }
         }
     }
