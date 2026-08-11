@@ -18,6 +18,7 @@
 #include <chrono>
 #include <cmath>
 #include <fstream>
+#include <atomic>
 
 using namespace heavensgate;
 
@@ -87,14 +88,14 @@ void run_automated_tournament(int num_games, int depth) {
     std::cout << "  Parallelized across CPU cores using OpenMP dynamic work scheduling\n";
     std::cout << "======================================================\n\n";
 
-    int a_wins = 0;
-    int b_wins = 0;
-    int draws  = 0;
-    int completed_games = 0;
+    std::atomic<int> atomic_a_wins{0};
+    std::atomic<int> atomic_b_wins{0};
+    std::atomic<int> atomic_draws{0};
+    std::atomic<int> completed_games{0};
 
     std::vector<std::string> pgn_records(num_games + 1);
 
-    #pragma omp parallel reduction(+:a_wins, b_wins, draws)
+    #pragma omp parallel
     {
         StockfishClient stockfish;
         bool sf_ok = false;
@@ -143,15 +144,15 @@ void run_automated_tournament(int num_games, int depth) {
                         if (MoveGenerator::in_check(board, board.side_to_move())) {
                             if (board.side_to_move() == Color::White) {
                                 result_str = "0-1";
-                                if (a_is_white) b_wins++; else a_wins++;
+                                if (a_is_white) atomic_b_wins++; else atomic_a_wins++;
                             } else {
                                 result_str = "1-0";
-                                if (a_is_white) a_wins++; else b_wins++;
+                                if (a_is_white) atomic_a_wins++; else atomic_b_wins++;
                             }
                         } else {
                             result_str = "1/2-1/2";
                             draw_reason_str = "Stalemate";
-                            draws++;
+                            atomic_draws++;
                         }
                         break;
                     }
@@ -159,14 +160,14 @@ void run_automated_tournament(int num_games, int depth) {
                     if (board.is_insufficient_material()) {
                         result_str = "1/2-1/2";
                         draw_reason_str = "Insufficient Material";
-                        draws++;
+                        atomic_draws++;
                         break;
                     }
 
                     if (board.halfmove_clock() >= 100) {
                         result_str = "1/2-1/2";
                         draw_reason_str = "50-Move Rule";
-                        draws++;
+                        atomic_draws++;
                         break;
                     }
 
@@ -195,7 +196,7 @@ void run_automated_tournament(int num_games, int depth) {
                     if (!res.best_move) {
                         result_str = "1/2-1/2";
                         draw_reason_str = "No Valid Move";
-                        draws++;
+                        atomic_draws++;
                         break;
                     }
 
@@ -219,7 +220,7 @@ void run_automated_tournament(int num_games, int depth) {
                 if (game_moves >= 400 && result_str == "*") {
                     result_str = "1/2-1/2";
                     draw_reason_str = "400-Move Safety Limit";
-                    draws++;
+                    atomic_draws++;
                 }
 
                 if (result_str == "1/2-1/2" && !draw_reason_str.empty()) {
@@ -229,24 +230,24 @@ void run_automated_tournament(int num_games, int depth) {
 
                 pgn_records[g] = ss_pgn.str();
 
-                #pragma omp atomic
                 completed_games++;
 
                 #pragma omp critical
                 {
-                    std::cout << "[TOURNAMENT] Completed " << completed_games << "/" << num_games 
-                              << " games | Master " << a_wins << " - " << b_wins << " Baseline (" << draws << " draws)\r" << std::flush;
+                    std::cout << "[TOURNAMENT] Completed " << completed_games.load() << "/" << num_games 
+                              << " games | Master " << atomic_a_wins.load() << " - " << atomic_b_wins.load() 
+                              << " Baseline (" << atomic_draws.load() << " draws)\r" << std::flush;
                 }
             } catch (const std::exception& e) {
                 std::cerr << "\n[TOURNAMENT SAFETY] Exception in Game " << g << ": " << e.what() << ". Recovering Stockfish & continuing...\n";
-                draws++;
+                atomic_draws++;
                 if (sf_ok) {
                     stockfish.close();
                     sf_ok = stockfish.init(2400);
                 }
             } catch (...) {
                 std::cerr << "\n[TOURNAMENT SAFETY] Unknown Exception in Game " << g << ". Recovering Stockfish & continuing...\n";
-                draws++;
+                atomic_draws++;
                 if (sf_ok) {
                     stockfish.close();
                     sf_ok = stockfish.init(2400);
@@ -254,6 +255,10 @@ void run_automated_tournament(int num_games, int depth) {
             }
         }
     }
+
+    int a_wins = atomic_a_wins.load();
+    int b_wins = atomic_b_wins.load();
+    int draws  = atomic_draws.load();
 
     std::cout << "\n";
 
