@@ -30,13 +30,11 @@ class Board; // Forward declaration
 
 class TropicalEvaluator {
 public:
-    static constexpr size_t NUM_KING_BUCKETS         = 10;
-    static constexpr size_t SECTORS_PER_SURFACE     = 16; // 16 for T1 (Advantage), 16 for T2 (Vulnerability)
-    static constexpr size_t TOTAL_SECTORS_T1        = NUM_KING_BUCKETS * SECTORS_PER_SURFACE; // 160 sectors
-    static constexpr size_t TOTAL_SECTORS_T2        = NUM_KING_BUCKETS * SECTORS_PER_SURFACE; // 160 sectors
-    static constexpr size_t TOTAL_SECTORS           = TOTAL_SECTORS_T1 + TOTAL_SECTORS_T2;    // 320 sectors total
-    static constexpr size_t NUM_FEATURES             = 25;
-    static constexpr float  SMOOTH_TAU               = 3.0f; // Log-Sum-Exp smoothing temperature
+    static constexpr size_t NUM_KING_BUCKETS       = 10;
+    static constexpr size_t NUM_SECTORS_PER_BUCKET = 32;
+    static constexpr size_t TOTAL_SECTORS          = NUM_KING_BUCKETS * NUM_SECTORS_PER_BUCKET; // 320 sectors
+    static constexpr size_t NUM_FEATURES           = 22;
+    static constexpr float  SMOOTH_TAU             = 3.0f; // Log-Sum-Exp smoothing temperature in normalized unit scale
 
     struct SectorWeights {
         std::array<float, NUM_FEATURES> w;
@@ -48,43 +46,37 @@ public:
     // King-Bucket spatial partitioning lookup (0..9) with horizontal symmetry
     static int get_king_bucket(Square opp_king_sq, Color us);
 
-    // Evaluates board position using Tropical Rational Function: f(x) = T1(x) - T2(x) + Tempo
+    // Evaluates board position (returns score in centipawns relative to side_to_move)
     int evaluate(const Board& board) const;
 
-    // Training support: extract 22D spectral-tropical feature vector from board
+    // Training support: extract 16D spectral-tropical feature vector from board
     std::array<float, NUM_FEATURES> extract_features(const Board& board) const;
 
-    // Phase 4 Detailed Evaluation Result (Dual Softmax Distributions over T1 and T2)
+    // Training support: evaluate with smooth Log-Sum-Exp max and return (score, bucket_index, winning_sector_index, sector_softmax_probs)
     struct EvalResult {
         int score;
         int bucket;
-        float t1_val;
-        float t2_val;
-        size_t winning_sector_t1;
-        size_t winning_sector_t2;
-        std::array<float, SECTORS_PER_SURFACE> softmax_t1;
-        std::array<float, SECTORS_PER_SURFACE> softmax_t2;
+        size_t winning_sector;
+        std::array<float, NUM_SECTORS_PER_BUCKET> softmax_probs;
     };
     EvalResult evaluate_detailed(const Board& board) const;
     EvalResult evaluate_detailed_from_features(const std::array<float, NUM_FEATURES>& features, size_t bucket) const;
+    static size_t get_king_bucket(Square opp_king_sq);
+    std::pair<int, size_t> evaluate_with_sector(const Board& board) const;
 
     // Weight management
     void initialize_weights(uint32_t seed = 42);
     bool save_weights(const std::string& path) const;
     bool load_weights(const std::string& path);
 
-    // Accessors for T1 (Advantage) and T2 (Vulnerability) sector surfaces
-    std::vector<SectorWeights>& sectors_t1() { return sectors_t1_; }
-    const std::vector<SectorWeights>& sectors_t1() const { return sectors_t1_; }
-
-    std::vector<SectorWeights>& sectors_t2() { return sectors_t2_; }
-    const std::vector<SectorWeights>& sectors_t2() const { return sectors_t2_; }
+    // Accessors for training (320 sectors = 10 buckets * 32 sectors)
+    std::vector<SectorWeights>& sectors() { return sectors_; }
+    const std::vector<SectorWeights>& sectors() const { return sectors_; }
 
     static TropicalEvaluator& instance();
 
 private:
-    std::vector<SectorWeights> sectors_t1_; // 160 T1 Advantage sectors
-    std::vector<SectorWeights> sectors_t2_; // 160 T2 Vulnerability sectors
+    std::vector<SectorWeights> sectors_; // 320 sectors (5,440 parameters)
 };
 
 } // namespace heavensgate

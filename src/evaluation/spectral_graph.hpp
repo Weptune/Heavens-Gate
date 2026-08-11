@@ -46,21 +46,6 @@ struct SpectralFeatures {
     float king_shield_us;      // Defending pawn/piece Laplacian energy around our King
     float king_shield_them;    // Defending pawn/piece Laplacian energy around opponent King
     float game_phase;          // Normalized game phase (1.0=full pieces, 0.0=endgame)
-
-    // Phase 3: 4-Zone Localized Spatial Fiedler Subgraph Invariants
-    float fiedler_ks_us;       // Kingside zone (files f,g,h) Fiedler λ₂ for us
-    float fiedler_ks_them;     // Kingside zone Fiedler λ₂ for opponent
-    float fiedler_qs_us;       // Queenside zone (files a,b,c) Fiedler λ₂ for us
-    float fiedler_qs_them;     // Queenside zone Fiedler λ₂ for opponent
-    float fiedler_ctr_us;      // Center zone (files d,e) Fiedler λ₂ for us
-    float fiedler_ctr_them;    // Center zone Fiedler λ₂ for opponent
-    float fiedler_br_us;       // Back-rank zone (ranks 1-2 us / 7-8 them) Fiedler λ₂ for us
-    float fiedler_br_them;     // Back-rank zone Fiedler λ₂ for opponent
-
-    // Phase 5: Chebyshev Spectral Graph Filter Features (2-Hop Graph Convolutions T2(L))
-    float chebyshev_t2_us;       // 2-Hop indirect battery/support graph convolution for us
-    float chebyshev_t2_them;     // 2-Hop indirect battery/support graph convolution for opponent
-    float chebyshev_king_threat; // 2-Hop indirect graph attack paths targeting opponent King
 };
 
 class SpectralGraph {

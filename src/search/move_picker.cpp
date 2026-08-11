@@ -82,16 +82,12 @@ void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int p
     for (size_t i = 0; i < moves.size(); ++i) {
         Move m = moves[i];
 
-        // 50-Move Rule Mitigation Priority: Prioritize Pawn Pushes and Captures when halfmove clock >= 70
-        bool is_clock_resetter = m.is_capture() || (piece_type_of(board.piece_at(m.from())) == PieceType::Pawn);
-        int clock_boost = (board.halfmove_clock() >= 70 && is_clock_resetter) ? 1500000 : 0;
-
         if (m == tt_move) {
             scores[i] = 2000000;
         } else if (m.type() == MoveType::PromoQueen || m.type() == MoveType::PromoCaptureQueen) {
-            scores[i] = 950000 + clock_boost;
+            scores[i] = 950000;
         } else if (m.is_promotion()) {
-            scores[i] = 200000 + clock_boost;
+            scores[i] = 200000;
         } else if (m.is_capture()) {
             Piece attacker = board.piece_at(m.from());
             Piece victim   = board.piece_at(m.to());
@@ -129,7 +125,7 @@ void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int p
         } else {
             size_t from_idx = static_cast<size_t>(m.from());
             size_t to_idx   = static_cast<size_t>(m.to());
-            scores[i] = history_scores_[c_idx][from_idx][to_idx] + clock_boost;
+            scores[i] = history_scores_[c_idx][from_idx][to_idx];
         }
     }
 

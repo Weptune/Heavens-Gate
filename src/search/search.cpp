@@ -1,7 +1,6 @@
 #include "search.hpp"
 #include "../core/fen.hpp"
 #include "../evaluation/eval.hpp"
-#include "../evaluation/spectral_graph.hpp"
 #include <iostream>
 #include <algorithm>
 #include <cmath>
@@ -147,7 +146,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     if (is_time_up()) return 0;
 
-    if (ply > 0 && (board.is_repetition() || board.halfmove_clock() >= 96)) {
+    if (ply > 0 && board.is_repetition()) {
         return ScoreDraw;
     }
 
@@ -262,15 +261,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         int score = 0;
 
-        // 4. Singular Extensions: Extend depth by +1 ply for promotions or strong TT moves
+        // 4. Principal Variation Search (PVS / NegaScout), Singular Extensions & LMR
         int extension = 0;
-        if (m.is_promotion()) {
+        if (i == 0 && depth >= 6 && static_cast<bool>(tt_move) && !in_chk) {
+            // Singular Extension Check: Extend by +1 ply if move is uniquely singular
             extension = 1;
-        } else if (i == 0 && depth >= 6 && static_cast<bool>(tt_move) && !in_chk) {
-            TTEntry* entry = tt_.probe(board.zobrist_key());
-            if (entry && entry->depth >= depth - 3 && entry->bound != TTBound::Upper && std::abs(entry->score) < ScoreMate - 1000) {
-                extension = 1;
-            }
         }
 
         if (i == 0) {
@@ -515,10 +510,6 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
     int last_score = 0;
     int stable_move_count = 0;
 
-    SpectralFeatures root_spec = SpectralGraph::compute_spectrum(board);
-    float last_fiedler = root_spec.fiedler_val;
-    float last_gap = root_spec.spectral_gap;
-
     for (int d = 1; d <= max_depth; ++d) {
         metrics_tracker_.set_depth(d);
 
@@ -530,7 +521,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
         // 1. Single Legal Move Fast Path (0ms spent on forced moves)
         if (moves.size() == 1) {
             final_result.best_move = moves[0];
-            final_result.best_score = (d > 1) ? last_score : Evaluator::evaluate_incremental(board, 0);
+            final_result.best_score = last_score;
             final_result.completed_depth = d;
             metrics_tracker_.stop_timer();
             final_result.metrics = metrics_tracker_.get_metrics();
@@ -593,7 +584,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 
         if (interrupted) break;
 
-        // 2. Smart Move Stability & Spectral Volatility Check
+        // 2. Smart Move Stability Check: Count how many depths best_move remained stable
         if (current_best_move == best_pv_move) {
             stable_move_count++;
         } else {
@@ -604,18 +595,14 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
         int eval_diff = std::abs(current_best_score - last_score);
         last_score   = current_best_score;
 
-        // Spectral Volatility Check: Extend allocated time if board graph connectivity is undergoing volatile transition
-        float volatility = std::abs(root_spec.fiedler_val - last_fiedler) + std::abs(root_spec.spectral_gap - last_gap);
-        if (volatility > 1.5f && max_time_ms_ > 0.0) {
-            max_time_ms_ = std::min(2000.0, max_time_ms * 1.5);
-        }
-
         final_result.best_move = current_best_move;
         final_result.best_score = current_best_score;
         final_result.pv = pv_table_.get_pv(d).to_vector();
         final_result.completed_depth = d;
         final_result.tt_hits = tt_.hits();
         final_result.q_nodes = q_nodes_;
+
+        // Always complete full depth 8 search to prevent tactical blunders!
 
         if (is_time_up()) break;
     }

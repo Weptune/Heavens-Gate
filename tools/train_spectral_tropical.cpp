@@ -138,7 +138,7 @@ int main(int argc, char* argv[]) {
     std::cout << "======================================================\n";
     std::cout << "  Heaven's Gate — Spectral-Tropical Hybrid Trainer v2  \n";
     std::cout << "  Gradient Descent on (max, +) Minimax Surface        \n";
-    std::cout << "======================================================\n\n" << std::flush;
+    std::cout << "======================================================\n\n";
 
     int num_games = 500;
     int depth = 5;
@@ -235,7 +235,7 @@ int main(int argc, char* argv[]) {
                 float side_outcome = (item.first.side_to_move() == Color::White) ? static_cast<float>(result_score) : -static_cast<float>(result_score);
                 float outcome_cp = side_outcome * 600.0f;
 
-                // Ground Truth Evaluation: Blend positional engine ground truth with game outcome (Exact 990a41a Formula)
+                // Ground Truth Evaluation: Blend positional engine ground truth with game outcome
                 Evaluator::set_mode(EvalMode::MasterPositional);
                 float master_score = static_cast<float>(Evaluator::evaluate(item.first));
                 Evaluator::set_mode(EvalMode::SpectralTropical);
@@ -333,42 +333,31 @@ int main(int argc, char* argv[]) {
         float m_b = 0.0f;
         float v_b = 0.0f;
     };
-    std::vector<SectorAdam> adam_state_t1(TropicalEvaluator::TOTAL_SECTORS_T1);
-    std::vector<SectorAdam> adam_state_t2(TropicalEvaluator::TOTAL_SECTORS_T2);
+    std::vector<SectorAdam> adam_state(TropicalEvaluator::TOTAL_SECTORS);
     int timestep = 0;
 
-    std::ifstream adam_in("heavensgate_adam.dat", std::ios::binary | std::ios::ate);
-    constexpr size_t EXPECTED_ADAM_SIZE = sizeof(int) + TropicalEvaluator::TOTAL_SECTORS * (2 * TropicalEvaluator::NUM_FEATURES * sizeof(float) + 2 * sizeof(float));
+    // Load persistent Adam momentum and variance state
+    std::ifstream adam_in("heavensgate_adam.dat", std::ios::binary);
     if (adam_in.is_open()) {
-        size_t file_size = static_cast<size_t>(adam_in.tellg());
-        adam_in.seekg(0, std::ios::beg);
-        if (file_size == EXPECTED_ADAM_SIZE) {
-            adam_in.read(reinterpret_cast<char*>(&timestep), sizeof(timestep));
-            for (auto& sec : adam_state_t1) {
-                adam_in.read(reinterpret_cast<char*>(sec.m_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
-                adam_in.read(reinterpret_cast<char*>(sec.v_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
-                adam_in.read(reinterpret_cast<char*>(&sec.m_b), sizeof(sec.m_b));
-                adam_in.read(reinterpret_cast<char*>(&sec.v_b), sizeof(sec.v_b));
-            }
-            for (auto& sec : adam_state_t2) {
-                adam_in.read(reinterpret_cast<char*>(sec.m_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
-                adam_in.read(reinterpret_cast<char*>(sec.v_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
-                adam_in.read(reinterpret_cast<char*>(&sec.m_b), sizeof(sec.m_b));
-                adam_in.read(reinterpret_cast<char*>(&sec.v_b), sizeof(sec.v_b));
-            }
-            std::cout << "[SpectralTropical] Loaded Phase 4 Dual-Surface Adam state (Timestep: " << timestep << ")\n";
-        } else {
-            std::cout << "[SpectralTropical] Adam state binary size mismatch. Resetting Adam state for Phase 4.\n";
-            adam_in.close();
-            std::remove("heavensgate_adam.dat");
+        adam_in.read(reinterpret_cast<char*>(&timestep), sizeof(timestep));
+        for (auto& sec : adam_state) {
+            adam_in.read(reinterpret_cast<char*>(sec.m_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
+            adam_in.read(reinterpret_cast<char*>(sec.v_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
+            adam_in.read(reinterpret_cast<char*>(&sec.m_b), sizeof(sec.m_b));
+            adam_in.read(reinterpret_cast<char*>(&sec.v_b), sizeof(sec.v_b));
         }
+        std::cout << "[SpectralTropical] Loaded persistent Adam state (Timestep: " << timestep << ")\n";
     }
 
     float beta1 = 0.9f;
     float beta2 = 0.999f;
-    float eps   = 1e-8f;
-    float weight_decay = 1e-5f;
+    float eps = 1e-8f;
+    float weight_decay = 0.0f; // Disabled per-sample L2 decay to preserve positional weights across millions of steps
 
+    std::cout << "[SpectralTropical] Training via Adam Optimizer (Epochs=" << epochs
+              << ", LR=" << lr << ", Decay=" << lr_decay << ")...\n\n";
+
+    std::cout << "[SpectralTropical] Pre-computing 22D Feature Vectors for " << active_dataset.size() << " positions...\n";
     struct CachedSample {
         std::array<float, TropicalEvaluator::NUM_FEATURES> features;
         size_t bucket;
@@ -381,46 +370,16 @@ int main(int argc, char* argv[]) {
         const auto& s = active_dataset[i];
         cached_dataset[i].features = model.extract_features(s.board);
         Square ksq = s.board.king_square(s.board.side_to_move() == Color::White ? Color::Black : Color::White);
-        cached_dataset[i].bucket = static_cast<size_t>(TropicalEvaluator::get_king_bucket(ksq, s.board.side_to_move()));
+        cached_dataset[i].bucket = model.get_king_bucket(ksq);
         cached_dataset[i].target = s.target;
     }
+    std::cout << "[SpectralTropical] Feature Caching Complete! Launching 80-Epoch Adam SGD...\n\n";
 
     std::mt19937 shuffle_rng(123);
-
-    std::cout << "\n======================================================\n";
-    std::cout << "  PHASE 4: TROPICAL RATIONAL FUNCTIONS (T1 - T2) TRAINING\n";
-    std::cout << "======================================================\n";
-    std::cout << "  Dataset Size   : " << cached_dataset.size() << " FEN positions\n";
-    std::cout << "  Advantage (T1) : 160 Sectors\n";
-    std::cout << "  Vulnerability(T2): 160 Sectors\n";
-    std::cout << "  Training Epochs: " << epochs << "\n";
-    std::cout << "  Initial LR     : " << lr << "\n";
-    std::cout << "======================================================\n\n";
-
     std::vector<size_t> indices(cached_dataset.size());
     std::iota(indices.begin(), indices.end(), 0);
 
-    float init_loss = 0.0f;
-    for (size_t i = 0; i < cached_dataset.size(); i++) {
-        auto eval_res = model.evaluate_detailed_from_features(cached_dataset[i].features, cached_dataset[i].bucket);
-        float err = std::max(-1000.0f, std::min(1000.0f, static_cast<float>(eval_res.score) - cached_dataset[i].target));
-        init_loss += err * err;
-    }
-    float initial_rmse = std::sqrt(init_loss / cached_dataset.size());
-
-    float final_rmse = initial_rmse;
-    float best_rmse = initial_rmse;
-    int best_epoch = 0;
-    TropicalEvaluator best_model = model;
-
-    std::cout << "[SpectralTropical] Phase 4 Checkpoint Baseline RMSE (Epoch 0): " 
-              << std::fixed << std::setprecision(2) << initial_rmse << " cp\n\n";
-
-    static constexpr float feature_floors[25] = {
-        10.00f, 0.30f, 0.15f, 0.15f, 0.40f, 0.30f, 0.20f, 0.30f, 0.15f, 0.25f, 0.30f, 0.20f, 0.25f, 0.40f, 0.40f, 0.20f, 0.20f, 0.15f, 0.15f, 0.15f, 0.15f, 0.15f,
-        0.20f, 0.15f, 0.25f
-    };
-
+    float final_rmse = 0.0f;
     for (int epoch = 1; epoch <= epochs; epoch++) {
         std::shuffle(indices.begin(), indices.end(), shuffle_rng);
 
@@ -434,24 +393,41 @@ int main(int argc, char* argv[]) {
             float denom1 = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta1, timestep)));
             float denom2 = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta2, timestep)));
 
+            // 1. Fast evaluation from pre-computed feature vector
             auto eval_res = model.evaluate_detailed_from_features(sample.features, sample.bucket);
 
+            // 2. Compute prediction error
             float error = std::max(-1000.0f, std::min(1000.0f, static_cast<float>(eval_res.score) - sample.target));
             total_loss += error * error;
             count++;
 
-            size_t base_sec_idx = sample.bucket * TropicalEvaluator::SECTORS_PER_SURFACE;
+            size_t base_sec_idx = sample.bucket * TropicalEvaluator::NUM_SECTORS_PER_BUCKET;
 
-            for (size_t j = 0; j < TropicalEvaluator::SECTORS_PER_SURFACE; j++) {
+            // 3. Softmax-Weighted Gradient Distribution across active King Bucket
+            for (size_t j = 0; j < TropicalEvaluator::NUM_SECTORS_PER_BUCKET; j++) {
                 size_t sec_idx = base_sec_idx + j;
-                float prob = eval_res.softmax_t1[j];
+                float prob = eval_res.softmax_probs[j];
                 if (prob < 1e-4f) continue;
 
-                auto& sec = model.sectors_t1()[sec_idx];
-                auto& adam = adam_state_t1[sec_idx];
+                auto& sec = model.sectors()[sec_idx];
+                auto& adam = adam_state[sec_idx];
+
                 float sector_error = error * prob;
 
-                for (size_t i = 0; i < TropicalEvaluator::NUM_FEATURES; i++) {
+                // Material weight w[0] (learned inside sectors, bounded [0.8, 1.2])
+                {
+                    float grad0 = (sector_error * sample.features[0]) / 100.0f + weight_decay * (sec.w[0] - 1.0f);
+                    grad0 = std::max(-50.0f, std::min(50.0f, grad0));
+                    adam.m_w[0] = beta1 * adam.m_w[0] + (1.0f - beta1) * grad0;
+                    adam.v_w[0] = beta2 * adam.v_w[0] + (1.0f - beta2) * (grad0 * grad0);
+                    float m_hat0 = adam.m_w[0] / denom1;
+                    float v_hat0 = adam.v_w[0] / denom2;
+                    sec.w[0] -= (lr * m_hat0) / (std::sqrt(v_hat0) + eps);
+                    sec.w[0] = std::max(0.8f, std::min(1.2f, sec.w[0]));
+                }
+
+                // Positional weights w[1..21] (non-negative bounds [0.0, 5.0])
+                for (size_t i = 1; i < TropicalEvaluator::NUM_FEATURES; i++) {
                     float grad = (sector_error * sample.features[i]) / 100.0f + weight_decay * sec.w[i];
                     grad = std::max(-50.0f, std::min(50.0f, grad));
 
@@ -462,44 +438,11 @@ int main(int argc, char* argv[]) {
                     float v_hat = adam.v_w[i] / denom2;
 
                     sec.w[i] -= (lr * m_hat) / (std::sqrt(v_hat) + eps);
-                    sec.w[i] = std::max(feature_floors[i], std::min(5.0f, sec.w[i]));
+                    float min_w = (i == 4) ? 0.20f : ((i == 1 || i == 5 || i == 10) ? 0.10f : 0.0f);
+                    sec.w[i] = std::max(min_w, std::min(5.0f, sec.w[i]));
                 }
 
-                float grad_b = sector_error / 10.0f;
-                grad_b = std::max(-50.0f, std::min(50.0f, grad_b));
-
-                adam.m_b = beta1 * adam.m_b + (1.0f - beta1) * grad_b;
-                adam.v_b = beta2 * adam.v_b + (1.0f - beta2) * (grad_b * grad_b);
-
-                float m_hat_b = adam.m_b / denom1;
-                float v_hat_b = adam.v_b / denom2;
-                sec.b -= (lr * m_hat_b) / (std::sqrt(v_hat_b) + eps);
-                sec.b = std::max(-250.0f, std::min(250.0f, sec.b));
-            }
-
-            for (size_t k = 0; k < TropicalEvaluator::SECTORS_PER_SURFACE; k++) {
-                size_t sec_idx = base_sec_idx + k;
-                float prob = eval_res.softmax_t2[k];
-                if (prob < 1e-4f) continue;
-
-                auto& sec = model.sectors_t2()[sec_idx];
-                auto& adam = adam_state_t2[sec_idx];
-                float sector_error = -error * prob;
-
-                for (size_t i = 1; i < TropicalEvaluator::NUM_FEATURES; i++) { 
-                    float grad = (sector_error * sample.features[i]) / 100.0f + weight_decay * sec.w[i];
-                    grad = std::max(-50.0f, std::min(50.0f, grad));
-
-                    adam.m_w[i] = beta1 * adam.m_w[i] + (1.0f - beta1) * grad;
-                    adam.v_w[i] = beta2 * adam.v_w[i] + (1.0f - beta2) * (grad * grad);
-
-                    float m_hat = adam.m_w[i] / denom1;
-                    float v_hat = adam.v_w[i] / denom2;
-
-                    sec.w[i] -= (lr * m_hat) / (std::sqrt(v_hat) + eps);
-                    sec.w[i] = std::max(0.05f, std::min(5.0f, sec.w[i]));
-                }
-
+                // Sector bias
                 float grad_b = sector_error / 10.0f;
                 grad_b = std::max(-50.0f, std::min(50.0f, grad_b));
 
@@ -516,72 +459,58 @@ int main(int argc, char* argv[]) {
         float rmse = std::sqrt(total_loss / count);
         final_rmse = rmse;
 
-        if (rmse < best_rmse) {
-            best_rmse = rmse;
-            best_epoch = epoch;
-            best_model = model;
-        }
-
         if (epoch <= 10 || epoch % 10 == 0 || epoch == epochs) {
             std::cout << "  [Epoch " << std::setw(3) << epoch << "/" << epochs
                       << "] RMSE: " << std::fixed << std::setprecision(2) << rmse
-                      << " cp | LR: " << std::setprecision(6) << lr;
-            if (epoch == best_epoch) {
-                std::cout << " ⭐ [BEST CHECKPOINT: " << best_rmse << " cp]";
-            }
-            std::cout << "\n" << std::flush;
+                      << " cp | LR: " << std::setprecision(6) << lr << "\n";
+            std::cout << std::flush;
         }
 
+        // Learning rate decay
         lr *= lr_decay;
     }
 
-    std::cout << "\n[CHECKPOINT RETENTION] Selected Epoch " << best_epoch << " Best Weights with Lowest RMSE: " << best_rmse << " cp (vs Final Epoch: " << final_rmse << " cp)\n";
-
     std::string model_path = "heavensgate_tropical.trm";
-    if (best_model.save_weights(model_path)) {
-        std::cout << "[SUCCESS] Saved Phase 4 Spectral-Tropical Rational Function weights (Epoch " << best_epoch << ", " << best_rmse << " cp) to " << model_path << "\n";
+    if (model.save_weights(model_path)) {
+        std::cout << "\n[SUCCESS] Saved Spectral-Tropical weights to " << model_path << "\n";
 
+        // Save persistent Adam state
         std::ofstream adam_out("heavensgate_adam.dat", std::ios::binary);
         if (adam_out.is_open()) {
             adam_out.write(reinterpret_cast<const char*>(&timestep), sizeof(timestep));
-            for (const auto& sec : adam_state_t1) {
+            for (const auto& sec : adam_state) {
                 adam_out.write(reinterpret_cast<const char*>(sec.m_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
                 adam_out.write(reinterpret_cast<const char*>(sec.v_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
                 adam_out.write(reinterpret_cast<const char*>(&sec.m_b), sizeof(sec.m_b));
                 adam_out.write(reinterpret_cast<const char*>(&sec.v_b), sizeof(sec.v_b));
             }
-            for (const auto& sec : adam_state_t2) {
-                adam_out.write(reinterpret_cast<const char*>(sec.m_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
-                adam_out.write(reinterpret_cast<const char*>(sec.v_w.data()), TropicalEvaluator::NUM_FEATURES * sizeof(float));
-                adam_out.write(reinterpret_cast<const char*>(&sec.m_b), sizeof(sec.m_b));
-                adam_out.write(reinterpret_cast<const char*>(&sec.v_b), sizeof(sec.v_b));
-            }
-            std::cout << "[SUCCESS] Saved persistent Phase 4 Dual-Surface Adam state to heavensgate_adam.dat\n";
+            std::cout << "[SUCCESS] Saved persistent Adam state to heavensgate_adam.dat\n";
         }
 
-        static const char* feat_names[25] = {
+        // Feature Weight Telemetry Summary
+        static const char* feat_names[22] = {
             "Material", "Fiedler", "Cohesion", "Gap", "PST", "KingPress",
             "Battery", "PawnCoh", "Trace", "Mobility", "Center", "Phase",
             "Shield", "Passed", "EG_Passed", "Attack_Ratio",
-            "BatXCenter", "FiedXPWN", "EG_Mobility", "PassXCenter", "KingXBat", "ShldXPWN",
-            "Cheb_T2_Us", "Cheb_T2_Them", "Cheb_K_Threat"
+            "BatXCenter", "FiedXPWN", "EG_Mobility", "PassXCenter", "KingXBat", "ShldXPWN"
         };
         std::cout << "\n======================================================\n";
-        std::cout << "  PHASE 4 ADVANTAGE (T1) FEATURE WEIGHT TELEMETRY (160 SECTORS)\n";
+        std::cout << "  LEARNED FEATURE WEIGHT TELEMETRY (320 SECTORS)\n";
         std::cout << "======================================================\n";
 
+        // Collect feature stats for stdout and JSON tracking
         std::ofstream json_out("model_weight_history.log", std::ios::app);
         json_out << "FINAL_RMSE: " << final_rmse << " | WEIGHTS: ";
 
         for (size_t f = 0; f < TropicalEvaluator::NUM_FEATURES; f++) {
             float sum_w = 0.0f, min_w = 1e9f, max_w = -1e9f;
-            for (const auto& sec : model.sectors_t1()) {
+            for (const auto& sec : model.sectors()) {
                 float w = sec.w[f];
                 sum_w += w;
                 min_w = std::min(min_w, w);
                 max_w = std::max(max_w, w);
             }
-            float avg_w = sum_w / static_cast<float>(TropicalEvaluator::TOTAL_SECTORS_T1);
+            float avg_w = sum_w / static_cast<float>(TropicalEvaluator::TOTAL_SECTORS);
             std::cout << "  x[" << std::setw(2) << f << "] (" << std::setw(12) << feat_names[f]
                       << "): Avg=" << std::fixed << std::setprecision(4) << std::showpos << avg_w
                       << " | Range=[" << std::noshowpos << min_w << ", " << max_w << "]\n";

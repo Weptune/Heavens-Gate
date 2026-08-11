@@ -14,9 +14,9 @@ if ($max_history_round) {
 }
 
 while ($true) {
-    $phase_num = if ($round_num -le 8) { 1 } else { if ($round_num -le 29) { 2 } else { 3 } }
-    $phase_round_num = if ($round_num -le 8) { $round_num } else { if ($round_num -le 29) { $round_num - 8 } else { $round_num - 29 } }
-    $phase_title = if ($phase_num -eq 1) { "Phase 1: 16 Features" } else { if ($phase_num -eq 2) { "Phase 2: 22 Features" } else { "Phase 3: 4-Zone Localized Fiedler & AVX2 SIMD (28 Features)" } }
+    $phase_num = 2
+    $phase_round_num = $round_num - 8
+    $phase_title = "Phase 2: 22 Features (Pure Convex Single-Surface T1)"
 
     Write-Host "`n========================================================" -ForegroundColor Cyan
     Write-Host "  HEAVEN'S GATE - $phase_title ROUND $phase_round_num (Overall Round $round_num)" -ForegroundColor Green
