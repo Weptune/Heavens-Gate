@@ -38,7 +38,7 @@ def generate_phase5_trm():
         for j in range(16):
             jf = float(j)
             bf = float(b)
-            b_val = -5.0 + 0.3 * jf + 0.5 * bf
+            b_val = -5.0 + 0.2 * jf
             w = [
                 1.0,
                 0.5 + 0.2 * abs(math.sin(jf * 0.5 + bf)),
@@ -75,7 +75,7 @@ def generate_phase5_trm():
         for j in range(16):
             jf = float(j)
             bf = float(b)
-            b_val = -15.0 + 0.2 * jf + 0.3 * bf
+            b_val = -5.0 + 0.2 * jf
             w = [
                 0.0,
                 0.2 + 0.1 * abs(math.sin(jf * 0.4 + bf)),

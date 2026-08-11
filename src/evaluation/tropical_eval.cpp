@@ -66,9 +66,9 @@ void TropicalEvaluator::initialize_weights(uint32_t /*seed*/) {
             float jf = static_cast<float>(j);
             float bf = static_cast<float>(b);
 
-            sec.b = -5.0f + 0.3f * jf + 0.5f * bf;
+            sec.b = -5.0f + 0.2f * jf;
 
-            sec.w[0]  = 1.0f; // Material
+            sec.w[0]  = 10.0f; // Material (1 Pawn = 100 cp)
             sec.w[1]  = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.5f + bf));   // Fiedler Cohesion
             sec.w[2]  = 0.4f  + 0.15f * std::fabs(std::cos(jf * 0.7f + bf));   // Subgraph Cohesion
             sec.w[3]  = 0.3f  + 0.1f  * std::fabs(std::sin(jf * 1.1f));        // Spectral Gap
@@ -104,7 +104,7 @@ void TropicalEvaluator::initialize_weights(uint32_t /*seed*/) {
             float jf = static_cast<float>(j);
             float bf = static_cast<float>(b);
 
-            sec.b = -15.0f + 0.2f * jf + 0.3f * bf;
+            sec.b = -5.0f + 0.2f * jf;
 
             sec.w[0]  = 0.0f; // Material handled in T1
             sec.w[1]  = 0.2f  + 0.1f  * std::fabs(std::sin(jf * 0.4f + bf));   // Fiedler Vulnerability
