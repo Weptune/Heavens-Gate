@@ -82,164 +82,171 @@ const std::vector<std::string> TournamentOpenings = {
 };
 
 void run_automated_tournament(int num_games, int depth) {
-    StockfishClient stockfish;
-    bool sf_ok = stockfish.init(2400);
-
     std::cout << "\n======================================================\n";
     std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ Depth " << depth << ")\n";
-    std::cout << "  Engine A: Master Edition (Spectral-Tropical Graph Physics)\n";
-    std::cout << "  Engine B: " << (sf_ok ? "Stockfish 16.1 (2400 Elo Benchmark)" : "Baseline Positional Engine") << "\n";
+    std::cout << "  Parallelized across CPU cores using OpenMP dynamic work scheduling\n";
     std::cout << "======================================================\n\n";
 
     int a_wins = 0;
     int b_wins = 0;
     int draws  = 0;
+    int completed_games = 0;
 
-    SearchEngine master_engine;
-    SearchEngine baseline_engine;
+    std::vector<std::string> pgn_records(num_games + 1);
 
-    master_engine.tt().resize(256);
-    baseline_engine.tt().resize(256);
-    master_engine.polyglot_book().load("performance.bin");
-    baseline_engine.polyglot_book().load("performance.bin");
+    #pragma omp parallel reduction(+:a_wins, b_wins, draws)
+    {
+        StockfishClient stockfish;
+        bool sf_ok = false;
+        #pragma omp critical(stockfish_init)
+        {
+            sf_ok = stockfish.init(2400);
+        }
 
-    std::ofstream pgn_file("tournament_results.pgn");
+        SearchEngine master_engine;
+        SearchEngine baseline_engine;
 
-    for (int g = 1; g <= num_games; ++g) {
-        Board board;
-        std::string opening_fen = TournamentOpenings[(g - 1) % TournamentOpenings.size()];
-        FEN::parse(opening_fen, board);
+        master_engine.tt().resize(64);
+        baseline_engine.tt().resize(64);
+        master_engine.polyglot_book().load("performance.bin");
+        baseline_engine.polyglot_book().load("performance.bin");
 
-        bool a_is_white = (g % 2 != 0);
-        int game_moves = 0;
+        #pragma omp for schedule(dynamic)
+        for (int g = 1; g <= num_games; ++g) {
+            Board board;
+            std::string opening_fen = TournamentOpenings[(g - 1) % TournamentOpenings.size()];
+            FEN::parse(opening_fen, board);
 
-        std::string opp_name = sf_ok ? "Stockfish 16.1 (2400 Elo)" : "Baseline Engine";
+            bool a_is_white = (g % 2 != 0);
+            int game_moves = 0;
 
-        pgn_file << "[Event \"Heaven's Gate Grandmaster Tournament\"]\n";
-        pgn_file << "[Site \"Localhost\"]\n";
-        pgn_file << "[Date \"2026.08.08\"]\n";
-        pgn_file << "[Round \"" << g << "\"]\n";
-        pgn_file << "[White \"" << (a_is_white ? "Master Edition" : opp_name) << "\"]\n";
-        pgn_file << "[Black \"" << (a_is_white ? opp_name : "Master Edition") << "\"]\n";
-        pgn_file << "[FEN \"" << opening_fen << "\"]\n";
+            std::string opp_name = sf_ok ? "Stockfish 16.1 (2400 Elo)" : "Baseline Engine";
+            std::stringstream ss_pgn;
 
-        std::cout << "\n--- Game " << std::setw(2) << g << "/" << num_games << ": "
-                  << (a_is_white ? ("Master (White) vs " + opp_name + " (Black)") : (opp_name + " (White) vs Master (Black)"))
-                  << " ---\n";
+            ss_pgn << "[Event \"Heaven's Gate Grandmaster Tournament\"]\n";
+            ss_pgn << "[Site \"Localhost\"]\n";
+            ss_pgn << "[Date \"2026.08.08\"]\n";
+            ss_pgn << "[Round \"" << g << "\"]\n";
+            ss_pgn << "[White \"" << (a_is_white ? "Master Edition" : opp_name) << "\"]\n";
+            ss_pgn << "[Black \"" << (a_is_white ? opp_name : "Master Edition") << "\"]\n";
+            ss_pgn << "[FEN \"" << opening_fen << "\"]\n";
 
-        std::string result_str = "*";
-        std::string draw_reason_str = "";
+            std::string result_str = "*";
+            std::string draw_reason_str = "";
 
-        while (game_moves < 400) {
-            MoveList legal_moves;
-            MoveGenerator::generate_legal_moves(board, legal_moves);
+            while (game_moves < 400) {
+                MoveList legal_moves;
+                MoveGenerator::generate_legal_moves(board, legal_moves);
 
-            if (legal_moves.empty()) {
-                if (MoveGenerator::in_check(board, board.side_to_move())) {
-                    if (board.side_to_move() == Color::White) {
-                        std::cout << "\n[RESULT] Black wins by Checkmate!\n";
-                        result_str = "0-1";
-                        if (a_is_white) b_wins++; else a_wins++;
+                if (legal_moves.empty()) {
+                    if (MoveGenerator::in_check(board, board.side_to_move())) {
+                        if (board.side_to_move() == Color::White) {
+                            result_str = "0-1";
+                            if (a_is_white) b_wins++; else a_wins++;
+                        } else {
+                            result_str = "1-0";
+                            if (a_is_white) a_wins++; else b_wins++;
+                        }
                     } else {
-                        std::cout << "\n[RESULT] White wins by Checkmate!\n";
-                        result_str = "1-0";
-                        if (a_is_white) a_wins++; else b_wins++;
+                        result_str = "1/2-1/2";
+                        draw_reason_str = "Stalemate";
+                        draws++;
                     }
-                } else {
-                    std::cout << "\n[RESULT] Draw by Stalemate!\n";
-                    result_str = "1/2-1/2";
-                    draw_reason_str = "Stalemate";
-                    draws++;
+                    break;
                 }
-                break;
-            }
 
-            if (board.is_insufficient_material()) {
-                std::cout << "\n[RESULT] Draw by Insufficient Material!\n";
-                result_str = "1/2-1/2";
-                draw_reason_str = "Insufficient Material";
-                draws++;
-                break;
-            }
+                if (board.is_insufficient_material()) {
+                    result_str = "1/2-1/2";
+                    draw_reason_str = "Insufficient Material";
+                    draws++;
+                    break;
+                }
 
-            if (board.halfmove_clock() >= 100) {
-                std::cout << "\n[RESULT] Draw by 50-Move Rule!\n";
-                result_str = "1/2-1/2";
-                draw_reason_str = "50-Move Rule";
-                draws++;
-                break;
-            }
+                if (board.halfmove_clock() >= 100) {
+                    result_str = "1/2-1/2";
+                    draw_reason_str = "50-Move Rule";
+                    draws++;
+                    break;
+                }
 
-            bool current_is_master = (board.side_to_move() == Color::White && a_is_white) ||
-                                     (board.side_to_move() == Color::Black && !a_is_white);
+                bool current_is_master = (board.side_to_move() == Color::White && a_is_white) ||
+                                         (board.side_to_move() == Color::Black && !a_is_white);
 
-            SearchResult res;
-            if (current_is_master) {
-                Evaluator::set_mode(EvalMode::SpectralTropical);
-                res = master_engine.search_alphabeta(board, depth, true, true);
-            } else {
-                if (sf_ok) {
-                    SearchResult sf_res = stockfish.get_search_result(board, depth);
-                    if (sf_res.best_move) {
-                        res = sf_res;
+                SearchResult res;
+                if (current_is_master) {
+                    Evaluator::set_mode(EvalMode::SpectralTropical);
+                    res = master_engine.search_alphabeta(board, depth, true, true);
+                } else {
+                    if (sf_ok) {
+                        SearchResult sf_res = stockfish.get_search_result(board, depth);
+                        if (sf_res.best_move) {
+                            res = sf_res;
+                        } else {
+                            Evaluator::set_mode(EvalMode::MasterPositional);
+                            res = baseline_engine.search_alphabeta(board, depth, true, true);
+                        }
                     } else {
                         Evaluator::set_mode(EvalMode::MasterPositional);
                         res = baseline_engine.search_alphabeta(board, depth, true, true);
                     }
-                } else {
-                    Evaluator::set_mode(EvalMode::MasterPositional);
-                    res = baseline_engine.search_alphabeta(board, depth, true, true);
                 }
+
+                if (!res.best_move) {
+                    result_str = "1/2-1/2";
+                    draw_reason_str = "No Valid Move";
+                    draws++;
+                    break;
+                }
+
+                std::string uci_move = move_to_uci(res.best_move);
+                double move_time_ms = res.metrics.elapsed_seconds * 1000.0;
+                uint64_t move_nodes = res.metrics.total_nodes;
+                double move_nps = res.metrics.nps;
+
+                if (board.side_to_move() == Color::White) {
+                    ss_pgn << (game_moves / 2 + 1) << ". " << uci_move 
+                           << " { [%eval " << res.best_score << "] [%clk " << move_time_ms << "ms] [%nodes " << move_nodes << "] [%nps " << static_cast<uint64_t>(move_nps) << "] } ";
+                } else {
+                    ss_pgn << uci_move 
+                           << " { [%eval " << res.best_score << "] [%clk " << move_time_ms << "ms] [%nodes " << move_nodes << "] [%nps " << static_cast<uint64_t>(move_nps) << "] }\n";
+                }
+
+                board.make_move(res.best_move);
+                game_moves++;
             }
 
-            if (!res.best_move) {
-                std::cout << "\n[RESULT] Draw by No Valid Move!\n";
+            if (game_moves >= 400 && result_str == "*") {
                 result_str = "1/2-1/2";
-                draw_reason_str = "No Valid Move";
+                draw_reason_str = "400-Move Safety Limit";
                 draws++;
-                break;
             }
 
-            std::string uci_move = move_to_uci(res.best_move);
-            double move_time_ms = res.metrics.elapsed_seconds * 1000.0;
-            uint64_t move_nodes = res.metrics.total_nodes;
-            double move_nps = res.metrics.nps;
-
-            if (board.side_to_move() == Color::White) {
-                std::cout << (game_moves / 2 + 1) << ". " << uci_move << " (" << res.best_score << "cp, " 
-                          << std::fixed << std::setprecision(1) << move_time_ms << "ms, " 
-                          << move_nodes << " nodes, " << static_cast<uint64_t>(move_nps) << " nps) ";
-                pgn_file << (game_moves / 2 + 1) << ". " << uci_move 
-                         << " { [%eval " << res.best_score << "] [%clk " << move_time_ms << "ms] [%nodes " << move_nodes << "] [%nps " << static_cast<uint64_t>(move_nps) << "] } ";
-            } else {
-                std::cout << uci_move << " (" << res.best_score << "cp, " 
-                          << std::fixed << std::setprecision(1) << move_time_ms << "ms, " 
-                          << move_nodes << " nodes, " << static_cast<uint64_t>(move_nps) << " nps)\n";
-                pgn_file << uci_move 
-                         << " { [%eval " << res.best_score << "] [%clk " << move_time_ms << "ms] [%nodes " << move_nodes << "] [%nps " << static_cast<uint64_t>(move_nps) << "] }\n";
+            if (result_str == "1/2-1/2" && !draw_reason_str.empty()) {
+                ss_pgn << "{ [%draw_reason \"" << draw_reason_str << "\"] } ";
             }
+            ss_pgn << result_str << "\n\n";
 
-            board.make_move(res.best_move);
-            game_moves++;
+            pgn_records[g] = ss_pgn.str();
+
+            #pragma omp atomic
+            completed_games++;
+
+            #pragma omp critical
+            {
+                std::cout << "[TOURNAMENT] Completed " << completed_games << "/" << num_games 
+                          << " games | Master " << a_wins << " - " << b_wins << " Baseline (" << draws << " draws)\r" << std::flush;
+            }
         }
-
-        if (game_moves >= 400 && result_str == "*") {
-            std::cout << "\n[RESULT] Draw by 400-Move Safety Limit!\n";
-            result_str = "1/2-1/2";
-            draw_reason_str = "400-Move Safety Limit";
-            draws++;
-        }
-
-        if (result_str == "1/2-1/2" && !draw_reason_str.empty()) {
-            pgn_file << "{ [%draw_reason \"" << draw_reason_str << "\"] } ";
-        }
-        pgn_file << result_str << "\n\n";
-
-        std::cout << "Score after Game " << g << ": Master " 
-                  << a_wins << " - " << b_wins << " Baseline (" << draws << " draws)\n";
     }
 
+    std::cout << "\n";
+
+    std::ofstream pgn_file("tournament_results.pgn");
+    for (int g = 1; g <= num_games; ++g) {
+        pgn_file << pgn_records[g];
+    }
     pgn_file.close();
+
     Evaluator::set_mode(EvalMode::MasterPositional);
 
     double total_score = a_wins + 0.5 * draws;
