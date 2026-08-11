@@ -231,7 +231,7 @@ void run_automated_tournament(int num_games, int depth) {
                 SearchResult res;
                 if (current_is_master) {
                     Evaluator::set_mode(EvalMode::SpectralTropical);
-                    res = master_engine.search_iterative_deepening(board, depth, 1000.0);
+                    res = master_engine.search_alphabeta(board, depth, true, true);
                 } else {
                     if (sf_ok) {
                         SearchResult sf_res = stockfish.get_search_result(board, depth);
