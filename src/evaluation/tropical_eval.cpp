@@ -232,27 +232,27 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     float pst_them = (stm == Color::White) ? static_cast<float>(black_pst) : static_cast<float>(white_pst);
     x[4] = (pst_us - pst_them) / 100.0f;
 
-    x[5] = (feat.king_pressure_us - feat.king_pressure_them) * 0.2f;
-    x[6] = (feat.battery_energy_us - feat.battery_energy_them) * 0.2f;
-    x[7] = (feat.pawn_cohesion_us - feat.pawn_cohesion_them) * 0.2f;
-    x[8] = feat.laplacian_trace * 0.05f;
+    x[5] = (feat.king_pressure_us - feat.king_pressure_them) * 0.03f;
+    x[6] = (feat.battery_energy_us - feat.battery_energy_them) * 0.04f;
+    x[7] = (feat.pawn_cohesion_us - feat.pawn_cohesion_them) * 0.1f;
+    x[8] = feat.laplacian_trace * 0.02f;
 
-    x[9]  = (feat.mobility_us - feat.mobility_them) * 0.1f;
-    x[10] = (feat.center_control_us - feat.center_control_them) * 0.3f;
+    x[9]  = (feat.mobility_us - feat.mobility_them) * 0.05f;
+    x[10] = (feat.center_control_us - feat.center_control_them) * 0.1f;
     x[11] = feat.game_phase * 10.0f;
 
     float shld_us   = (stm == Color::White) ? static_cast<float>(white_king_shield) : static_cast<float>(black_king_shield);
     float shld_them = (stm == Color::White) ? static_cast<float>(black_king_shield) : static_cast<float>(white_king_shield);
-    x[12] = (shld_us - shld_them) * 0.5f;
+    x[12] = (shld_us - shld_them) * 0.3f;
 
     float pass_us   = (stm == Color::White) ? static_cast<float>(white_passed) : static_cast<float>(black_passed);
     float pass_them = (stm == Color::White) ? static_cast<float>(black_passed) : static_cast<float>(white_passed);
-    x[13] = (pass_us - pass_them) * 0.8f;
+    x[13] = (pass_us - pass_them) * 0.4f;
     x[14] = x[13] * (1.0f - feat.game_phase);
 
     float att_us   = (feat.king_pressure_us + feat.battery_energy_us * 0.5f);
     float att_them = (feat.king_pressure_them + feat.battery_energy_them * 0.5f);
-    x[15] = (att_us - att_them) * 0.2f;
+    x[15] = (att_us - att_them) * 0.04f;
 
     float pos_center   = std::max(0.0f, x[10]);
     float pos_pawncoh  = std::max(0.0f, x[7]);
