@@ -386,50 +386,58 @@ int main(int argc, char* argv[]) {
         float total_loss = 0.0f;
         size_t count = 0;
 
-        for (size_t idx : indices) {
-            const auto& sample = cached_dataset[idx];
-            timestep++;
+        constexpr size_t BATCH_SIZE = 64;
 
+        struct GradAccum {
+            std::array<float, TropicalEvaluator::NUM_FEATURES> grad_w{};
+            float grad_b = 0.0f;
+        };
+
+        for (size_t b_idx = 0; b_idx < cached_dataset.size(); b_idx += BATCH_SIZE) {
+            size_t batch_end = std::min(cached_dataset.size(), b_idx + BATCH_SIZE);
+            float batch_len_f = static_cast<float>(batch_end - b_idx);
+
+            std::vector<GradAccum> batch_grads(TropicalEvaluator::TOTAL_SECTORS);
+
+            // 1. Accumulate gradients across mini-batch
+            for (size_t k = b_idx; k < batch_end; k++) {
+                size_t idx = indices[k];
+                const auto& sample = cached_dataset[idx];
+
+                auto eval_res = model.evaluate_detailed_from_features(sample.features, sample.bucket);
+                float error = std::max(-1000.0f, std::min(1000.0f, static_cast<float>(eval_res.score) - sample.target));
+                total_loss += error * error;
+                count++;
+
+                size_t base_sec_idx = sample.bucket * TropicalEvaluator::NUM_SECTORS_PER_BUCKET;
+                for (size_t j = 0; j < TropicalEvaluator::NUM_SECTORS_PER_BUCKET; j++) {
+                    size_t sec_idx = base_sec_idx + j;
+                    float prob = eval_res.softmax_probs[j];
+                    if (prob < 1e-4f) continue;
+
+                    float sector_error = error * prob;
+                    for (size_t i = 1; i < TropicalEvaluator::NUM_FEATURES; i++) {
+                        batch_grads[sec_idx].grad_w[i] += (sector_error * sample.features[i]) / (100.0f * batch_len_f);
+                    }
+                    batch_grads[sec_idx].grad_b += (sector_error) / (10.0f * batch_len_f);
+                }
+            }
+
+            // 2. Perform 1 Adam update per mini-batch
+            timestep++;
             float denom1 = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta1, timestep)));
             float denom2 = std::max(1e-6f, static_cast<float>(1.0f - std::pow(beta2, timestep)));
 
-            // 1. Fast evaluation from pre-computed feature vector
-            auto eval_res = model.evaluate_detailed_from_features(sample.features, sample.bucket);
-
-            // 2. Compute prediction error
-            float error = std::max(-1000.0f, std::min(1000.0f, static_cast<float>(eval_res.score) - sample.target));
-            total_loss += error * error;
-            count++;
-
-            size_t base_sec_idx = sample.bucket * TropicalEvaluator::NUM_SECTORS_PER_BUCKET;
-
-            // 3. Softmax-Weighted Gradient Distribution across active King Bucket
-            for (size_t j = 0; j < TropicalEvaluator::NUM_SECTORS_PER_BUCKET; j++) {
-                size_t sec_idx = base_sec_idx + j;
-                float prob = eval_res.softmax_probs[j];
-                if (prob < 1e-4f) continue;
-
+            for (size_t sec_idx = 0; sec_idx < TropicalEvaluator::TOTAL_SECTORS; sec_idx++) {
                 auto& sec = model.sectors()[sec_idx];
                 auto& adam = adam_state[sec_idx];
+                const auto& g_acc = batch_grads[sec_idx];
 
-                float sector_error = error * prob;
+                sec.w[0] = 1.0f; // Locked material scale
 
-                // Material weight w[0] (learned inside sectors, bounded [0.8, 1.2])
-                {
-                    float grad0 = (sector_error * sample.features[0]) / 100.0f + weight_decay * (sec.w[0] - 1.0f);
-                    grad0 = std::max(-50.0f, std::min(50.0f, grad0));
-                    adam.m_w[0] = beta1 * adam.m_w[0] + (1.0f - beta1) * grad0;
-                    adam.v_w[0] = beta2 * adam.v_w[0] + (1.0f - beta2) * (grad0 * grad0);
-                    float m_hat0 = adam.m_w[0] / denom1;
-                    float v_hat0 = adam.v_w[0] / denom2;
-                    sec.w[0] -= (lr * m_hat0) / (std::sqrt(v_hat0) + eps);
-                    sec.w[0] = std::max(0.8f, std::min(1.2f, sec.w[0]));
-                }
-
-                // Positional weights w[1..21] (non-negative bounds [0.0, 5.0])
                 for (size_t i = 1; i < TropicalEvaluator::NUM_FEATURES; i++) {
-                    float grad = (sector_error * sample.features[i]) / 100.0f + weight_decay * sec.w[i];
-                    grad = std::max(-50.0f, std::min(50.0f, grad));
+                    float grad = std::max(-50.0f, std::min(50.0f, g_acc.grad_w[i]));
+                    if (std::abs(grad) < 1e-7f) continue;
 
                     adam.m_w[i] = beta1 * adam.m_w[i] + (1.0f - beta1) * grad;
                     adam.v_w[i] = beta2 * adam.v_w[i] + (1.0f - beta2) * (grad * grad);
@@ -442,17 +450,16 @@ int main(int argc, char* argv[]) {
                     sec.w[i] = std::max(min_w, std::min(5.0f, sec.w[i]));
                 }
 
-                // Sector bias
-                float grad_b = sector_error / 10.0f;
-                grad_b = std::max(-50.0f, std::min(50.0f, grad_b));
+                float grad_b = std::max(-50.0f, std::min(50.0f, g_acc.grad_b));
+                if (std::abs(grad_b) > 1e-7f) {
+                    adam.m_b = beta1 * adam.m_b + (1.0f - beta1) * grad_b;
+                    adam.v_b = beta2 * adam.v_b + (1.0f - beta2) * (grad_b * grad_b);
 
-                adam.m_b = beta1 * adam.m_b + (1.0f - beta1) * grad_b;
-                adam.v_b = beta2 * adam.v_b + (1.0f - beta2) * (grad_b * grad_b);
-
-                float m_hat_b = adam.m_b / denom1;
-                float v_hat_b = adam.v_b / denom2;
-                sec.b -= (lr * m_hat_b) / (std::sqrt(v_hat_b) + eps);
-                sec.b = std::max(-250.0f, std::min(250.0f, sec.b));
+                    float m_hat_b = adam.m_b / denom1;
+                    float v_hat_b = adam.v_b / denom2;
+                    sec.b -= (lr * m_hat_b) / (std::sqrt(v_hat_b) + eps);
+                    sec.b = std::max(-250.0f, std::min(250.0f, sec.b));
+                }
             }
         }
 
