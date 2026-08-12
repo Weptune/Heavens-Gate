@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heaven's Gate — Spectral-Tropical Chess Engine</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Header Navbar -->
+    <header class="navbar">
+        <div class="brand">
+            <div class="brand-icon">🏛️</div>
+            <div>
+                <div class="brand-title">HEAVEN'S GATE</div>
+                <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 500;">SPECTRAL-TROPICAL HYBRID ENGINE</div>
+            </div>
+            <span class="badge">v10.0 Master</span>
+        </div>
+        <div class="nav-status">
+            <span class="status-dot"></span>
+            <span>Engine Status: <strong id="engine-status" style="color: #fff;">Ready</strong></span>
+        </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <main class="dashboard">
+        
+        <!-- Left Panel: Spectral Graph Physics -->
+        <aside class="glass-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>⚡ Spectral Graph Physics</span>
+                </div>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-box">
+                    <span class="metric-label">Fiedler λ₂</span>
+                    <span class="metric-value" id="telemetry-fiedler">1.240</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">Spectral Gap</span>
+                    <span class="metric-value" id="telemetry-gap">0.450</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">Laplacian Trace</span>
+                    <span class="metric-value" id="telemetry-trace">38.0</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">Graph Cohesion</span>
+                    <span class="metric-value" style="color: var(--accent-gold);">Optimal</span>
+                </div>
+            </div>
+
+            <div class="graph-bar-container" style="margin-top: 1rem;">
+                <div class="graph-bar-header">
+                    <span>Piece Graph Algebraic Connectivity</span>
+                    <span style="color: var(--accent-cyan); font-weight: 600;">λ₂ Cohesion</span>
+                </div>
+                <div class="graph-bar-track">
+                    <div class="graph-bar-fill" id="fiedler-bar-fill" style="width: 78%;"></div>
+                </div>
+            </div>
+
+            <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 1rem;">
+                <strong>Mathematics Engine:</strong> The chess board is modeled as a dynamic weighted graph $G=(V,E)$. Piece coordination is computed via Laplacian Matrix eigenvalues $L = D - A$.
+            </div>
+        </aside>
+
+        <!-- Center Arena: Interactive Board -->
+        <section class="arena-container">
+            <div class="board-wrapper">
+                <!-- Live Centipawn Eval Bar -->
+                <div class="eval-bar-container">
+                    <div class="eval-bar-fill" id="eval-bar-fill"></div>
+                    <span class="eval-score-text" id="eval-score">+0.00</span>
+                </div>
+
+                <!-- Chessboard Container -->
+                <div class="chessboard-frame" id="chessboard"></div>
+            </div>
+
+            <!-- Controls Bar -->
+            <div class="controls-bar">
+                <button class="btn btn-primary" id="new-game-btn">
+                    <span>🔄 New Game</span>
+                </button>
+                <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.05); padding: 0.4rem 0.8rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+                    <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Depth:</span>
+                    <select id="depth-select" style="background: transparent; color: #fff; border: none; font-family: var(--font-heading); font-weight: 700; cursor: pointer; outline: none;">
+                        <option value="4" style="background: #0f172a;">Depth 4 (Fast)</option>
+                        <option value="7" style="background: #0f172a;">Depth 7 (Standard)</option>
+                        <option value="9" selected style="background: #0f172a;">Depth 9 (Grandmaster)</option>
+                        <option value="12" style="background: #0f172a;">Depth 12 (Full Power)</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: Tropical Surface & Move Log -->
+        <aside class="glass-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>🌴 Tropical Semiring Surface</span>
+                </div>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-box">
+                    <span class="metric-label">King Bucket</span>
+                    <span class="metric-value" style="color: var(--accent-purple);">Bucket #4</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">Active Sector</span>
+                    <span class="metric-value" style="color: var(--accent-cyan);">Sector #184</span>
+                </div>
+            </div>
+
+            <div style="font-size: 0.8rem; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); font-family: var(--font-mono);">
+                T(x) = max_{j} (w_j^T x + b_j)<br>
+                Smoothing: Log-Sum-Exp (τ=3.0)
+            </div>
+
+            <div class="card-header" style="margin-top: 0.5rem;">
+                <div class="card-title">
+                    <span>📜 Move History</span>
+                </div>
+            </div>
+
+            <div class="move-log" id="move-log">
+                <!-- Move log entries generated dynamically -->
+            </div>
+        </aside>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
