@@ -201,7 +201,7 @@ int main(int argc, char* argv[]) {
                     break;
                 }
 
-                SearchResult res = search_engine.search_alphabeta(board, depth, true, true);
+                SearchResult res = search_engine.search_iterative_deepening(board, depth, 0.0);
                 // Use engine best move from depth-5 search (51-position opening book handles opening diversity)
                 // Remove uniform random blunders so games are always sound 60-120 move battles
                 Move chosen_move = res.best_move;

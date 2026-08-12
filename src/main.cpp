@@ -175,7 +175,7 @@ void run_automated_tournament(int num_games, int depth) {
                     SearchResult res;
                     if (current_is_master) {
                         Evaluator::set_mode(EvalMode::SpectralTropical);
-                        res = master_engine.search_alphabeta(board, depth, true, true);
+                        res = master_engine.search_iterative_deepening(board, depth, 0.0);
                     } else {
                         if (thread_sf_ok) {
                             SearchResult sf_res = thread_sf.get_search_result(board, depth);
@@ -183,11 +183,11 @@ void run_automated_tournament(int num_games, int depth) {
                                 res = sf_res;
                             } else {
                                 Evaluator::set_mode(EvalMode::MasterPositional);
-                                res = baseline_engine.search_alphabeta(board, depth, true, true);
+                                res = baseline_engine.search_iterative_deepening(board, depth, 0.0);
                             }
                         } else {
                             Evaluator::set_mode(EvalMode::MasterPositional);
-                            res = baseline_engine.search_alphabeta(board, depth, true, true);
+                            res = baseline_engine.search_iterative_deepening(board, depth, 0.0);
                         }
                     }
 
