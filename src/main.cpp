@@ -102,6 +102,8 @@ void run_automated_tournament(int num_games, int depth) {
     {
         SearchEngine master_engine;
         SearchEngine baseline_engine;
+        StockfishClient thread_sf;
+        bool thread_sf_ok = thread_sf.init(2400);
 
         master_engine.tt().resize(64);
         baseline_engine.tt().resize(64);
@@ -118,7 +120,7 @@ void run_automated_tournament(int num_games, int depth) {
                 bool a_is_white = (g % 2 != 0);
                 int game_moves = 0;
 
-                std::string opp_name = sf_ok ? "Stockfish 16.1 (2400 Elo)" : "Baseline Engine";
+                std::string opp_name = thread_sf_ok ? "Stockfish 16.1 (2400 Elo)" : "Baseline Engine";
                 std::stringstream ss_pgn;
 
                 ss_pgn << "[Event \"Heaven's Gate Grandmaster Tournament\"]\n";
@@ -175,13 +177,8 @@ void run_automated_tournament(int num_games, int depth) {
                         Evaluator::set_mode(EvalMode::SpectralTropical);
                         res = master_engine.search_alphabeta(board, depth, true, true);
                     } else {
-                        if (sf_ok) {
-                            SearchResult sf_res;
-                            #pragma omp critical(stockfish_uci)
-                            {
-                                sf_res = global_stockfish.get_search_result(board, depth);
-                            }
-
+                        if (thread_sf_ok) {
+                            SearchResult sf_res = thread_sf.get_search_result(board, depth);
                             if (sf_res.best_move) {
                                 res = sf_res;
                             } else {
