@@ -28,7 +28,7 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
     }
 
     MoveList moves;
-    if (in_chk && ply < 16) {
+    if (in_chk) {
         MoveGenerator::generate_legal_moves(board, moves);
     } else {
         MoveGenerator::generate_capture_moves(board, moves);
