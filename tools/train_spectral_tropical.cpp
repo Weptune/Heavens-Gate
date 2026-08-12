@@ -416,7 +416,7 @@ int main(int argc, char* argv[]) {
                     if (prob < 1e-4f) continue;
 
                     float sector_error = error * prob;
-                    for (size_t i = 1; i < TropicalEvaluator::NUM_FEATURES; i++) {
+                    for (size_t i = 0; i < TropicalEvaluator::NUM_FEATURES; i++) {
                         batch_grads[sec_idx].grad_w[i] += (sector_error * sample.features[i]) / (100.0f * batch_len_f);
                     }
                     batch_grads[sec_idx].grad_b += (sector_error) / (10.0f * batch_len_f);
@@ -433,9 +433,7 @@ int main(int argc, char* argv[]) {
                 auto& adam = adam_state[sec_idx];
                 const auto& g_acc = batch_grads[sec_idx];
 
-                sec.w[0] = 1.0f; // Locked material scale
-
-                for (size_t i = 1; i < TropicalEvaluator::NUM_FEATURES; i++) {
+                for (size_t i = 0; i < TropicalEvaluator::NUM_FEATURES; i++) {
                     float grad = std::max(-50.0f, std::min(50.0f, g_acc.grad_w[i]));
                     if (std::abs(grad) < 1e-7f) continue;
 
@@ -446,8 +444,9 @@ int main(int argc, char* argv[]) {
                     float v_hat = adam.v_w[i] / denom2;
 
                     sec.w[i] -= (lr * m_hat) / (std::sqrt(v_hat) + eps);
-                    float min_w = (i == 4) ? 0.20f : ((i == 1 || i == 5 || i == 10) ? 0.10f : 0.0f);
-                    sec.w[i] = std::max(min_w, std::min(5.0f, sec.w[i]));
+                    float min_w = (i == 0) ? 0.85f : ((i == 4) ? 0.20f : ((i == 1 || i == 5 || i == 10) ? 0.10f : 0.0f));
+                    float max_w = (i == 0) ? 1.15f : 5.0f;
+                    sec.w[i] = std::max(min_w, std::min(max_w, sec.w[i]));
                 }
 
                 float grad_b = std::max(-50.0f, std::min(50.0f, g_acc.grad_b));
