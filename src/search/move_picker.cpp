@@ -1,6 +1,7 @@
 #include "move_picker.hpp"
 #include "../evaluation/eval.hpp"
 #include "../movegen/movegen.hpp"
+#include "../movegen/attack_masks.hpp"
 #include <algorithm>
 
 namespace heavensgate {
@@ -149,36 +150,87 @@ void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int p
 bool MovePicker::see_ge(const Board& board, Move m, int threshold) noexcept {
     if (!m.is_capture()) return threshold <= 0;
 
-    Piece victim = board.piece_at(m.to());
-    Piece attacker = board.piece_at(m.from());
+    Square from = m.from();
+    Square to = m.to();
+
+    Piece victim = board.piece_at(to);
+    Piece attacker = board.piece_at(from);
     if (victim == Piece::None && !m.is_ep()) return threshold <= 0;
 
-    int victim_val = PawnValue;
-    switch (piece_type_of(victim)) {
-        case PieceType::Pawn:   victim_val = PawnValue; break;
-        case PieceType::Knight: victim_val = KnightValue; break;
-        case PieceType::Bishop: victim_val = BishopValue; break;
-        case PieceType::Rook:   victim_val = RookValue; break;
-        case PieceType::Queen:  victim_val = QueenValue; break;
-        default: break;
+    auto get_val = [](PieceType pt) -> int {
+        switch (pt) {
+            case PieceType::Pawn:   return PawnValue;
+            case PieceType::Knight: return KnightValue;
+            case PieceType::Bishop: return BishopValue;
+            case PieceType::Rook:   return RookValue;
+            case PieceType::Queen:  return QueenValue;
+            case PieceType::King:   return 20000;
+            default: return 0;
+        }
+    };
+
+    int gain[32];
+    int d = 0;
+    gain[d] = m.is_ep() ? PawnValue : get_val(piece_type_of(victim));
+
+    Bitboard occ = board.occupied();
+    occ ^= square_bb(from); // Remove initial attacker
+
+    Color side = ~board.side_to_move();
+    PieceType curr_piece = piece_type_of(attacker);
+
+    while (true) {
+        d++;
+        gain[d] = get_val(curr_piece) - gain[d - 1];
+        if (std::max(-gain[d - 1], gain[d]) < 0) break; // Stand-pat cutoff
+
+        // Find attackers to target square 'to' for 'side'
+        Bitboard attackers = EmptyBB;
+        Bitboard side_occ = board.pieces(side) & occ;
+
+        // Pawns
+        Bitboard p_att = AttackMasks::pawn_attacks(~side, to) & board.pieces(make_piece(side, PieceType::Pawn)) & occ;
+        if (p_att) { curr_piece = PieceType::Pawn; attackers = p_att; }
+        else {
+            // Knights
+            Bitboard n_att = AttackMasks::knight_attacks(to) & board.pieces(make_piece(side, PieceType::Knight)) & occ;
+            if (n_att) { curr_piece = PieceType::Knight; attackers = n_att; }
+            else {
+                // Bishops
+                Bitboard b_att = AttackMasks::bishop_attacks(to, occ) & (board.pieces(make_piece(side, PieceType::Bishop)) | board.pieces(make_piece(side, PieceType::Queen))) & occ;
+                if (b_att) {
+                    Bitboard b_only = b_att & board.pieces(make_piece(side, PieceType::Bishop));
+                    if (b_only) { curr_piece = PieceType::Bishop; attackers = b_only; }
+                    else { curr_piece = PieceType::Queen; attackers = b_att; }
+                } else {
+                    // Rooks
+                    Bitboard r_att = AttackMasks::rook_attacks(to, occ) & (board.pieces(make_piece(side, PieceType::Rook)) | board.pieces(make_piece(side, PieceType::Queen))) & occ;
+                    if (r_att) {
+                        Bitboard r_only = r_att & board.pieces(make_piece(side, PieceType::Rook));
+                        if (r_only) { curr_piece = PieceType::Rook; attackers = r_only; }
+                        else { curr_piece = PieceType::Queen; attackers = r_att; }
+                    } else {
+                        // King
+                        Bitboard k_att = AttackMasks::king_attacks(to) & board.pieces(make_piece(side, PieceType::King)) & occ;
+                        if (k_att) { curr_piece = PieceType::King; attackers = k_att; }
+                    }
+                }
+            }
+        }
+
+        if (!attackers) break; // No more attackers for this side
+
+        Square att_sq = pop_lsb(attackers);
+        occ ^= square_bb(att_sq); // Remove used attacker
+        side = ~side;
     }
 
-    int attacker_val = PawnValue;
-    switch (piece_type_of(attacker)) {
-        case PieceType::Pawn:   attacker_val = PawnValue; break;
-        case PieceType::Knight: attacker_val = KnightValue; break;
-        case PieceType::Bishop: attacker_val = BishopValue; break;
-        case PieceType::Rook:   attacker_val = RookValue; break;
-        case PieceType::Queen:  attacker_val = QueenValue; break;
-        default: break;
+    // Minimax back up the gain sequence
+    while (--d > 0) {
+        gain[d - 1] = -std::max(-gain[d - 1], gain[d]);
     }
 
-    // Static balance: If victim value minus attacker value exceeds threshold, capture is good!
-    int swap = victim_val - threshold;
-    if (swap < 0) return false;
-    if (swap - attacker_val >= 0) return true;
-
-    return swap >= 0;
+    return gain[0] >= threshold;
 }
 
 } // namespace heavensgate
