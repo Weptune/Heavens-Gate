@@ -82,9 +82,17 @@ const std::vector<std::string> TournamentOpenings = {
     "rnbqkb1r/p2ppppp/5n2/1ppP4/2P5/8/PP2PPPP/RNBQKBNR w KQkq b6 0 4",     // 41. Benko Gambit
 };
 
-void run_automated_tournament(int num_games, int depth) {
+void run_automated_tournament(int num_games, int depth_or_time_ms) {
+    bool is_time_control = (depth_or_time_ms >= 50);
+    double time_limit_ms = is_time_control ? static_cast<double>(depth_or_time_ms) : 0.0;
+    int search_depth = is_time_control ? 64 : depth_or_time_ms;
+
     std::cout << "\n======================================================\n";
-    std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ Depth " << depth << ")\n";
+    if (is_time_control) {
+        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ " << depth_or_time_ms << "ms Time Control)\n";
+    } else {
+        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ Depth " << depth_or_time_ms << ")\n";
+    }
     std::cout << "  Parallelized across CPU cores using OpenMP dynamic work scheduling\n";
     std::cout << "======================================================\n\n";
 
@@ -175,19 +183,19 @@ void run_automated_tournament(int num_games, int depth) {
                     SearchResult res;
                     if (current_is_master) {
                         Evaluator::set_mode(EvalMode::SpectralTropical);
-                        res = master_engine.search_iterative_deepening(board, depth, 0.0);
+                        res = master_engine.search_iterative_deepening(board, search_depth, time_limit_ms);
                     } else {
                         if (thread_sf_ok) {
-                            SearchResult sf_res = thread_sf.get_search_result(board, depth);
+                            SearchResult sf_res = thread_sf.get_search_result(board, search_depth, time_limit_ms);
                             if (sf_res.best_move) {
                                 res = sf_res;
                             } else {
                                 Evaluator::set_mode(EvalMode::MasterPositional);
-                                res = baseline_engine.search_iterative_deepening(board, depth, 0.0);
+                                res = baseline_engine.search_iterative_deepening(board, search_depth, time_limit_ms);
                             }
                         } else {
                             Evaluator::set_mode(EvalMode::MasterPositional);
-                            res = baseline_engine.search_iterative_deepening(board, depth, 0.0);
+                            res = baseline_engine.search_iterative_deepening(board, search_depth, time_limit_ms);
                         }
                     }
 

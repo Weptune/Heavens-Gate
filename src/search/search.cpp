@@ -532,6 +532,9 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
         MoveGenerator::generate_legal_moves(board, moves);
 
         if (moves.empty()) break;
+        if (!static_cast<bool>(final_result.best_move)) {
+            final_result.best_move = moves[0];
+        }
 
         // 1. Single Legal Move Fast Path (0ms spent on forced moves)
         if (moves.size() == 1) {

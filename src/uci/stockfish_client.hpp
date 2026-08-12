@@ -107,7 +107,7 @@ public:
         return res.best_move;
     }
 
-    SearchResult get_search_result(const Board& board, int depth = 8) {
+    SearchResult get_search_result(const Board& board, int depth = 8, double time_ms = 0.0) {
         SearchResult res;
         if (!is_running) {
             if (!init(2400)) return res;
@@ -115,14 +115,18 @@ public:
 
         std::string fen = FEN::to_string(board);
         send_cmd("position fen " + fen);
-        send_cmd("go depth " + std::to_string(depth));
+        if (time_ms > 0.0) {
+            send_cmd("go movetime " + std::to_string(static_cast<int>(time_ms)));
+        } else {
+            send_cmd("go depth " + std::to_string(depth));
+        }
         
         std::string current_line;
         char ch;
         DWORD dwRead;
         int last_score = 0;
         uint64_t last_nodes = 50000;
-        double last_time_ms = 50.0;
+        double last_time_ms = time_ms > 0.0 ? time_ms : 50.0;
 
         while (is_running) {
             if (ReadFile(hChildStd_OUT_Rd, &ch, 1, &dwRead, NULL) && dwRead > 0) {
@@ -185,7 +189,6 @@ public:
                 }
             } else {
                 close();
-                if (init(2400)) return get_search_result(board, depth);
                 break;
             }
         }
