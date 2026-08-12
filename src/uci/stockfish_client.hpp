@@ -45,6 +45,9 @@ public:
         siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
         std::string cmd = "tools\\stockfish.exe";
+        if (GetFileAttributesA(cmd.c_str()) == INVALID_FILE_ATTRIBUTES) {
+            cmd = "c:\\Users\\abhin\\heavensgate\\tools\\stockfish.exe";
+        }
         BOOL bSuccess = CreateProcessA(
             NULL,
             cmd.data(),
