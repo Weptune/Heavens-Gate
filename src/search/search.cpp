@@ -263,9 +263,24 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         // 4. Principal Variation Search (PVS / NegaScout), Singular Extensions & LMR
         int extension = 0;
-        if (i == 0 && depth >= 6 && static_cast<bool>(tt_move) && !in_chk) {
-            // Singular Extension Check: Extend by +1 ply if move is uniquely singular
-            extension = 1;
+        if (i == 0 && depth >= 8 && static_cast<bool>(tt_move) && !in_chk && ply < 16) {
+            TTEntry* tt_entry = tt_.probe(board.zobrist_key());
+            if (tt_entry && tt_entry->depth >= depth - 3 && tt_entry->bound != TTBound::Upper && std::abs(tt_entry->score) < ScoreMate - 1000) {
+                int singular_beta = tt_entry->score - 2 * depth;
+                int sing_depth = (depth - 1) / 2;
+                
+                // Fast shallow check on 2nd move to see if any alternative approaches singular_beta
+                if (moves.size() > 1) {
+                    Move alt_move = moves[1];
+                    board.make_move(alt_move);
+                    int alt_score = -negamax_alphabeta(board, sing_depth, ply + 1, -singular_beta, -singular_beta + 1, false, false, Move(), alt_move, nullptr);
+                    board.unmake_move(alt_move);
+                    
+                    if (alt_score < singular_beta) {
+                        extension = 1; // Move 0 is uniquely singular!
+                    }
+                }
+            }
         }
 
         if (i == 0) {
