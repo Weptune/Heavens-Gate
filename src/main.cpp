@@ -142,6 +142,10 @@ void run_automated_tournament(int num_games, int depth_or_time_ms) {
                 std::string result_str = "*";
                 std::string draw_reason_str = "";
 
+                int white_clock_ms = 180000; // 3 Minutes Main Bank
+                int black_clock_ms = 180000;
+                constexpr int inc_ms = 2000;  // 2 Seconds Increment
+
                 while (game_moves < 400) {
                     MoveList legal_moves;
                     MoveGenerator::generate_legal_moves(board, legal_moves);
@@ -177,25 +181,39 @@ void run_automated_tournament(int num_games, int depth_or_time_ms) {
                         break;
                     }
 
+                    // Clock Timeout Verification
+                    int active_clock = (board.side_to_move() == Color::White) ? white_clock_ms : black_clock_ms;
+                    if (is_time_control && active_clock <= 0) {
+                        if (board.side_to_move() == Color::White) {
+                            result_str = "0-1";
+                            draw_reason_str = "White Flagged on Time";
+                            if (a_is_white) atomic_b_wins++; else atomic_a_wins++;
+                        } else {
+                            result_str = "1-0";
+                            draw_reason_str = "Black Flagged on Time";
+                            if (a_is_white) atomic_a_wins++; else atomic_b_wins++;
+                        }
+                        break;
+                    }
+
                     bool current_is_master = (board.side_to_move() == Color::White && a_is_white) ||
                                              (board.side_to_move() == Color::Black && !a_is_white);
+
+                    double move_budget_ms = 0.0;
+                    if (is_time_control) {
+                        move_budget_ms = std::min(static_cast<double>(active_clock) * 0.8, (active_clock / 25.0) + (0.8 * inc_ms));
+                    }
 
                     SearchResult res;
                     if (current_is_master) {
                         Evaluator::set_mode(EvalMode::SpectralTropical);
-                        res = master_engine.search_iterative_deepening(board, search_depth, time_limit_ms);
+                        res = master_engine.search_iterative_deepening(board, search_depth, move_budget_ms);
                     } else {
                         if (thread_sf_ok) {
-                            SearchResult sf_res = thread_sf.get_search_result(board, search_depth, time_limit_ms);
-                            if (sf_res.best_move) {
-                                res = sf_res;
-                            } else {
-                                Evaluator::set_mode(EvalMode::MasterPositional);
-                                res = baseline_engine.search_iterative_deepening(board, search_depth, time_limit_ms);
-                            }
+                            res = is_time_control ? thread_sf.get_search_result_clock(board, white_clock_ms, black_clock_ms, inc_ms, inc_ms) : thread_sf.get_search_result(board, search_depth);
                         } else {
                             Evaluator::set_mode(EvalMode::MasterPositional);
-                            res = baseline_engine.search_iterative_deepening(board, search_depth, time_limit_ms);
+                            res = baseline_engine.search_iterative_deepening(board, search_depth, move_budget_ms);
                         }
                     }
 
@@ -210,6 +228,15 @@ void run_automated_tournament(int num_games, int depth_or_time_ms) {
                     double move_time_ms = res.metrics.elapsed_seconds * 1000.0;
                     uint64_t move_nodes = res.metrics.total_nodes;
                     double move_nps = res.metrics.nps;
+
+                    // Update Clocks
+                    if (is_time_control) {
+                        if (board.side_to_move() == Color::White) {
+                            white_clock_ms = std::max(0, static_cast<int>(white_clock_ms - move_time_ms + inc_ms));
+                        } else {
+                            black_clock_ms = std::max(0, static_cast<int>(black_clock_ms - move_time_ms + inc_ms));
+                        }
+                    }
 
                     if (board.side_to_move() == Color::White) {
                         ss_pgn << (game_moves / 2 + 1) << ". " << uci_move 
