@@ -196,13 +196,24 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         return q_eval;
     }
 
-    // 2. Reverse Futility Pruning (Static Null Move Pruning)
-    if (depth <= 3 && !in_chk && std::abs(beta) < ScoreMate - 1000) {
-        int eval = Evaluator::evaluate_incremental(board, ply);
-        int margin = 120 * depth;
-        if (eval - margin >= beta) {
-            metrics_tracker_.add_cut();
-            return eval - margin;
+    // 2. Static Eval for Pruning Decisions (computed once, reused by RFP + Futility)
+    int static_eval = 0;
+    bool can_futility_prune = false;
+    if (!in_chk && std::abs(beta) < ScoreMate - 1000 && depth <= 5) {
+        static_eval = Evaluator::evaluate_incremental(board, ply);
+
+        // Reverse Futility Pruning (Static Null Move Pruning)
+        if (depth <= 3) {
+            int margin = 120 * depth;
+            if (static_eval - margin >= beta) {
+                metrics_tracker_.add_cut();
+                return static_eval - margin;
+            }
+        }
+
+        // Forward Futility Pruning flag (checked per-move in the loop below)
+        if (depth <= 2 && static_eval + 200 * depth <= alpha) {
+            can_futility_prune = true;
         }
     }
 
@@ -247,6 +258,21 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     for (size_t i = 0; i < moves.size(); ++i) {
         Move m = moves[i];
+
+        // === Forward Pruning: Skip bad quiet moves at low depths ===
+        bool is_quiet = !m.is_capture() && !m.is_promotion();
+        if (is_quiet && i > 0 && !in_chk) {
+            // Late Move Pruning (LMP): At low depths, skip quiet moves past threshold
+            if (depth <= 3 && static_cast<int>(i) >= 3 + depth * depth) {
+                continue;
+            }
+
+            // Forward Futility Pruning: static eval too far below alpha
+            if (can_futility_prune) {
+                continue;
+            }
+        }
+
         board.make_move(m);
 
         TreeNodeJSON* child_node = nullptr;
@@ -291,6 +317,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 int reduction = 1 + static_cast<int>(std::log(depth) * std::log(i + 1) / 2.2);
                 int history_val = move_picker_.get_history_score(us, m);
                 if (history_val > 500) reduction = std::max(1, reduction - 1);
+                if (history_val < 100 && i >= 6) reduction += 1; // Extra reduction for low-history late moves
+                reduction = std::min(reduction, depth - 2); // Never reduce below depth 1
                 int reduced_depth = std::max(1, depth - 1 - reduction);
 
                 score = -negamax_alphabeta(board, reduced_depth, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
