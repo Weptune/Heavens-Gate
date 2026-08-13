@@ -16,7 +16,11 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
     Color us = board.side_to_move();
     bool in_chk = MoveGenerator::in_check(board, us);
 
-    int stand_pat = Evaluator::evaluate_fast(board);
+    // Hybrid Eval Strategy:
+    // PV nodes (full window: alpha+1 < beta) use full SpectralTropical eval for quality
+    // Non-PV nodes (zero window: alpha+1 == beta) use fast Material+PST eval for speed
+    bool is_pv = (beta - alpha) > 1;
+    int stand_pat = is_pv ? Evaluator::evaluate(board) : Evaluator::evaluate_fast(board);
     if (!in_chk) {
         if (stand_pat >= beta) {
             return beta;

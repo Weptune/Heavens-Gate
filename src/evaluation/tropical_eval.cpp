@@ -178,10 +178,9 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     float their_shield = (us == Color::White) ? feat.king_shield_them : feat.king_shield_us;
     float our_pressure = (us == Color::White) ? feat.king_pressure_us : feat.king_pressure_them;
 
-    // Feature Scale Normalization: All features scaled into a balanced dynamic band (~[-50, +50])
-    // so gradient magnitudes (dLoss/dw_i = error * x_i) are equal across material and positional features.
+    // Feature Scale Normalization: Material scaled so 1 Pawn = 100 cp, 1 Knight = 320 cp through *10.0 multiplier
     std::array<float, NUM_FEATURES> x;
-    x[0]  = static_cast<float>(material_diff) / 10.0f;                       // Material: 100 cp -> 10.0
+    x[0]  = static_cast<float>(material_diff) / 10.0f;                       // Material: 100 cp -> 10.0 units
     x[1]  = (feat.fiedler_us - feat.fiedler_them) * 5.0f;                     // Fiedler cohesion
     x[2]  = (feat.cohesion_us - feat.cohesion_them) * 2.0f;                    // Subgraph cohesion
     x[3]  = feat.spectral_gap * 2.0f;                                          // Spectral gap
