@@ -232,7 +232,6 @@ public:
         }
 
         std::string fen = FEN::to_string(board);
-        std::cerr << "[SF DEBUG FEN] '" << fen << "'\n";
         send_cmd("position fen " + fen);
         send_cmd("isready");
         read_until("readyok", 5);
@@ -282,10 +281,6 @@ public:
             if (line.empty()) {
                 if (!is_running) break;
                 continue;
-            }
-
-            if (line.find("bestmove") != std::string::npos || line.find("info depth 1 ") != std::string::npos) {
-                std::cerr << "[SF RAW STDOUT] " << line << "\n";
             }
 
             // Parse info lines for score/nodes/time
