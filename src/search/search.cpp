@@ -263,17 +263,24 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     for (size_t i = 0; i < moves.size(); ++i) {
         Move m = moves[i];
 
-        // === Forward Pruning: Skip bad quiet moves at low depths ===
         bool is_quiet = !m.is_capture() && !m.is_promotion();
-        if (is_quiet && i > 0 && !in_chk) {
-            // Late Move Pruning (LMP): At low depths, skip quiet moves past threshold
-            if (depth <= 3 && static_cast<int>(i) >= 3 + depth * depth) {
-                continue;
-            }
 
-            // Forward Futility Pruning: static eval too far below alpha
-            if (can_futility_prune) {
-                continue;
+        if (is_quiet && i > 0 && !in_chk) {
+            // Check if move gives check to opponent
+            board.make_move(m);
+            bool gives_check = MoveGenerator::in_check(board, board.side_to_move());
+            board.unmake_move(m);
+
+            if (!gives_check) {
+                // Late Move Pruning (LMP): At low depths, skip non-checking quiet moves past threshold
+                if (depth <= 3 && static_cast<int>(i) >= 3 + depth * depth) {
+                    continue;
+                }
+
+                // Forward Futility Pruning: static eval too far below alpha
+                if (can_futility_prune) {
+                    continue;
+                }
             }
         }
 
@@ -685,6 +692,7 @@ SearchResult SearchEngine::search_smp(Board& board, int max_depth, int num_threa
     #pragma omp parallel num_threads(num_threads)
     {
         SearchEngine thread_engine;
+        thread_engine.tt().resize(256);
         
         #pragma omp for schedule(dynamic, 1)
         for (size_t i = 0; i < moves.size(); i++) {

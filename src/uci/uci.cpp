@@ -61,7 +61,7 @@ void UCI::handle_go(const std::string& line, Board& board, SearchEngine& engine)
     std::string token;
     ss >> token; // "go"
 
-    int depth = 12;
+    int depth = 64;
     double time_ms = 0.0;
     int wtime = 0, btime = 0, winc = 0, binc = 0, movetime = 0;
 

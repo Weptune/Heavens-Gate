@@ -63,10 +63,10 @@ int Evaluator::evaluate_side(const Board& board, Color side) {
 
     int pos_total = pawn_struct + passed_pawns + king_safety + activity + mobility;
 
-    int knights = popcount(board.pieces(make_piece(side, PieceType::Knight)));
-    int bishops = popcount(board.pieces(make_piece(side, PieceType::Bishop)));
-    int rooks   = popcount(board.pieces(make_piece(side, PieceType::Rook)));
-    int queens  = popcount(board.pieces(make_piece(side, PieceType::Queen)));
+    int knights = popcount(board.pieces(make_piece(Color::White, PieceType::Knight))) + popcount(board.pieces(make_piece(Color::Black, PieceType::Knight)));
+    int bishops = popcount(board.pieces(make_piece(Color::White, PieceType::Bishop))) + popcount(board.pieces(make_piece(Color::Black, PieceType::Bishop)));
+    int rooks   = popcount(board.pieces(make_piece(Color::White, PieceType::Rook)))   + popcount(board.pieces(make_piece(Color::Black, PieceType::Rook)));
+    int queens  = popcount(board.pieces(make_piece(Color::White, PieceType::Queen)))  + popcount(board.pieces(make_piece(Color::Black, PieceType::Queen)));
     int game_phase = knights * 1 + bishops * 1 + rooks * 2 + queens * 4;
 
     int mg_total = mg_material + mg_pst + pos_total;
@@ -108,7 +108,7 @@ int Evaluator::evaluate(const Board& board) {
     int black_score = evaluate_side(board, Color::Black);
 
     int relative_score = white_score - black_score;
-    return (board.side_to_move() == Color::White) ? relative_score : -relative_score;
+    return (board.side_to_move() == Color::White) ? (relative_score + 15) : (-relative_score + 15);
 }
 
 int Evaluator::evaluate_fast(const Board& board) {
