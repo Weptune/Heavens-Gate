@@ -187,8 +187,10 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
                 res = master_engine.search_iterative_deepening(board, 64, (is_fixed_movetime || is_time_control) ? time_alloc : 0.0);
                 chosen_move = res.best_move;
             } else {
-                if (is_fixed_movetime || is_time_control) {
-                    res = sf.get_search_result(board, 64, time_alloc, 0, 0, 0);
+                if (is_fixed_movetime) {
+                    res = sf.get_search_result(board, 64, fixed_movetime_ms, 0, 0, 0);
+                } else if (is_time_control) {
+                    res = sf.get_search_result(board, 64, 0.0, white_clock_ms, black_clock_ms, inc_ms);
                 } else {
                     res = sf.get_search_result(board, 12);
                 }
@@ -206,6 +208,7 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
             }
 
             if (!static_cast<bool>(chosen_move)) {
+                std::cerr << "[CRITICAL ENGINE FALLBACK] Engine returned empty move! Side: " << (board.side_to_move() == Color::White ? "White" : "Black") << "\n";
                 MoveList fallback_moves;
                 MoveGenerator::generate_legal_moves(board, fallback_moves);
                 if (!fallback_moves.empty()) {

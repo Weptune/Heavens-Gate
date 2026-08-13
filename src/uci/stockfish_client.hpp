@@ -117,7 +117,10 @@ private:
             if (move_to_uci(m) == move_str) return m;
         }
 
-        std::cerr << "[SF PARSE] Could not match '" << move_str << "' to legal moves\n";
+        std::cerr << "[SF PARSE FAIL] Could not match Stockfish move '" << move_str << "' (raw: '" << raw_str << "')! Legal moves count: " << moves.size() << "\n";
+        std::cerr << "  Legal moves: ";
+        for (const auto& m : moves) std::cerr << move_to_uci(m) << " ";
+        std::cerr << "\n";
         return Move();
     }
 
@@ -256,7 +259,7 @@ public:
                 break;
             }
 
-            std::string line = read_line(2);
+            std::string line = read_line(10);
             if (line.empty()) {
                 if (!is_running) break;
                 continue;
@@ -297,7 +300,11 @@ public:
             // Check for bestmove
             if (line.find("bestmove ") != std::string::npos) {
                 res.best_move = parse_bestmove(line, board);
-                got_bestmove = true;
+                if (res.best_move) {
+                    got_bestmove = true;
+                } else {
+                    std::cerr << "[SF DEBUG FAIL] Failed parse_bestmove on line: '" << line << "'\n";
+                }
                 break;
             }
         }
