@@ -26,6 +26,7 @@ class Evaluator {
 public:
     static void init();
     static int evaluate(const Board& board);
+    static int evaluate_fast(const Board& board);
     static int evaluate_incremental(const Board& board, int ply, Square from_sq = Square::None, Square to_sq = Square::None);
     static void reset_incremental_cache();
 

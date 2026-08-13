@@ -16,7 +16,7 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
     Color us = board.side_to_move();
     bool in_chk = MoveGenerator::in_check(board, us);
 
-    int stand_pat = Evaluator::evaluate_incremental(board, ply);
+    int stand_pat = Evaluator::evaluate_fast(board);
     if (!in_chk) {
         if (stand_pat >= beta) {
             return beta;
@@ -200,7 +200,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     int static_eval = 0;
     bool can_futility_prune = false;
     if (!in_chk && std::abs(beta) < ScoreMate - 1000 && depth <= 5) {
-        static_eval = Evaluator::evaluate_incremental(board, ply);
+        static_eval = Evaluator::evaluate_fast(board);
 
         // Reverse Futility Pruning (Static Null Move Pruning)
         if (depth <= 3) {
