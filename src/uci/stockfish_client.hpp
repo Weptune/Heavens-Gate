@@ -113,14 +113,28 @@ private:
 
         MoveList moves;
         MoveGenerator::generate_legal_moves(board, moves);
+
+        // Pass 1: Exact string match
         for (const auto& m : moves) {
             if (move_to_uci(m) == move_str) return m;
         }
 
-        std::cerr << "[SF PARSE FAIL] Could not match Stockfish move '" << move_str << "' (raw: '" << raw_str << "')! Legal moves count: " << moves.size() << "\n";
-        std::cerr << "  Legal moves: ";
-        for (const auto& m : moves) std::cerr << move_to_uci(m) << " ";
-        std::cerr << "\n";
+        // Pass 2: Square coordinate match (from_sq & to_sq)
+        if (move_str.length() >= 4) {
+            int f1 = move_str[0] - 'a';
+            int r1 = move_str[1] - '1';
+            int f2 = move_str[2] - 'a';
+            int r2 = move_str[3] - '1';
+            if (f1 >= 0 && f1 < 8 && r1 >= 0 && r1 < 8 && f2 >= 0 && f2 < 8 && r2 >= 0 && r2 < 8) {
+                Square sq_from = make_square(static_cast<File>(f1), static_cast<Rank>(r1));
+                Square sq_to   = make_square(static_cast<File>(f2), static_cast<Rank>(r2));
+                for (const auto& m : moves) {
+                    if (m.from() == sq_from && m.to() == sq_to) return m;
+                }
+            }
+        }
+
+        std::cerr << "[SF PARSE FAIL] Could not match Stockfish move '" << move_str << "' (raw: '" << raw_str << "')!\n";
         return Move();
     }
 
@@ -216,6 +230,8 @@ public:
         flush_pipe();
         std::string fen = FEN::to_string(board);
         send_cmd("position fen " + fen);
+        send_cmd("isready");
+        read_until("readyok", 5);
 
         // Cap expected search timeout to realistic maximum (45 seconds for blitz games)
         int expected_search_sec = 30;
@@ -302,20 +318,32 @@ public:
                 res.best_move = parse_bestmove(line, board);
                 if (res.best_move) {
                     got_bestmove = true;
-                } else {
-                    std::cerr << "[SF DEBUG FAIL] Failed parse_bestmove on line: '" << line << "'\n";
+                    break;
                 }
-                break;
             }
         }
 
-        // Auto-recovery fallback: if we still have no move, re-init and try depth 6 search
+        // Auto-recovery fallback: if we still have no move, query depth 10 search
+        if (!got_bestmove || !res.best_move) {
+            send_cmd("isready");
+            read_until("readyok", 5);
+            send_cmd("go depth 10");
+            std::string bm_line = read_until("bestmove", 15);
+            if (!bm_line.empty()) {
+                res.best_move = parse_bestmove(bm_line, board);
+                if (res.best_move) got_bestmove = true;
+            }
+        }
+
+        // Second fallback: if process crashed, re-init and query depth 8 search
         if (!got_bestmove || !res.best_move) {
             close();
             if (init(current_elo)) {
                 send_cmd("position fen " + fen);
-                send_cmd("go depth 6");
-                std::string bm_line = read_until("bestmove", 10);
+                send_cmd("isready");
+                read_until("readyok", 5);
+                send_cmd("go depth 8");
+                std::string bm_line = read_until("bestmove", 15);
                 if (!bm_line.empty()) {
                     res.best_move = parse_bestmove(bm_line, board);
                 }
