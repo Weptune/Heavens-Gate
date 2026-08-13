@@ -110,7 +110,7 @@ public:
         return res.best_move;
     }
 
-    SearchResult get_search_result(const Board& board, int depth = 8, double time_ms = 0.0) {
+    SearchResult get_search_result(const Board& board, int depth = 8, double time_ms = 0.0, int wtime_ms = 0, int btime_ms = 0, int inc_ms = 0) {
         SearchResult res;
         if (!is_running) {
             if (!init(2400)) return res;
@@ -118,7 +118,9 @@ public:
 
         std::string fen = FEN::to_string(board);
         send_cmd("position fen " + fen);
-        if (time_ms > 0.0) {
+        if (wtime_ms > 0 && btime_ms > 0) {
+            send_cmd("go wtime " + std::to_string(wtime_ms) + " btime " + std::to_string(btime_ms) + " winc " + std::to_string(inc_ms) + " binc " + std::to_string(inc_ms));
+        } else if (time_ms > 0.0) {
             send_cmd("go movetime " + std::to_string(static_cast<int>(time_ms)));
         } else {
             send_cmd("go depth " + std::to_string(depth));
@@ -129,95 +131,7 @@ public:
         DWORD dwRead;
         int last_score = 0;
         uint64_t last_nodes = 50000;
-        double last_time_ms = time_ms > 0.0 ? time_ms : 50.0;
-
-        while (is_running) {
-            if (ReadFile(hChildStd_OUT_Rd, &ch, 1, &dwRead, NULL) && dwRead > 0) {
-                current_line += ch;
-                if (ch == '\n') {
-                    if (current_line.rfind("info ", 0) == 0) {
-                        try {
-                            size_t score_pos = current_line.find("score cp ");
-                            if (score_pos != std::string::npos) {
-                                last_score = std::stoi(current_line.substr(score_pos + 9));
-                            } else {
-                                size_t mate_pos = current_line.find("score mate ");
-                                if (mate_pos != std::string::npos) {
-                                    int m_val = std::stoi(current_line.substr(mate_pos + 11));
-                                    last_score = (m_val > 0) ? (30000 - m_val) : (-30000 - m_val);
-                                }
-                            }
-
-                            size_t nodes_pos = current_line.find("nodes ");
-                            if (nodes_pos != std::string::npos) {
-                                last_nodes = std::stoull(current_line.substr(nodes_pos + 6));
-                            }
-
-                            size_t time_pos = current_line.find("time ");
-                            if (time_pos != std::string::npos) {
-                                last_time_ms = std::stod(current_line.substr(time_pos + 5));
-                            }
-                        } catch (...) {}
-                    }
-
-                    if (current_line.rfind("bestmove", 0) == 0) {
-                        try {
-                            std::stringstream ss(current_line);
-                            std::string tag, move_str;
-                            ss >> tag >> move_str;
-
-                            MoveList moves;
-                            MoveGenerator::generate_legal_moves(board, moves);
-                            for (const auto& m : moves) {
-                                if (move_to_uci(m) == move_str) {
-                                    res.best_move = m;
-                                    break;
-                                }
-                            }
-                            if (!res.best_move && !moves.empty()) res.best_move = moves[0];
-                        } catch (...) {
-                            MoveList moves;
-                            MoveGenerator::generate_legal_moves(board, moves);
-                            if (!moves.empty()) res.best_move = moves[0];
-                        }
-
-                        res.best_score = last_score;
-                        res.metrics.elapsed_seconds = std::max(0.001, last_time_ms / 1000.0);
-                        res.metrics.total_nodes = last_nodes;
-                        res.metrics.nps = (res.metrics.elapsed_seconds > 0) ? (last_nodes / res.metrics.elapsed_seconds) : 1000000.0;
-                        return res;
-                    }
-                    current_line.clear();
-                }
-            } else {
-                close();
-                break;
-            }
-        }
-
-        MoveList moves;
-        MoveGenerator::generate_legal_moves(board, moves);
-        if (!moves.empty()) res.best_move = moves[0];
-
-        return res;
-    }
-
-    SearchResult get_search_result_clock(const Board& board, int wtime_ms, int btime_ms, int winc_ms, int binc_ms) {
-        SearchResult res;
-        if (!is_running) {
-            if (!init(2400)) return res;
-        }
-
-        std::string fen = FEN::to_string(board);
-        send_cmd("position fen " + fen);
-        send_cmd("go wtime " + std::to_string(wtime_ms) + " btime " + std::to_string(btime_ms) + " winc " + std::to_string(winc_ms) + " binc " + std::to_string(binc_ms));
-
-        std::string current_line;
-        char ch;
-        DWORD dwRead;
-        int last_score = 0;
-        uint64_t last_nodes = 50000;
-        double last_time_ms = 200.0;
+        double last_time_ms = (time_ms > 0.0) ? time_ms : 100.0;
 
         while (is_running) {
             if (ReadFile(hChildStd_OUT_Rd, &ch, 1, &dwRead, NULL) && dwRead > 0) {

@@ -84,12 +84,13 @@ const std::vector<std::string> TournamentOpenings = {
 
 void run_automated_tournament(int num_games, int depth_or_time_ms) {
     bool is_time_control = (depth_or_time_ms >= 50);
-    double time_limit_ms = is_time_control ? static_cast<double>(depth_or_time_ms) : 0.0;
+    int main_bank_ms = is_time_control ? depth_or_time_ms : 180000;
+    int inc_ms = is_time_control ? std::max(500, main_bank_ms / 30) : 2000;
     int search_depth = is_time_control ? 64 : depth_or_time_ms;
 
     std::cout << "\n======================================================\n";
     if (is_time_control) {
-        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ " << depth_or_time_ms << "ms Time Control)\n";
+        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ " << main_bank_ms << "ms Bank + " << inc_ms << "ms Inc)\n";
     } else {
         std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ Depth " << depth_or_time_ms << ")\n";
     }
@@ -142,9 +143,8 @@ void run_automated_tournament(int num_games, int depth_or_time_ms) {
                 std::string result_str = "*";
                 std::string draw_reason_str = "";
 
-                int white_clock_ms = 180000; // 3 Minutes Main Bank
-                int black_clock_ms = 180000;
-                constexpr int inc_ms = 2000;  // 2 Seconds Increment
+                int white_clock_ms = main_bank_ms;
+                int black_clock_ms = main_bank_ms;
 
                 while (game_moves < 400) {
                     MoveList legal_moves;
@@ -210,7 +210,7 @@ void run_automated_tournament(int num_games, int depth_or_time_ms) {
                         res = master_engine.search_iterative_deepening(board, search_depth, move_budget_ms);
                     } else {
                         if (thread_sf_ok) {
-                            res = is_time_control ? thread_sf.get_search_result_clock(board, white_clock_ms, black_clock_ms, inc_ms, inc_ms) : thread_sf.get_search_result(board, search_depth);
+                            res = is_time_control ? thread_sf.get_search_result(board, 64, 0.0, white_clock_ms, black_clock_ms, inc_ms) : thread_sf.get_search_result(board, search_depth);
                         } else {
                             Evaluator::set_mode(EvalMode::MasterPositional);
                             res = baseline_engine.search_iterative_deepening(board, search_depth, move_budget_ms);
