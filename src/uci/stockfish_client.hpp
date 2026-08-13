@@ -317,25 +317,6 @@ public:
 
         double actual_elapsed_ms = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - search_start).count();
 
-        // If Stockfish returned bestmove without emitting a score line, query NNUE eval directly
-        if (!score_received) {
-            send_cmd("eval");
-            std::string eval_line = read_until("Final evaluation", 3);
-            if (!eval_line.empty()) {
-                size_t ep = eval_line.find("Final evaluation");
-                if (ep != std::string::npos) {
-                    try {
-                        std::stringstream ss(eval_line.substr(ep + 16));
-                        float val_cp = 0.0f;
-                        ss >> val_cp;
-                        int score_cp = static_cast<int>(val_cp * 100.0f);
-                        if (board.side_to_move() == Color::Black) score_cp = -score_cp;
-                        last_score = score_cp;
-                    } catch (...) {}
-                }
-            }
-        }
-
         if (!nodes_received) {
             last_nodes = static_cast<uint64_t>(std::max(10.0, actual_elapsed_ms) * 953.5);
         }
