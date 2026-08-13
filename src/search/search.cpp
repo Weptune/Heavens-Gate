@@ -298,30 +298,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         int score = 0;
 
-        // 4. Principal Variation Search (PVS / NegaScout), Singular Extensions & LMR
-        int extension = 0;
-        if (i == 0 && depth >= 8 && static_cast<bool>(tt_move) && !in_chk && ply < 16) {
-            TTEntry* tt_entry = tt_.probe(board.zobrist_key());
-            if (tt_entry && tt_entry->depth >= depth - 3 && tt_entry->bound != TTBound::Upper && std::abs(tt_entry->score) < ScoreMate - 1000) {
-                int singular_beta = tt_entry->score - 2 * depth;
-                int sing_depth = (depth - 1) / 2;
-                
-                // Fast shallow check on 2nd move to see if any alternative approaches singular_beta
-                if (moves.size() > 1) {
-                    Move alt_move = moves[1];
-                    board.make_move(alt_move);
-                    int alt_score = -negamax_alphabeta(board, sing_depth, ply + 1, -singular_beta, -singular_beta + 1, false, false, Move(), alt_move, nullptr);
-                    board.unmake_move(alt_move);
-                    
-                    if (alt_score < singular_beta) {
-                        extension = 1; // Move 0 is uniquely singular!
-                    }
-                }
-            }
-        }
-
         if (i == 0) {
-            score = -negamax_alphabeta(board, depth - 1 + extension, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
+            score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
         } else {
             // History-Based Late Move Reductions (LMR) for quiet moves
             if (i >= 3 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk) {

@@ -187,10 +187,8 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
                 res = master_engine.search_iterative_deepening(board, 64, (is_fixed_movetime || is_time_control) ? time_alloc : 0.0);
                 chosen_move = res.best_move;
             } else {
-                if (is_fixed_movetime) {
-                    res = sf.get_search_result(board, 64, fixed_movetime_ms, 0, 0, 0);
-                } else if (is_time_control) {
-                    res = sf.get_search_result(board, 64, 0.0, white_clock_ms, black_clock_ms, inc_ms);
+                if (is_fixed_movetime || is_time_control) {
+                    res = sf.get_search_result(board, 64, time_alloc, 0, 0, 0);
                 } else {
                     res = sf.get_search_result(board, 12);
                 }
@@ -207,10 +205,21 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
                 black_clock_ms = std::max(100, static_cast<int>(black_clock_ms - elapsed_ms) + inc_ms);
             }
 
-            if (!static_cast<bool>(chosen_move)) {
+            MoveList valid_moves;
+            MoveGenerator::generate_legal_moves(board, valid_moves);
+            bool is_legal = false;
+            for (const auto& lm : valid_moves) {
+                if (lm.from() == chosen_move.from() && lm.to() == chosen_move.to() && lm.type() == chosen_move.type()) {
+                    chosen_move = lm; // Use validated legal move struct
+                    is_legal = true;
+                    break;
+                }
+            }
+
+            if (!is_legal || !static_cast<bool>(chosen_move)) {
                 result_str = (board.side_to_move() == Color::White) ? "0-1" : "1-0";
                 end_reason = (board.side_to_move() == Color::White) ? "White Engine Forfeit" : "Black Engine Forfeit";
-                std::cerr << "[GAME FORFEIT] Engine returned empty move! Winner: " << (board.side_to_move() == Color::White ? "Black" : "White") << "\n";
+                std::cerr << "[GAME FORFEIT] Engine returned illegal/empty move! Side: " << (board.side_to_move() == Color::White ? "White" : "Black") << "\n";
                 break;
             }
 

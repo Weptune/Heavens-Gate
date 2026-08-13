@@ -51,9 +51,12 @@ private:
                     line += ch;
                 }
             } else {
+                if (!line.empty()) {
+                    start = std::chrono::high_resolution_clock::now();
+                }
                 auto now = std::chrono::high_resolution_clock::now();
                 if (std::chrono::duration<double>(now - start).count() > timeout_sec) {
-                    return ""; // clean timeout
+                    return line; // Return whatever was read before timeout
                 }
                 Sleep(1);
             }
@@ -93,6 +96,7 @@ private:
         if (!WriteFile(hChildStd_IN_Wr, msg.c_str(), (DWORD)msg.size(), &dw, NULL)) {
             is_running = false;
         }
+        FlushFileBuffers(hChildStd_IN_Wr);
     }
 
     // Parse a bestmove line and match it to a legal move
@@ -227,8 +231,8 @@ public:
             if (!init(current_elo)) return res;
         }
 
-        flush_pipe();
         std::string fen = FEN::to_string(board);
+        std::cerr << "[SF DEBUG FEN] '" << fen << "'\n";
         send_cmd("position fen " + fen);
         send_cmd("isready");
         read_until("readyok", 5);
@@ -237,9 +241,8 @@ public:
         int expected_search_sec = 30;
 
         if (time_ms > 0.0) {
-            uint64_t target_nodes = static_cast<uint64_t>(time_ms * 953.5);
-            send_cmd("go nodes " + std::to_string(target_nodes));
-            expected_search_sec = (int)(time_ms / 1000.0) + 15;
+            send_cmd("go movetime " + std::to_string(static_cast<int>(time_ms)));
+            expected_search_sec = static_cast<int>(time_ms / 1000.0) + 15;
         } else if (wtime_ms > 0 && btime_ms > 0) {
             send_cmd("go wtime " + std::to_string(wtime_ms) + " btime " + std::to_string(btime_ms) +
                      " winc " + std::to_string(inc_ms) + " binc " + std::to_string(inc_ms));
@@ -279,6 +282,10 @@ public:
             if (line.empty()) {
                 if (!is_running) break;
                 continue;
+            }
+
+            if (line.find("bestmove") != std::string::npos || line.find("info depth 1 ") != std::string::npos) {
+                std::cerr << "[SF RAW STDOUT] " << line << "\n";
             }
 
             // Parse info lines for score/nodes/time
