@@ -208,15 +208,10 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
             }
 
             if (!static_cast<bool>(chosen_move)) {
-                std::cerr << "[CRITICAL ENGINE FALLBACK] Engine returned empty move! Side: " << (board.side_to_move() == Color::White ? "White" : "Black") << "\n";
-                MoveList fallback_moves;
-                MoveGenerator::generate_legal_moves(board, fallback_moves);
-                if (!fallback_moves.empty()) {
-                    chosen_move = fallback_moves[0];
-                } else {
-                    result_str = (board.side_to_move() == Color::White) ? "0-1" : "1-0";
-                    end_reason = "No Legal Moves"; break;
-                }
+                result_str = (board.side_to_move() == Color::White) ? "0-1" : "1-0";
+                end_reason = (board.side_to_move() == Color::White) ? "White Engine Forfeit" : "Black Engine Forfeit";
+                std::cerr << "[GAME FORFEIT] Engine returned empty move! Winner: " << (board.side_to_move() == Color::White ? "Black" : "White") << "\n";
+                break;
             }
 
             game_moves++;
