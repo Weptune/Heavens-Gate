@@ -545,7 +545,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     return result;
 }
 
-SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_depth, double max_time_ms) {
+SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_depth, double max_time_ms, uint64_t max_nodes) {
     pv_table_.clear();
     move_picker_.age_history();
     // Persistent TT across game turns (do not clear TT between moves)
@@ -565,6 +565,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
     int stable_move_count = 0;
 
     for (int d = 1; d <= max_depth; ++d) {
+        if (max_nodes > 0 && metrics_tracker_.get_metrics().total_nodes >= max_nodes) break;
         metrics_tracker_.set_depth(d);
 
         MoveList moves;

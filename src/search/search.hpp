@@ -32,7 +32,7 @@ public:
 
     SearchResult search_minimax(Board& board, int depth, bool export_tree = false);
     SearchResult search_alphabeta(Board& board, int depth, bool use_move_ordering = true, bool use_tt = true, bool export_tree = false);
-    SearchResult search_iterative_deepening(Board& board, int max_depth, double max_time_ms);
+    SearchResult search_iterative_deepening(Board& board, int max_depth, double max_time_ms, uint64_t max_nodes = 0);
     SearchResult search_smp(Board& board, int max_depth, int num_threads = 4);
 
     GameTreeExporter& exporter() { return exporter_; }
