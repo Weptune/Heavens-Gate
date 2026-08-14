@@ -64,32 +64,31 @@ void TropicalEvaluator::initialize_weights(uint32_t /*seed*/) {
             // Diverse sector biases per bucket
             sec.b = -10.0f + 0.3f * jf + 0.5f * bf;
 
-            // Material weight = 1.0 (learned inside sectors, bounded [0.8, 1.2])
-            sec.w[0]  = 1.0f;
-            // Positive positional weights ensuring every sector starts with positive feature guidance
-            sec.w[1]  = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.5f + bf));   // Fiedler Cohesion
-            sec.w[2]  = 0.4f  + 0.15f * std::fabs(std::cos(jf * 0.7f + bf));   // Subgraph Cohesion
-            sec.w[3]  = 0.3f  + 0.1f  * std::fabs(std::sin(jf * 1.1f));        // Spectral Gap
-            sec.w[4]  = 0.8f  + 0.2f  * std::fabs(std::cos(jf * 0.3f));        // PST
-            sec.w[5]  = 1.0f  + 0.3f  * std::fabs(std::sin(jf * 0.9f));        // King Pressure
-            sec.w[6]  = 0.7f  + 0.2f  * std::fabs(std::cos(jf * 1.3f));        // Battery Energy
-            sec.w[7]  = 0.6f  + 0.15f * std::fabs(std::sin(jf * 0.6f));        // Pawn Cohesion
-            sec.w[8]  = 0.3f  + 0.1f  * std::fabs(std::cos(jf * 0.4f));        // Trace Energy
-            sec.w[9]  = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.8f));        // Mobility
-            sec.w[10] = 0.6f  + 0.2f  * std::fabs(std::cos(jf * 1.0f));        // Center Control
-            sec.w[11] = 0.3f  + 0.1f  * std::fabs(std::sin(jf * 1.2f));        // Game Phase
-            sec.w[12] = 0.5f  + 0.2f  * std::fabs(std::sin(jf * 0.7f));        // King Shield
-            sec.w[13] = 0.8f  + 0.2f  * std::fabs(std::cos(jf * 0.5f));        // Passed Pawns
-            sec.w[14] = 0.9f  + 0.2f  * std::fabs(std::sin(jf * 0.4f));        // EG Passed Pawns
-            sec.w[15] = 0.7f  + 0.2f  * std::fabs(std::cos(jf * 0.8f));        // Attack Ratio
+            // Material weight = 0.8517 (SGD-Trained Optimal Weight)
+            sec.w[0]  = 0.8517f;
+            sec.w[1]  = 0.1041f + 0.10f * std::fabs(std::sin(jf * 0.5f + bf));   // Fiedler Cohesion
+            sec.w[2]  = 0.0058f + 0.05f * std::fabs(std::cos(jf * 0.7f + bf));   // Subgraph Cohesion
+            sec.w[3]  = 0.0078f + 0.05f * std::fabs(std::sin(jf * 1.1f));        // Spectral Gap
+            sec.w[4]  = 0.3323f + 0.30f * std::fabs(std::cos(jf * 0.3f));        // PST
+            sec.w[5]  = 0.1426f + 0.20f * std::fabs(std::sin(jf * 0.9f));        // King Pressure
+            sec.w[6]  = 0.0114f + 0.10f * std::fabs(std::cos(jf * 1.3f));        // Battery Energy
+            sec.w[7]  = 0.0759f + 0.10f * std::fabs(std::sin(jf * 0.6f));        // Pawn Cohesion
+            sec.w[8]  = 0.0179f + 0.05f * std::fabs(std::cos(jf * 0.4f));        // Trace Energy
+            sec.w[9]  = 0.0193f + 0.05f * std::fabs(std::sin(jf * 0.8f));        // Mobility
+            sec.w[10] = 0.1091f + 0.10f * std::fabs(std::cos(jf * 1.0f));        // Center Control
+            sec.w[11] = 0.0486f + 0.05f * std::fabs(std::sin(jf * 1.2f));        // Game Phase
+            sec.w[12] = 0.0347f + 0.10f * std::fabs(std::sin(jf * 0.7f));        // King Shield
+            sec.w[13] = 0.0562f + 0.20f * std::fabs(std::cos(jf * 0.5f));        // Passed Pawns
+            sec.w[14] = 0.0174f + 0.10f * std::fabs(std::sin(jf * 0.4f));        // EG Passed Pawns
+            sec.w[15] = 0.0177f + 0.10f * std::fabs(std::cos(jf * 0.8f));        // Attack Ratio
 
             // Phase 2 Non-Linear Cross-Terms (x16..x21)
-            sec.w[16] = 0.4f  + 0.15f * std::fabs(std::sin(jf * 0.9f + bf));   // BatXCenter
-            sec.w[17] = 0.3f  + 0.1f  * std::fabs(std::cos(jf * 1.1f + bf));   // FiedXPWN
-            sec.w[18] = 0.6f  + 0.2f  * std::fabs(std::sin(jf * 0.6f + bf));   // EG_Mobility
-            sec.w[19] = 0.5f  + 0.2f  * std::fabs(std::cos(jf * 0.7f + bf));   // PassXCenter
-            sec.w[20] = 0.4f  + 0.15f * std::fabs(std::sin(jf * 1.3f + bf));   // KingXBat
-            sec.w[21] = 0.3f  + 0.1f  * std::fabs(std::cos(jf * 0.8f + bf));   // ShldXPWN
+            sec.w[16] = 0.0047f + 0.05f * std::fabs(std::sin(jf * 0.9f + bf));   // BatXCenter
+            sec.w[17] = 0.0020f + 0.02f * std::fabs(std::cos(jf * 1.1f + bf));   // FiedXPWN
+            sec.w[18] = 0.0053f + 0.05f * std::fabs(std::sin(jf * 0.6f + bf));   // EG_Mobility
+            sec.w[19] = 0.0031f + 0.05f * std::fabs(std::cos(jf * 0.7f + bf));   // PassXCenter
+            sec.w[20] = 0.0420f + 0.10f * std::fabs(std::sin(jf * 0.8f + bf));   // KingXBat
+            sec.w[21] = 0.0202f + 0.05f * std::fabs(std::cos(jf * 0.5f + bf));   // ShldXPWN
         }
     }
 }
