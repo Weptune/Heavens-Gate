@@ -7,7 +7,7 @@ Set-Location -Path "c:\Users\abhin\heavensgate"
 
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host "  HEAVEN'S GATE CONTINUOUS DEPTH-12 TRAINING PIPELINE " -ForegroundColor Cyan
-Write-Host "  6 Physical CPU Cores | 2M Rolling Dataset Buffer    " -ForegroundColor Cyan
+Write-Host "  12 OpenMP CPU Threads | 2M Rolling Dataset Buffer   " -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host ""
 
