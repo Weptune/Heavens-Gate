@@ -6,7 +6,7 @@ $env:PATH = "C:\Users\abhin\heavensgate\tools\w64devkit\bin;" + $env:PATH
 Set-Location -Path "c:\Users\abhin\heavensgate"
 
 Write-Host "======================================================" -ForegroundColor Cyan
-Write-Host "  HEAVEN'S GATE CONTINUOUS DEPTH-12 TRAINING PIPELINE " -ForegroundColor Cyan
+Write-Host "  HEAVEN'S GATE CONTINUOUS DEPTH-10 TRAINING PIPELINE " -ForegroundColor Cyan
 Write-Host "  12 OpenMP CPU Threads | 2M Rolling Dataset Buffer   " -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host ""
@@ -14,8 +14,8 @@ Write-Host ""
 for ($round = 1; ; $round++) {
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     Write-Host "======================================================" -ForegroundColor Yellow
-    Write-Host "  [ROUND $round] Starting Depth-12 Training Cycle ($timestamp)" -ForegroundColor Yellow
-    Write-Host "  Target: 500 Self-Play Games @ Depth 12 | 100 Adam Epochs" -ForegroundColor Yellow
+    Write-Host "  [ROUND $round] Starting Depth-10 Training Cycle ($timestamp)" -ForegroundColor Yellow
+    Write-Host "  Target: 500 Self-Play Games @ Depth 10 | 100 Adam Epochs" -ForegroundColor Yellow
     Write-Host "======================================================" -ForegroundColor Yellow
     Write-Host ""
 
