@@ -35,7 +35,7 @@ for ($round = 1; ; $round++) {
         Write-Host ""
         Write-Host "[ROUND $round SUCCESS] Training complete! Committing updated weights to GitHub..." -ForegroundColor Green
         
-        git add heavensgate_tropical.trm dataset_buffer.bin 2>&1
+        git add heavensgate_tropical.trm 2>&1
         git commit -m "feat(training): continuous Depth-12 training round $round complete ($timestamp)" 2>&1
         git push origin main 2>&1
 
