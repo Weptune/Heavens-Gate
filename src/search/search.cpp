@@ -189,6 +189,15 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 }
             }
         }
+
+        // 1.1 Internal Iterative Deepening (IID): At PV nodes where no TT move exists and depth >= 4
+        if (!static_cast<bool>(tt_move) && depth >= 4 && (beta - alpha > 1)) {
+            negamax_alphabeta(board, depth - 2, ply, alpha, beta, use_move_ordering, use_tt, Move(), prev_move, nullptr);
+            TTEntry* iid_entry = tt_.probe(board.zobrist_key());
+            if (iid_entry && static_cast<bool>(iid_entry->move)) {
+                tt_move = iid_entry->move;
+            }
+        }
     }
 
     // 1.5 Syzygy Tablebase Probe (5 or fewer pieces, 0.00ms overhead)
@@ -348,6 +357,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 move_picker_.add_history_score(board.side_to_move(), m, depth);
                 if (static_cast<bool>(prev_move)) {
                     move_picker_.add_countermove(prev_move, m);
+                    move_picker_.add_continuation_history(board, prev_move, m, depth);
                 }
             }
             if (use_tt) {
