@@ -3,78 +3,158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heaven's Gate Chess</title>
+    <title>Heaven's Gate Grandmaster Chess AI</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="theme-slate">
 
     <!-- Header Navbar -->
     <header class="navbar">
         <div class="brand">
-            <div class="brand-icon">🏛️</div>
-            <div class="brand-title">HEAVEN'S GATE</div>
-            <span class="badge">Spectral Engine</span>
+            <div class="brand-logo">
+                <span class="logo-symbol">🏛️</span>
+            </div>
+            <div class="brand-text">
+                <h1 class="brand-title">HEAVEN'S GATE</h1>
+                <span class="brand-sub">Spectral-Tropical Engine ~3420 Elo</span>
+            </div>
+            <span class="version-badge">v10.0 Master</span>
         </div>
-        <div class="nav-status">
-            <span class="status-dot" id="status-dot"></span>
-            <span id="engine-status">Engine Ready</span>
+        <div class="nav-controls">
+            <div class="nav-status" id="nav-status">
+                <span class="status-dot" id="status-dot"></span>
+                <span id="engine-status">Engine Ready</span>
+            </div>
         </div>
     </header>
 
-    <!-- Clean Focused Layout -->
+    <!-- Main Application Container -->
     <main class="app-layout">
         
-        <!-- Board Section -->
-        <section class="board-area">
-            <div class="board-container">
+        <!-- Left Column: Chess Board & Primary Toolbar -->
+        <section class="board-section">
+            <div class="board-frame">
                 <!-- Evaluation Bar -->
-                <div class="eval-bar">
+                <div class="eval-bar" title="Position Evaluation Bar">
                     <div class="eval-fill" id="eval-fill"></div>
-                    <span class="eval-val" id="eval-val">+0.0</span>
+                    <span class="eval-badge" id="eval-badge">+0.0</span>
                 </div>
 
-                <!-- 2D Chessboard -->
-                <div class="board" id="board"></div>
-            </div>
+                <!-- 8x8 Chessboard Container -->
+                <div class="board-wrapper">
+                    <div class="board" id="board"></div>
 
-            <!-- Controls Toolbar -->
-            <div class="toolbar">
-                <button class="btn btn-primary" id="new-game-btn">🔄 New Game</button>
-                <button class="btn btn-secondary" id="flip-btn">🔄 Flip Board</button>
-                <div class="select-group">
-                    <label>Depth:</label>
-                    <select id="depth-select">
-                        <option value="4">Depth 4 (Fast)</option>
-                        <option value="7">Depth 7 (Standard)</option>
-                        <option value="9" selected>Depth 9 (Grandmaster)</option>
-                        <option value="12">Depth 12 (Full Power)</option>
-                    </select>
-                </div>
-            </div>
-        </section>
+                    <!-- Overlay Promotion Choice Modal -->
+                    <div class="modal-overlay hidden" id="promotion-modal">
+                        <div class="promotion-box">
+                            <h3>Promote Pawn</h3>
+                            <div class="promotion-choices" id="promotion-choices">
+                                <!-- Dynamic Promotion Pieces Populated Here -->
+                            </div>
+                        </div>
+                    </div>
 
-        <!-- Right Side: Clean Game Panel -->
-        <aside class="sidebar">
-            <div class="panel-card">
-                <div class="panel-header">
-                    <span>⚔️ Live Game Match</span>
-                </div>
-                <div class="player-bar">
-                    <div class="avatar">🏛️</div>
-                    <div class="player-info">
-                        <div class="player-name">Heaven's Gate AI</div>
-                        <div class="player-sub">Spectral-Tropical Engine</div>
+                    <!-- Game Over Overlay -->
+                    <div class="modal-overlay hidden" id="gameover-modal">
+                        <div class="gameover-box">
+                            <div class="gameover-icon" id="gameover-icon">🏆</div>
+                            <h2 id="gameover-title">Checkmate!</h2>
+                            <p id="gameover-sub">Heaven's Gate won the match.</p>
+                            <button class="btn btn-primary btn-large" id="modal-restart-btn">Play Again</button>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Move History -->
-            <div class="panel-card flex-1">
+            <!-- Primary Interactive Toolbar -->
+            <div class="toolbar">
+                <button class="btn btn-primary" id="new-game-btn">⚡ New Game</button>
+                <button class="btn btn-secondary" id="flip-btn">🔄 Flip Board</button>
+                <button class="btn btn-secondary" id="undo-btn">↩️ Undo Move</button>
+                <button class="btn btn-accent" id="hint-btn">💡 Best Move</button>
+            </div>
+        </section>
+
+        <!-- Right Column: Telemetry HUD & Settings Control Panel -->
+        <aside class="sidebar-section">
+            
+            <!-- Real-Time Neural/Spectral Telemetry HUD -->
+            <div class="panel-card telemetry-card">
+                <div class="panel-header">
+                    <span>📡 Live Engine Telemetry</span>
+                    <span class="live-pill">LIVE</span>
+                </div>
+                <div class="telemetry-grid">
+                    <div class="tele-item">
+                        <span class="tele-label">Nodes Evaluated</span>
+                        <span class="tele-val" id="tele-nodes">0</span>
+                    </div>
+                    <div class="tele-item">
+                        <span class="tele-label">Search Speed</span>
+                        <span class="tele-val" id="tele-nps">0 NPS</span>
+                    </div>
+                    <div class="tele-item">
+                        <span class="tele-label">Target Depth</span>
+                        <span class="tele-val" id="tele-depth">Depth 9</span>
+                    </div>
+                    <div class="tele-item">
+                        <span class="tele-label">Principal Variation</span>
+                        <span class="tele-val pv-box" id="tele-pv">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Settings & Mode Configuration -->
+            <div class="panel-card">
+                <div class="panel-header">
+                    <span>⚙️ Match Configuration</span>
+                </div>
+                <div class="settings-form">
+                    <div class="form-group">
+                        <label for="mode-select">Play Mode:</label>
+                        <select id="mode-select" class="custom-select">
+                            <option value="human_white">Play as White (vs Engine)</option>
+                            <option value="human_black">Play as Black (vs Engine)</option>
+                            <option value="ai_vs_ai">Watch Engine Self-Play (AI vs AI)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="depth-select">Engine Search Depth:</label>
+                        <select id="depth-select" class="custom-select">
+                            <option value="4">Depth 4 (~2800 Elo Blitz)</option>
+                            <option value="7">Depth 7 (~3100 Elo Rapid)</option>
+                            <option value="9" selected>Depth 9 (~3420 Elo Master)</option>
+                            <option value="12">Depth 12 (~3500 Elo Grandmaster)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="theme-select">Board Aesthetic Theme:</label>
+                        <select id="theme-select" class="custom-select">
+                            <option value="slate" selected>Lichess Slate Green</option>
+                            <option value="wood">Classic Walnut Wood</option>
+                            <option value="cyber">Cyberpunk Neon Cyan</option>
+                            <option value="glass">Glassmorphism Dark</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Move History Log -->
+            <div class="panel-card history-card">
                 <div class="panel-header">
                     <span>📜 Move History</span>
+                    <span class="move-count-badge" id="move-count">0 Moves</span>
                 </div>
-                <div class="move-history" id="move-history"></div>
+                <div class="move-history-container" id="move-history">
+                    <div class="empty-history-notice">Moves will appear here as the match progresses.</div>
+                </div>
             </div>
+
         </aside>
 
     </main>

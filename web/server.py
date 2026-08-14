@@ -41,7 +41,7 @@ class EngineBridge:
             self.process.stdin.write(cmd + "\n")
             self.process.stdin.flush()
 
-    def get_move(self, fen, depth=8):
+    def get_move(self, fen, depth=8, movetime=0):
         with self.lock:
             if not self.process or self.process.poll() is not None:
                 self.start_engine()
@@ -50,10 +50,15 @@ class EngineBridge:
                 return {"error": "Engine process not available"}
 
             self._send_command(f"position fen {fen}")
-            self._send_command(f"go depth {depth}")
+            if movetime > 0:
+                self._send_command(f"go movetime {movetime}")
+            else:
+                self._send_command(f"go depth {depth}")
 
             best_move = None
             eval_score = 0
+            is_mate = False
+            mate_in = 0
             nodes = 0
             nps = 0
             pv = ""
@@ -69,8 +74,10 @@ class EngineBridge:
                         if tokens[i] == "score" and i + 2 < len(tokens):
                             if tokens[i+1] == "cp":
                                 eval_score = int(tokens[i+2])
+                                is_mate = False
                             elif tokens[i+1] == "mate":
                                 mate_in = int(tokens[i+2])
+                                is_mate = True
                                 eval_score = 29000 if mate_in > 0 else -29000
                         elif tokens[i] == "nodes" and i + 1 < len(tokens):
                             nodes = int(tokens[i+1])
@@ -87,6 +94,8 @@ class EngineBridge:
             return {
                 "best_move": best_move,
                 "score": eval_score,
+                "is_mate": is_mate,
+                "mate_in": mate_in,
                 "nodes": nodes,
                 "nps": nps,
                 "pv": pv
@@ -107,8 +116,9 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
             
             fen = req.get("fen", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             depth = req.get("depth", 8)
+            movetime = req.get("movetime", 0)
             
-            res = bridge.get_move(fen, depth=depth)
+            res = bridge.get_move(fen, depth=depth, movetime=movetime)
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
