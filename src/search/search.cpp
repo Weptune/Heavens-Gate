@@ -255,6 +255,17 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
     }
 
+    // 3.5 ProbCut (Probability-Based Cutoffs)
+    if (depth >= 5 && !in_chk && std::abs(beta) < ScoreMate - 1000 && board.has_non_pawn_material(us)) {
+        int prob_beta = beta + 300;
+        int prob_depth = depth - 4;
+        int prob_score = negamax_alphabeta(board, prob_depth, ply + 1, prob_beta - 1, prob_beta, use_move_ordering, use_tt, Move(), Move(), nullptr);
+        if (prob_score >= prob_beta) {
+            metrics_tracker_.add_cut();
+            return prob_score;
+        }
+    }
+
     MoveList moves;
     MoveGenerator::generate_legal_moves(board, moves);
 
@@ -300,6 +311,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 if (can_futility_prune) {
                     continue;
                 }
+            }
+        } else if (!is_quiet && i > 0 && !in_chk && depth <= 6) {
+            // SEE Bad Capture Pruning: Skip suicidal captures (SEE < -200 * depth)
+            if (!MovePicker::see_ge(board, m, -200 * depth)) {
+                continue;
             }
         }
 
