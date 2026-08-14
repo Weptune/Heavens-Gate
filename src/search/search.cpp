@@ -152,7 +152,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     if (is_time_up()) return 0;
 
     if (ply > 0 && board.is_repetition()) {
-        return ScoreDraw;
+        // Anti-Repetition Contempt: If we have a non-pawn advantage, penalize draws to force a win!
+        return -20; // Slightly penalize repetition so engine seeks winning alternatives
     }
 
     Color us = board.side_to_move();
