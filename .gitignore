@@ -42,6 +42,7 @@ tournament_telemetry.json
 game_tree.json
 *.log
 *.pgn
+!tournament_results_batch1.pgn
 
 # IDE & System Files
 .vscode/
