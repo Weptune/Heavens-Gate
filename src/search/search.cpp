@@ -152,8 +152,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     if (is_time_up()) return 0;
 
     if (ply > 0 && board.is_repetition()) {
-        // Anti-Repetition Contempt: If we have a non-pawn advantage, penalize draws to force a win!
-        return -20; // Slightly penalize repetition so engine seeks winning alternatives
+        // Anti-Repetition Contempt: Treat repetition draws as a severe penalty so engine NEVER accepts a draw when winning!
+        return -15000 + ply;
     }
 
     Color us = board.side_to_move();
@@ -169,6 +169,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     // 1. Transposition Table Probing
     if (use_tt) {
+        tt_.prefetch(board.zobrist_key());
         TTEntry* tt_entry = tt_.probe(board.zobrist_key());
         if (tt_entry) {
             if (static_cast<bool>(tt_entry->move)) {

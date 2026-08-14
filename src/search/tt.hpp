@@ -38,6 +38,8 @@ public:
     TTEntry* probe(uint64_t key) noexcept;
     void store(uint64_t key, Move move, int score, int depth, TTBound bound, int ply) noexcept;
 
+    void prefetch(uint64_t key) const noexcept;
+
     size_t hits() const noexcept { return hits_; }
     size_t probes() const noexcept { return probes_; }
     double hit_rate() const noexcept { return probes_ > 0 ? (100.0 * hits_) / probes_ : 0.0; }

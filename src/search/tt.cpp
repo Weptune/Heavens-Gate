@@ -35,6 +35,13 @@ TTEntry* TranspositionTable::probe(uint64_t key) noexcept {
     return nullptr;
 }
 
+void TranspositionTable::prefetch(uint64_t key) const noexcept {
+    if (size_ > 0) {
+        size_t idx = static_cast<size_t>(key % size_);
+        __builtin_prefetch(&table_[idx], 0, 3);
+    }
+}
+
 void TranspositionTable::store(uint64_t key, Move move, int score, int depth, TTBound bound, int ply) noexcept {
     if (size_ == 0) return;
 
