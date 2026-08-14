@@ -83,10 +83,13 @@ const std::vector<std::string> TournamentOpenings = {
 };
 
 void run_automated_tournament(int num_games, int bank_param = 0, int inc_param = 0, int batch_id = 0, int elo_param = 3500) {
-    bool is_fixed_movetime = (bank_param > 0 && bank_param <= 60 && inc_param <= 0);
+    bool is_fixed_depth = (bank_param > 0 && inc_param < 0);
+    int target_fixed_depth = is_fixed_depth ? bank_param : 12;
+
+    bool is_fixed_movetime = (bank_param > 0 && bank_param <= 60 && inc_param == 0);
     double fixed_movetime_ms = is_fixed_movetime ? (bank_param * 1000.0) : 0.0;
 
-    bool is_time_control = (bank_param > 0 && !is_fixed_movetime);
+    bool is_time_control = (bank_param > 0 && !is_fixed_movetime && !is_fixed_depth);
     int main_bank_ms = is_time_control ? ((bank_param <= 3600) ? (bank_param * 1000) : bank_param) : 0;
     int inc_ms = is_time_control ? ((inc_param <= 60) ? (inc_param * 1000) : inc_param) : 0;
 
@@ -101,12 +104,14 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
     std::string opp_label = (elo_param >= 3500 || elo_param <= 0) ? "Uncapped ~3500 Elo" : (std::to_string(elo_param) + " Elo");
 
     std::cout << "\n======================================================\n";
-    if (is_fixed_movetime) {
+    if (is_fixed_depth) {
+        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ Fixed Depth " << target_fixed_depth << " [NO TIME LIMIT] vs Stockfish " << opp_label << ")\n";
+    } else if (is_fixed_movetime) {
         std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ Fixed " << static_cast<int>(fixed_movetime_ms / 1000.0) << "s / Move vs Stockfish " << opp_label << ")\n";
     } else if (is_time_control) {
         std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ " << (main_bank_ms / 1000) << "s Bank + " << (inc_ms / 1000) << "s Inc vs Stockfish " << opp_label << ")\n";
     } else {
-        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ Fixed Depth 12 vs Stockfish " << opp_label << ")\n";
+        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ Fixed Depth " << target_fixed_depth << " vs Stockfish " << opp_label << ")\n";
     }
     if (batch_id > 0) std::cout << "  Batch #" << batch_id << " -> " << pgn_filename << "\n";
     std::cout << "======================================================\n\n" << std::flush;
@@ -185,13 +190,13 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
             Move chosen_move;
 
             if (current_is_master) {
-                res = master_engine.search_iterative_deepening(board, 64, (is_fixed_movetime || is_time_control) ? time_alloc : 0.0);
+                res = master_engine.search_iterative_deepening(board, is_fixed_depth ? target_fixed_depth : 64, (is_fixed_movetime || is_time_control) ? time_alloc : 0.0);
                 chosen_move = res.best_move;
             } else {
                 if (is_fixed_movetime || is_time_control) {
                     res = sf.get_search_result(board, 64, time_alloc, 0, 0, 0);
                 } else {
-                    res = sf.get_search_result(board, 12);
+                    res = sf.get_search_result(board, target_fixed_depth);
                 }
                 chosen_move = res.best_move;
             }
@@ -356,8 +361,12 @@ int main(int argc, char* argv[]) {
             int batch_id = (argc > 5) ? std::stoi(argv[5]) : 0;
             int elo      = (argc > 6) ? std::stoi(argv[6]) : 3500;
             run_automated_tournament(games, depth, inc_ms, batch_id, elo);
-
-
+            return 0;
+        } else if (cmd == "depth_match") {
+            int games    = (argc > 2) ? std::stoi(argv[2]) : 10;
+            int depth    = (argc > 3) ? std::stoi(argv[3]) : 12;
+            int elo      = (argc > 4) ? std::stoi(argv[4]) : 3500;
+            run_automated_tournament(games, depth, -1, 1, elo);
             return 0;
         } else if (cmd == "perft" || cmd == "perft_suite") {
             int max_d = (argc > 2) ? std::stoi(argv[2]) : 4;
