@@ -1,6 +1,6 @@
 /**
  * HEAVEN'S GATE GRANDMASTER CHESS AI WEB CLIENT
- * Full Interactive Engine Interface, Web Audio Synthesizer, Telemetry & Theme Support
+ * Full Interactive Engine Interface, Web Audio Synthesizer, Legal Move Generator, Check/Checkmate Engine & Themes
  */
 
 const SVG_PIECES = {
@@ -30,7 +30,7 @@ const INITIAL_BOARD = [
     ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
 ];
 
-// Web Audio API Audio Synthesizer (Zero External Dependencies)
+// Web Audio API Audio Synthesizer
 class SoundFX {
     constructor() {
         this.ctx = null;
@@ -80,8 +80,8 @@ class SoundFX {
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(587.33, this.ctx.currentTime); // D5
-        osc.frequency.setValueAtTime(880, this.ctx.currentTime + 0.08); // A5
+        osc.frequency.setValueAtTime(587.33, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(880, this.ctx.currentTime + 0.08);
         gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
         gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
         osc.connect(gain);
@@ -108,19 +108,187 @@ class SoundFX {
     }
 }
 
+// Lightweight JavaScript Legal Move Generator & Rules Engine
+class ChessRulesEngine {
+    static isWhite(p) { return p >= 'A' && p <= 'Z'; }
+    static isBlack(p) { return p >= 'a' && p <= 'z'; }
+    static isSameColor(p1, p2) {
+        if (p1 === '.' || p2 === '.') return false;
+        return (this.isWhite(p1) && this.isWhite(p2)) || (this.isBlack(p1) && this.isBlack(p2));
+    }
+
+    static getRawMoves(r, c, board, turn) {
+        const moves = [];
+        const piece = board[r][c];
+        if (piece === '.') return moves;
+
+        const type = piece.toUpperCase();
+        const isW = this.isWhite(piece);
+
+        if ((turn === 'w' && !isW) || (turn === 'b' && isW)) return moves;
+
+        // Pawns
+        if (type === 'P') {
+            const dir = isW ? -1 : 1;
+            const startRank = isW ? 6 : 1;
+
+            // Single Push
+            if (r + dir >= 0 && r + dir < 8 && board[r + dir][c] === '.') {
+                moves.push([r + dir, c]);
+                // Double Push
+                if (r === startRank && board[r + 2 * dir][c] === '.') {
+                    moves.push([r + 2 * dir, c]);
+                }
+            }
+
+            // Diagonal Captures
+            for (let dc of [-1, 1]) {
+                const nr = r + dir, nc = c + dc;
+                if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                    const target = board[nr][nc];
+                    if (target !== '.' && !this.isSameColor(piece, target)) {
+                        moves.push([nr, nc]);
+                    }
+                }
+            }
+        }
+
+        // Knights
+        if (type === 'N') {
+            const offsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+            for (let [dr, dc] of offsets) {
+                const nr = r + dr, nc = c + dc;
+                if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                    if (!this.isSameColor(piece, board[nr][nc])) {
+                        moves.push([nr, nc]);
+                    }
+                }
+            }
+        }
+
+        // Ray Sliders (Bishops, Rooks, Queens)
+        const dirs = [];
+        if (type === 'B' || type === 'Q') dirs.push([-1,-1],[-1,1],[1,-1],[1,1]);
+        if (type === 'R' || type === 'Q') dirs.push([-1,0],[1,0],[0,-1],[0,1]);
+
+        for (let [dr, dc] of dirs) {
+            let nr = r + dr, nc = c + dc;
+            while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                const target = board[nr][nc];
+                if (target === '.') {
+                    moves.push([nr, nc]);
+                } else {
+                    if (!this.isSameColor(piece, target)) {
+                        moves.push([nr, nc]);
+                    }
+                    break;
+                }
+                nr += dr; nc += dc;
+            }
+        }
+
+        // King
+        if (type === 'K') {
+            const kOffsets = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+            for (let [dr, dc] of kOffsets) {
+                const nr = r + dr, nc = c + dc;
+                if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                    if (!this.isSameColor(piece, board[nr][nc])) {
+                        moves.push([nr, nc]);
+                    }
+                }
+            }
+        }
+
+        return moves;
+    }
+
+    static findKing(color, board) {
+        const targetKing = color === 'w' ? 'K' : 'k';
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (board[r][c] === targetKing) return [r, c];
+            }
+        }
+        return null;
+    }
+
+    static isSquareAttacked(targetR, targetC, attackerColor, board) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = board[r][c];
+                if (p === '.') continue;
+                const pColor = this.isWhite(p) ? 'w' : 'b';
+                if (pColor === attackerColor) {
+                    const rawMoves = this.getRawMoves(r, c, board, attackerColor);
+                    for (let [mr, mc] of rawMoves) {
+                        if (mr === targetR && mc === targetC) return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    static isInCheck(color, board) {
+        const kingPos = this.findKing(color, board);
+        if (!kingPos) return false;
+        const enemyColor = color === 'w' ? 'b' : 'w';
+        return this.isSquareAttacked(kingPos[0], kingPos[1], enemyColor, board);
+    }
+
+    static getLegalMoves(r, c, board, turn) {
+        const raw = this.getRawMoves(r, c, board, turn);
+        const legal = [];
+        const piece = board[r][c];
+
+        for (let [tr, tc] of raw) {
+            // Make move on temp board
+            const tempBoard = JSON.parse(JSON.stringify(board));
+            tempBoard[tr][tc] = piece;
+            tempBoard[r][c] = '.';
+
+            // Check if king is in check after move
+            if (!this.isInCheck(turn, tempBoard)) {
+                legal.push([tr, tc]);
+            }
+        }
+        return legal;
+    }
+
+    static getAllLegalMoves(color, board) {
+        const allMoves = [];
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = board[r][c];
+                if (p === '.') continue;
+                const pColor = this.isWhite(p) ? 'w' : 'b';
+                if (pColor === color) {
+                    const leg = this.getLegalMoves(r, c, board, color);
+                    for (let [tr, tc] of leg) {
+                        allMoves.push({ from: [r, c], to: [tr, tc] });
+                    }
+                }
+            }
+        }
+        return allMoves;
+    }
+}
+
 class ChessApp {
     constructor() {
         this.board = JSON.parse(JSON.stringify(INITIAL_BOARD));
         this.turn = 'w';
         this.selectedSquare = null;
-        this.history = []; // FEN & board states for undo
+        this.legalTargets = []; // Legal target squares for selected piece
+        this.history = [];
         this.moveHistory = [];
         this.lastMove = null;
         this.engineDepth = 9;
-        this.playMode = 'human_white'; // human_white, human_black, ai_vs_ai
+        this.playMode = 'human_white';
         this.isFlipped = false;
         this.isThinking = false;
-        this.pendingPromotion = null;
+        this.isGameOver = false;
         this.sound = new SoundFX();
 
         this.initDOM();
@@ -178,10 +346,12 @@ class ChessApp {
         this.board = JSON.parse(JSON.stringify(INITIAL_BOARD));
         this.turn = 'w';
         this.selectedSquare = null;
+        this.legalTargets = [];
         this.history = [];
         this.moveHistory = [];
         this.lastMove = null;
         this.isThinking = false;
+        this.isGameOver = false;
         this.renderBoard();
         if (this.moveHistoryEl) this.moveHistoryEl.innerHTML = '<div class="empty-history-notice">Moves will appear here as the match progresses.</div>';
         if (this.moveCountEl) this.moveCountEl.textContent = '0 Moves';
@@ -207,17 +377,12 @@ class ChessApp {
         return [rank, file];
     }
 
-    isWhitePiece(p) {
-        return p >= 'A' && p <= 'Z';
-    }
-
-    isBlackPiece(p) {
-        return p >= 'a' && p <= 'z';
-    }
-
     renderBoard() {
         if (!this.boardEl) return;
         this.boardEl.innerHTML = '';
+
+        const inCheck = ChessRulesEngine.isInCheck(this.turn, this.board);
+        const kingPos = inCheck ? ChessRulesEngine.findKing(this.turn, this.board) : null;
 
         for (let rowIdx = 0; rowIdx < 8; rowIdx++) {
             for (let colIdx = 0; colIdx < 8; colIdx++) {
@@ -238,6 +403,20 @@ class ChessApp {
                 // Highlight Last Move
                 if (this.lastMove && (this.lastMove.from === sqName || this.lastMove.to === sqName)) {
                     sqEl.classList.add('last-move');
+                }
+
+                // Highlight King in Check
+                if (kingPos && kingPos[0] === r && kingPos[1] === c) {
+                    sqEl.classList.add('in-check');
+                }
+
+                // Highlight Legal Target Dots / Capture Rings
+                const isTarget = this.legalTargets.some(([tr, tc]) => tr === r && tc === c);
+                if (isTarget) {
+                    const isCapture = (this.board[r][c] !== '.');
+                    const targetEl = document.createElement('div');
+                    targetEl.className = isCapture ? 'target-capture' : 'target-dot';
+                    sqEl.appendChild(targetEl);
                 }
 
                 // Rank / File Coordinate Labels
@@ -274,45 +453,56 @@ class ChessApp {
     }
 
     handleSquareClick(r, c) {
-        if (this.isThinking) return;
+        if (this.isThinking || this.isGameOver) return;
         if (this.playMode === 'ai_vs_ai') return;
         if (this.playMode === 'human_white' && this.turn !== 'w') return;
         if (this.playMode === 'human_black' && this.turn !== 'b') return;
 
         const piece = this.board[r][c];
-        const isMyPiece = (this.turn === 'w' && this.isWhitePiece(piece)) || (this.turn === 'b' && this.isBlackPiece(piece));
+        const isMyPiece = (this.turn === 'w' && ChessRulesEngine.isWhite(piece)) || (this.turn === 'b' && ChessRulesEngine.isBlack(piece));
 
         if (this.selectedSquare) {
             const [srcR, srcC] = this.selectedSquare;
-            const fromSq = this.coordsToSquare(srcR, srcC);
-            const toSq = this.coordsToSquare(r, c);
+            const isTarget = this.legalTargets.some(([tr, tc]) => tr === r && tc === c);
 
             if (srcR === r && srcC === c) {
                 this.selectedSquare = null;
+                this.legalTargets = [];
                 this.renderBoard();
                 return;
             }
 
             if (isMyPiece) {
                 this.selectedSquare = [r, c];
+                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, this.board, this.turn);
                 this.renderBoard();
                 return;
             }
 
-            // Check Pawn Promotion
-            const srcPiece = this.board[srcR][srcC];
-            if ((srcPiece === 'P' && r === 0) || (srcPiece === 'p' && r === 7)) {
-                this.promptPromotion(srcR, srcC, r, c);
-                return;
-            }
+            if (isTarget) {
+                // Check Pawn Promotion
+                const srcPiece = this.board[srcR][srcC];
+                if ((srcPiece === 'P' && r === 0) || (srcPiece === 'p' && r === 7)) {
+                    this.promptPromotion(srcR, srcC, r, c);
+                    return;
+                }
 
-            // Make User Move
-            const uciStr = `${fromSq}${toSq}`;
-            this.makeMove(srcR, srcC, r, c, uciStr);
-            this.selectedSquare = null;
+                // Make Move
+                const fromSq = this.coordsToSquare(srcR, srcC);
+                const toSq = this.coordsToSquare(r, c);
+                const uciStr = `${fromSq}${toSq}`;
+                this.makeMove(srcR, srcC, r, c, uciStr);
+                this.selectedSquare = null;
+                this.legalTargets = [];
+            } else {
+                this.selectedSquare = null;
+                this.legalTargets = [];
+                this.renderBoard();
+            }
         } else {
             if (isMyPiece) {
                 this.selectedSquare = [r, c];
+                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, this.board, this.turn);
                 this.renderBoard();
             }
         }
@@ -336,6 +526,7 @@ class ChessApp {
                 const uciStr = `${fromSq}${toSq}${promoChar}`;
                 this.makeMove(srcR, srcC, dstR, dstC, uciStr, p);
                 this.selectedSquare = null;
+                this.legalTargets = [];
             });
             this.promoChoicesEl.appendChild(choiceEl);
         });
@@ -373,15 +564,33 @@ class ChessApp {
         this.moveHistory.push(uciStr);
         this.appendMoveHistory(uciStr);
 
-        // Sound FX
-        if (isCapture) {
+        // Switch Turn
+        this.turn = this.turn === 'w' ? 'b' : 'w';
+
+        // Check for Check / Checkmate / Stalemate after move
+        const inCheck = ChessRulesEngine.isInCheck(this.turn, this.board);
+        const legalMovesLeft = ChessRulesEngine.getAllLegalMoves(this.turn, this.board);
+
+        if (inCheck) {
+            this.sound.playCheck();
+        } else if (isCapture) {
             this.sound.playCapture();
         } else {
             this.sound.playMove();
         }
 
-        this.turn = this.turn === 'w' ? 'b' : 'w';
         this.renderBoard();
+
+        if (legalMovesLeft.length === 0) {
+            this.isGameOver = true;
+            if (inCheck) {
+                const winner = this.turn === 'w' ? "Black (Heaven's Gate AI)" : "White (Human)";
+                this.showGameOver("Checkmate!", `${winner} won the match!`);
+            } else {
+                this.showGameOver("Stalemate!", "The game is a draw.");
+            }
+            return;
+        }
 
         // Trigger AI move if applicable
         if (this.playMode === 'ai_vs_ai') {
@@ -394,7 +603,6 @@ class ChessApp {
     undoMove() {
         if (this.history.length === 0) return;
 
-        // In vs AI mode, undo 2 moves (User + Engine)
         const steps = (this.playMode !== 'ai_vs_ai' && this.history.length >= 2) ? 2 : 1;
 
         for (let i = 0; i < steps; i++) {
@@ -407,6 +615,9 @@ class ChessApp {
             }
         }
 
+        this.isGameOver = false;
+        this.selectedSquare = null;
+        this.legalTargets = [];
         this.renderBoard();
         this.rebuildHistoryUI();
     }
@@ -474,7 +685,7 @@ class ChessApp {
     }
 
     async triggerEngineMove() {
-        if (this.isThinking) return;
+        if (this.isThinking || this.isGameOver) return;
         this.isThinking = true;
         this.setStatus("Engine Searching...", true);
 
@@ -518,8 +729,14 @@ class ChessApp {
                     this.updateEvalBar(evalCp);
                 }
             } else {
-                // Game Over Checkmate / Stalemate
-                this.showGameOver("Game Over", "Match concluded.");
+                // Game Over
+                const inCheck = ChessRulesEngine.isInCheck(this.turn, this.board);
+                this.isGameOver = true;
+                if (inCheck) {
+                    this.showGameOver("Checkmate!", "Heaven's Gate won the match.");
+                } else {
+                    this.showGameOver("Stalemate!", "The game is a draw.");
+                }
             }
         } catch (err) {
             console.error("Engine API call failed:", err);
@@ -545,6 +762,7 @@ class ChessApp {
                 const [srcR, srcC] = this.squareToCoords(fromSq);
                 const [dstR, dstC] = this.squareToCoords(toSq);
                 this.selectedSquare = [srcR, srcC];
+                this.legalTargets = [[dstR, dstC]];
                 this.lastMove = { from: fromSq, to: toSq };
                 this.renderBoard();
                 this.sound.playCheck();
@@ -566,12 +784,10 @@ class ChessApp {
             return;
         }
 
-        // Sigmoid scaling for smooth eval bar visualization [-10.0 to +10.0 cp]
         const pawns = cp / 100.0;
         const sign = pawns >= 0 ? '+' : '';
         this.evalBadgeEl.textContent = `${sign}${pawns.toFixed(1)}`;
 
-        // Convert pawns to percentage [0% to 100%]
         const pct = 50 + (50 * (2 / (1 + Math.exp(-0.35 * pawns)) - 1));
         const clampedPct = Math.max(2, Math.min(98, pct));
         this.evalFillEl.style.height = `${clampedPct}%`;
