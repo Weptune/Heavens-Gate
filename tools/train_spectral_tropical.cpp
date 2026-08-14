@@ -376,13 +376,13 @@ int main(int argc, char* argv[]) {
     std::iota(indices.begin(), indices.end(), 0);
 
     float final_rmse = 0.0f;
-    float lr_max = (lr > 0.0001f) ? lr : 0.0003f;
-    float lr_min = 0.00003f;
+    float lr_max = (lr > 0.0001f) ? lr : 0.001f;
+    float lr_min = 0.00005f;
 
     for (int epoch = 1; epoch <= epochs; epoch++) {
         std::shuffle(indices.begin(), indices.end(), shuffle_rng);
 
-        // Cosine Annealing Learning Rate Schedule
+        // Cosine Annealing Learning Rate Schedule (0.001 -> 0.00005)
         float current_lr = lr_min + 0.5f * (lr_max - lr_min) * (1.0f + std::cos(static_cast<float>(epoch - 1) / static_cast<float>(std::max(1, epochs - 1)) * 3.1415926535f));
 
         float total_loss = 0.0f;
@@ -419,9 +419,9 @@ int main(int argc, char* argv[]) {
 
                     float sector_error = error * prob;
                     for (size_t i = 0; i < TropicalEvaluator::NUM_FEATURES; i++) {
-                        batch_grads[sec_idx].grad_w[i] += (sector_error * sample.features[i]) / (100.0f * batch_len_f);
+                        batch_grads[sec_idx].grad_w[i] += (sector_error * sample.features[i]) / (25.0f * batch_len_f);
                     }
-                    batch_grads[sec_idx].grad_b += (sector_error) / (10.0f * batch_len_f);
+                    batch_grads[sec_idx].grad_b += (sector_error) / (5.0f * batch_len_f);
                 }
             }
 
@@ -446,8 +446,8 @@ int main(int argc, char* argv[]) {
                     float v_hat = adam.v_w[i] / denom2;
 
                     sec.w[i] -= (current_lr * m_hat) / (std::sqrt(v_hat) + eps);
-                    float min_w = (i == 0) ? 0.85f : ((i == 4) ? 0.20f : ((i == 1 || i == 5 || i == 10) ? 0.10f : 0.0f));
-                    float max_w = (i == 0) ? 1.15f : 5.0f;
+                    float min_w = (i == 0) ? 0.75f : ((i == 4) ? 0.20f : ((i == 1 || i == 5 || i == 10) ? 0.10f : 0.0f));
+                    float max_w = (i == 0) ? 1.25f : 5.0f;
                     sec.w[i] = std::max(min_w, std::min(max_w, sec.w[i]));
                 }
 
