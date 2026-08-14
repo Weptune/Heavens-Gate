@@ -477,6 +477,16 @@ int main(int argc, char* argv[]) {
     }
 
     std::string model_path = "heavensgate_tropical.trm";
+    std::string backup_path = "heavensgate_tropical.trm.bak";
+    std::ifstream src(model_path, std::ios::binary);
+    if (src.is_open()) {
+        std::ofstream dst(backup_path, std::ios::binary);
+        dst << src.rdbuf();
+        src.close();
+        dst.close();
+        std::cout << "[SpectralTropical] Backup saved to '" << backup_path << "'\n";
+    }
+
     if (model.save_weights(model_path)) {
         std::cout << "\n[SUCCESS] Saved Spectral-Tropical weights to " << model_path << "\n";
 
