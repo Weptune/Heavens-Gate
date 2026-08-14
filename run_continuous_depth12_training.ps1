@@ -28,8 +28,8 @@ for ($round = 1; ; $round++) {
         continue
     }
 
-    # Execute 500 games @ Depth 12, 100 epochs, 0.0001 fine-tuning learning rate
-    .\train_spectral_tropical.exe 500 12 100 0.0001
+    # Execute 500 games @ Depth 10, 100 epochs, 0.0001 fine-tuning learning rate
+    .\train_spectral_tropical.exe 500 10 100 0.0001
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
