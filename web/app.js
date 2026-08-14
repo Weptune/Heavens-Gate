@@ -1,6 +1,6 @@
 /**
  * HEAVEN'S GATE GRANDMASTER CHESS AI WEB CLIENT
- * Full Interactive Engine Interface, Web Audio Synthesizer, Legal Move Generator, Check/Checkmate Engine & Themes
+ * Complete Chess Rules Engine (Castling O-O / O-O-O, En Passant, Pawn Promotion, SAN Notation, Check/Checkmate Engine)
  */
 
 const SVG_PIECES = {
@@ -108,7 +108,7 @@ class SoundFX {
     }
 }
 
-// Lightweight JavaScript Legal Move Generator & Rules Engine
+// Complete JavaScript Legal Move Generator & Rules Engine
 class ChessRulesEngine {
     static isWhite(p) { return p >= 'A' && p <= 'Z'; }
     static isBlack(p) { return p >= 'a' && p <= 'z'; }
@@ -117,7 +117,7 @@ class ChessRulesEngine {
         return (this.isWhite(p1) && this.isWhite(p2)) || (this.isBlack(p1) && this.isBlack(p2));
     }
 
-    static getRawMoves(r, c, board, turn) {
+    static getRawMoves(r, c, board, turn, castlingRights, enPassantTarget) {
         const moves = [];
         const piece = board[r][c];
         if (piece === '.') return moves;
@@ -141,13 +141,15 @@ class ChessRulesEngine {
                 }
             }
 
-            // Diagonal Captures
+            // Diagonal Captures & En Passant
             for (let dc of [-1, 1]) {
                 const nr = r + dir, nc = c + dc;
                 if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
                     const target = board[nr][nc];
                     if (target !== '.' && !this.isSameColor(piece, target)) {
                         moves.push([nr, nc]);
+                    } else if (enPassantTarget && enPassantTarget[0] === nr && enPassantTarget[1] === nc) {
+                        moves.push([nr, nc]); // En Passant Capture
                     }
                 }
             }
@@ -187,7 +189,7 @@ class ChessRulesEngine {
             }
         }
 
-        // King
+        // King + Castling
         if (type === 'K') {
             const kOffsets = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
             for (let [dr, dc] of kOffsets) {
@@ -195,6 +197,38 @@ class ChessRulesEngine {
                 if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
                     if (!this.isSameColor(piece, board[nr][nc])) {
                         moves.push([nr, nc]);
+                    }
+                }
+            }
+
+            // Castling Logic (O-O Kingside & O-O-O Queenside)
+            const enemyColor = isW ? 'b' : 'w';
+            if (castlingRights) {
+                if (isW && r === 7 && c === 4) {
+                    // White Kingside Castling (O-O) -> g1 (7, 6)
+                    if (castlingRights.wK && board[7][5] === '.' && board[7][6] === '.' && board[7][7] === 'R') {
+                        if (!this.isInCheck('w', board) && !this.isSquareAttacked(7, 5, enemyColor, board) && !this.isSquareAttacked(7, 6, enemyColor, board)) {
+                            moves.push([7, 6]);
+                        }
+                    }
+                    // White Queenside Castling (O-O-O) -> c1 (7, 2)
+                    if (castlingRights.wQ && board[7][1] === '.' && board[7][2] === '.' && board[7][3] === '.' && board[7][0] === 'R') {
+                        if (!this.isInCheck('w', board) && !this.isSquareAttacked(7, 3, enemyColor, board) && !this.isSquareAttacked(7, 2, enemyColor, board)) {
+                            moves.push([7, 2]);
+                        }
+                    }
+                } else if (!isW && r === 0 && c === 4) {
+                    // Black Kingside Castling (O-O) -> g8 (0, 6)
+                    if (castlingRights.bK && board[0][5] === '.' && board[0][6] === '.' && board[0][7] === 'r') {
+                        if (!this.isInCheck('b', board) && !this.isSquareAttacked(0, 5, enemyColor, board) && !this.isSquareAttacked(0, 6, enemyColor, board)) {
+                            moves.push([0, 6]);
+                        }
+                    }
+                    // Black Queenside Castling (O-O-O) -> c8 (0, 2)
+                    if (castlingRights.bQ && board[0][1] === '.' && board[0][2] === '.' && board[0][3] === '.' && board[0][0] === 'r') {
+                        if (!this.isInCheck('b', board) && !this.isSquareAttacked(0, 3, enemyColor, board) && !this.isSquareAttacked(0, 2, enemyColor, board)) {
+                            moves.push([0, 2]);
+                        }
                     }
                 }
             }
@@ -220,7 +254,7 @@ class ChessRulesEngine {
                 if (p === '.') continue;
                 const pColor = this.isWhite(p) ? 'w' : 'b';
                 if (pColor === attackerColor) {
-                    const rawMoves = this.getRawMoves(r, c, board, attackerColor);
+                    const rawMoves = this.getRawMoves(r, c, board, attackerColor, null, null);
                     for (let [mr, mc] of rawMoves) {
                         if (mr === targetR && mc === targetC) return true;
                     }
@@ -237,14 +271,21 @@ class ChessRulesEngine {
         return this.isSquareAttacked(kingPos[0], kingPos[1], enemyColor, board);
     }
 
-    static getLegalMoves(r, c, board, turn) {
-        const raw = this.getRawMoves(r, c, board, turn);
+    static getLegalMoves(r, c, board, turn, castlingRights, enPassantTarget) {
+        const raw = this.getRawMoves(r, c, board, turn, castlingRights, enPassantTarget);
         const legal = [];
         const piece = board[r][c];
 
         for (let [tr, tc] of raw) {
             // Make move on temp board
             const tempBoard = JSON.parse(JSON.stringify(board));
+
+            // En Passant execution on temp board
+            if (piece.toUpperCase() === 'P' && enPassantTarget && tr === enPassantTarget[0] && tc === enPassantTarget[1]) {
+                const epPawnR = tr + (turn === 'w' ? 1 : -1);
+                tempBoard[epPawnR][tc] = '.';
+            }
+
             tempBoard[tr][tc] = piece;
             tempBoard[r][c] = '.';
 
@@ -256,7 +297,7 @@ class ChessRulesEngine {
         return legal;
     }
 
-    static getAllLegalMoves(color, board) {
+    static getAllLegalMoves(color, board, castlingRights, enPassantTarget) {
         const allMoves = [];
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
@@ -264,7 +305,7 @@ class ChessRulesEngine {
                 if (p === '.') continue;
                 const pColor = this.isWhite(p) ? 'w' : 'b';
                 if (pColor === color) {
-                    const leg = this.getLegalMoves(r, c, board, color);
+                    const leg = this.getLegalMoves(r, c, board, color, castlingRights, enPassantTarget);
                     for (let [tr, tc] of leg) {
                         allMoves.push({ from: [r, c], to: [tr, tc] });
                     }
@@ -280,10 +321,16 @@ class ChessApp {
         this.board = JSON.parse(JSON.stringify(INITIAL_BOARD));
         this.turn = 'w';
         this.selectedSquare = null;
-        this.legalTargets = []; // Legal target squares for selected piece
+        this.legalTargets = [];
         this.history = [];
         this.moveHistory = [];
+        this.sanHistory = [];
         this.lastMove = null;
+
+        // Castling Rights & En Passant State
+        this.castlingRights = { wK: true, wQ: true, bK: true, bQ: true };
+        this.enPassantTarget = null; // [r, c] square or null
+
         this.engineDepth = 9;
         this.playMode = 'human_white';
         this.isFlipped = false;
@@ -349,7 +396,10 @@ class ChessApp {
         this.legalTargets = [];
         this.history = [];
         this.moveHistory = [];
+        this.sanHistory = [];
         this.lastMove = null;
+        this.castlingRights = { wK: true, wQ: true, bK: true, bQ: true };
+        this.enPassantTarget = null;
         this.isThinking = false;
         this.isGameOver = false;
         this.renderBoard();
@@ -413,7 +463,7 @@ class ChessApp {
                 // Highlight Legal Target Dots / Capture Rings
                 const isTarget = this.legalTargets.some(([tr, tc]) => tr === r && tc === c);
                 if (isTarget) {
-                    const isCapture = (this.board[r][c] !== '.');
+                    const isCapture = (this.board[r][c] !== '.') || (this.enPassantTarget && this.enPassantTarget[0] === r && this.enPassantTarget[1] === c);
                     const targetEl = document.createElement('div');
                     targetEl.className = isCapture ? 'target-capture' : 'target-dot';
                     sqEl.appendChild(targetEl);
@@ -474,7 +524,7 @@ class ChessApp {
 
             if (isMyPiece) {
                 this.selectedSquare = [r, c];
-                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, this.board, this.turn);
+                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, this.board, this.turn, this.castlingRights, this.enPassantTarget);
                 this.renderBoard();
                 return;
             }
@@ -502,7 +552,7 @@ class ChessApp {
         } else {
             if (isMyPiece) {
                 this.selectedSquare = [r, c];
-                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, this.board, this.turn);
+                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, this.board, this.turn, this.castlingRights, this.enPassantTarget);
                 this.renderBoard();
             }
         }
@@ -535,42 +585,79 @@ class ChessApp {
     }
 
     makeMove(srcR, srcC, dstR, dstC, uciStr, promoPiece = null) {
-        // Save history state for undo
+        // Save full history state for undo
         this.history.push({
             board: JSON.parse(JSON.stringify(this.board)),
             turn: this.turn,
-            lastMove: this.lastMove
+            lastMove: this.lastMove,
+            castlingRights: JSON.parse(JSON.stringify(this.castlingRights)),
+            enPassantTarget: this.enPassantTarget ? [...this.enPassantTarget] : null
         });
 
         const srcPiece = this.board[srcR][srcC];
-        const isCapture = (this.board[dstR][dstC] !== '.');
+        const pieceType = srcPiece.toUpperCase();
+        let isCapture = (this.board[dstR][dstC] !== '.');
 
-        // Execute Move
+        // En Passant Capture Execution
+        if (pieceType === 'P' && this.enPassantTarget && dstR === this.enPassantTarget[0] && dstC === this.enPassantTarget[1]) {
+            const epPawnR = dstR + (this.turn === 'w' ? 1 : -1);
+            this.board[epPawnR][dstC] = '.';
+            isCapture = true;
+        }
+
+        // Set Next En Passant Target if Double Pawn Push
+        if (pieceType === 'P' && Math.abs(dstR - srcR) === 2) {
+            this.enPassantTarget = [(srcR + dstR) / 2, srcC];
+        } else {
+            this.enPassantTarget = null;
+        }
+
+        // Execute Piece Move
         this.board[dstR][dstC] = promoPiece ? promoPiece : srcPiece;
         this.board[srcR][srcC] = '.';
 
-        // Castling King move handling
-        if (srcPiece === 'K' || srcPiece === 'k') {
-            if (srcC === 4 && dstC === 6) { // Kingside
+        // Castling Execution (Move Rook alongside King)
+        if (pieceType === 'K') {
+            if (srcC === 4 && dstC === 6) { // Kingside O-O
                 this.board[srcR][5] = this.board[srcR][7];
                 this.board[srcR][7] = '.';
-            } else if (srcC === 4 && dstC === 2) { // Queenside
+            } else if (srcC === 4 && dstC === 2) { // Queenside O-O-O
                 this.board[srcR][3] = this.board[srcR][0];
                 this.board[srcR][0] = '.';
             }
+
+            // Revoke castling rights for this side
+            if (this.turn === 'w') { this.castlingRights.wK = false; this.castlingRights.wQ = false; }
+            else { this.castlingRights.bK = false; this.castlingRights.bQ = false; }
         }
+
+        // Revoke Rook castling rights if Rooks move or are captured
+        if (srcR === 7 && srcC === 7) this.castlingRights.wK = false;
+        if (srcR === 7 && srcC === 0) this.castlingRights.wQ = false;
+        if (srcR === 0 && srcC === 7) this.castlingRights.bK = false;
+        if (srcR === 0 && srcC === 0) this.castlingRights.bQ = false;
+
+        if (dstR === 7 && dstC === 7) this.castlingRights.wK = false;
+        if (dstR === 7 && dstC === 0) this.castlingRights.wQ = false;
+        if (dstR === 0 && dstC === 7) this.castlingRights.bK = false;
+        if (dstR === 0 && dstC === 0) this.castlingRights.bQ = false;
 
         this.lastMove = { from: this.coordsToSquare(srcR, srcC), to: this.coordsToSquare(dstR, dstC) };
         this.moveHistory.push(uciStr);
-        this.appendMoveHistory(uciStr);
 
         // Switch Turn
         this.turn = this.turn === 'w' ? 'b' : 'w';
 
         // Check for Check / Checkmate / Stalemate after move
         const inCheck = ChessRulesEngine.isInCheck(this.turn, this.board);
-        const legalMovesLeft = ChessRulesEngine.getAllLegalMoves(this.turn, this.board);
+        const legalMovesLeft = ChessRulesEngine.getAllLegalMoves(this.turn, this.board, this.castlingRights, this.enPassantTarget);
 
+        // SAN Formatting
+        const sanStr = this.formatSAN(srcR, srcC, dstR, dstC, srcPiece, isCapture, promoPiece, inCheck, legalMovesLeft.length === 0);
+        this.sanHistory.push(sanStr);
+        this.appendMoveHistory(sanStr);
+
+        // Sound FX
         if (inCheck) {
             this.sound.playCheck();
         } else if (isCapture) {
@@ -600,6 +687,39 @@ class ChessApp {
         }
     }
 
+    formatSAN(srcR, srcC, dstR, dstC, srcPiece, isCapture, promoPiece, inCheck, isMate) {
+        const type = srcPiece.toUpperCase();
+        const fromSq = this.coordsToSquare(srcR, srcC);
+        const toSq = this.coordsToSquare(dstR, dstC);
+
+        let san = '';
+
+        // Castling
+        if (type === 'K' && Math.abs(dstC - srcC) === 2) {
+            san = (dstC > srcC) ? 'O-O' : 'O-O-O';
+        } else if (type === 'P') {
+            if (isCapture) {
+                san = `${fromSq[0]}x${toSq}`;
+            } else {
+                san = toSq;
+            }
+            if (promoPiece) {
+                san += `=${promoPiece.toUpperCase()}`;
+            }
+        } else {
+            const capChar = isCapture ? 'x' : '';
+            san = `${type}${capChar}${toSq}`;
+        }
+
+        if (isMate) {
+            san += '#';
+        } else if (inCheck) {
+            san += '+';
+        }
+
+        return san;
+    }
+
     undoMove() {
         if (this.history.length === 0) return;
 
@@ -611,7 +731,10 @@ class ChessApp {
                 this.board = prev.board;
                 this.turn = prev.turn;
                 this.lastMove = prev.lastMove;
+                this.castlingRights = prev.castlingRights;
+                this.enPassantTarget = prev.enPassantTarget;
                 this.moveHistory.pop();
+                this.sanHistory.pop();
             }
         }
 
@@ -625,16 +748,16 @@ class ChessApp {
     rebuildHistoryUI() {
         if (!this.moveHistoryEl) return;
         this.moveHistoryEl.innerHTML = '';
-        this.moveHistory.forEach(uci => this.appendMoveHistory(uci));
+        this.sanHistory.forEach(san => this.appendMoveHistory(san, true));
     }
 
-    appendMoveHistory(uciStr) {
+    appendMoveHistory(sanStr, isRebuild = false) {
         if (!this.moveHistoryEl) return;
         
         const emptyNotice = this.moveHistoryEl.querySelector('.empty-history-notice');
         if (emptyNotice) emptyNotice.remove();
 
-        const moveIdx = this.moveHistory.length;
+        const moveIdx = isRebuild ? this.sanHistory.indexOf(sanStr) + 1 : this.sanHistory.length;
         const pairIdx = Math.ceil(moveIdx / 2);
 
         if (moveIdx % 2 !== 0) { // White Move
@@ -643,7 +766,7 @@ class ChessApp {
             row.id = `hist-row-${pairIdx}`;
             row.innerHTML = `
                 <span class="move-num">${pairIdx}.</span>
-                <span class="move-white">${uciStr}</span>
+                <span class="move-white">${sanStr}</span>
                 <span class="move-black"></span>
             `;
             this.moveHistoryEl.appendChild(row);
@@ -652,12 +775,12 @@ class ChessApp {
             const row = document.getElementById(`hist-row-${pairIdx}`);
             if (row) {
                 const blackSpan = row.querySelector('.move-black');
-                if (blackSpan) blackSpan.textContent = uciStr;
+                if (blackSpan) blackSpan.textContent = sanStr;
             }
         }
 
         if (this.moveCountEl) {
-            this.moveCountEl.textContent = `${this.moveHistory.length} Moves`;
+            this.moveCountEl.textContent = `${this.sanHistory.length} Moves`;
         }
     }
 
@@ -680,7 +803,24 @@ class ChessApp {
             if (empty > 0) fen += empty;
             if (r < 7) fen += '/';
         }
-        fen += ` ${this.turn} KQkq - 0 ${Math.floor(this.moveHistory.length / 2) + 1}`;
+        fen += ` ${this.turn} `;
+
+        // Castling Rights FEN
+        let castling = '';
+        if (this.castlingRights.wK) castling += 'K';
+        if (this.castlingRights.wQ) castling += 'Q';
+        if (this.castlingRights.bK) castling += 'k';
+        if (this.castlingRights.bQ) castling += 'q';
+        fen += (castling || '-') + ' ';
+
+        // En Passant Target FEN
+        if (this.enPassantTarget) {
+            fen += `${this.coordsToSquare(this.enPassantTarget[0], this.enPassantTarget[1])} `;
+        } else {
+            fen += '- ';
+        }
+
+        fen += `0 ${Math.floor(this.moveHistory.length / 2) + 1}`;
         return fen;
     }
 
