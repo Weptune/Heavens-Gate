@@ -163,9 +163,9 @@ int main(int argc, char* argv[]) {
     int white_wins = 0, black_wins = 0, draws = 0;
     auto t_start = std::chrono::steady_clock::now();
 
-    int num_threads = std::min(10, omp_get_max_threads());
+    int num_threads = std::min(4, omp_get_max_threads());
     omp_set_num_threads(num_threads);
-    std::cout << "[SpectralTropical] Parallelizing dataset generation across " << num_threads << " CPU threads (10-Core High-Performance Mode)...\n\n";
+    std::cout << "[SpectralTropical] Parallelizing dataset generation across " << num_threads << " High-Cache CPU threads...\n\n";
 
     std::mutex dataset_mutex;
     int completed_games = 0;
@@ -173,7 +173,7 @@ int main(int argc, char* argv[]) {
     #pragma omp parallel
     {
         SearchEngine search_engine;
-        search_engine.tt().resize(64); // 64 MB TT cache per thread (512 MB total RAM across 8 threads)
+        search_engine.tt().resize(16); // 16 MB L3-Cache Optimized TT per thread
         Evaluator::set_mode(EvalMode::SpectralTropical);
 
         #pragma omp for schedule(dynamic) reduction(+:white_wins,black_wins,draws)
