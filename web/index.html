@@ -36,6 +36,16 @@
         
         <!-- Left Column: Chess Board & Primary Toolbar -->
         <section class="board-section">
+            
+            <!-- Opponent Clock HUD Bar -->
+            <div class="player-hud opponent-hud">
+                <div class="hud-info">
+                    <span class="hud-name" id="top-player-name">Heaven's Gate AI</span>
+                    <span class="hud-sub">Spectral-Tropical Engine</span>
+                </div>
+                <div class="clock-box" id="top-clock">03:00</div>
+            </div>
+
             <div class="board-frame">
                 <!-- Evaluation Bar -->
                 <div class="eval-bar" title="Position Evaluation Bar">
@@ -67,6 +77,15 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Player Clock HUD Bar -->
+            <div class="player-hud player-hud-bottom">
+                <div class="hud-info">
+                    <span class="hud-name" id="bottom-player-name">Player (Human)</span>
+                    <span class="hud-sub">Challenger</span>
+                </div>
+                <div class="clock-box" id="bottom-clock">03:00</div>
             </div>
 
             <!-- Primary Interactive Toolbar -->
@@ -123,7 +142,21 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="depth-select">Engine Search Depth:</label>
+                        <label for="tc-select">Time Control:</label>
+                        <select id="tc-select" class="custom-select">
+                            <option value="bullet_1_0">Bullet 1m (60s Bank)</option>
+                            <option value="bullet_1_1">Bullet 1m + 1s Inc</option>
+                            <option value="blitz_3_0" selected>Blitz 3m (180s Bank)</option>
+                            <option value="blitz_3_2">Blitz 3m + 2s Inc</option>
+                            <option value="rapid_10_0">Rapid 10m (600s Bank)</option>
+                            <option value="movetime_1">Fixed 1.0s / Move</option>
+                            <option value="movetime_3">Fixed 3.0s / Move</option>
+                            <option value="fixed_depth">Fixed Search Depth (No Clock)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="depth-select">Engine Search Depth (when on Depth mode):</label>
                         <select id="depth-select" class="custom-select">
                             <option value="4">Depth 4 (~2800 Elo Blitz)</option>
                             <option value="7">Depth 7 (~3100 Elo Rapid)</option>

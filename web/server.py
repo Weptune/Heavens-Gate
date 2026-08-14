@@ -41,7 +41,7 @@ class EngineBridge:
             self.process.stdin.write(cmd + "\n")
             self.process.stdin.flush()
 
-    def get_move(self, fen, depth=8, movetime=0):
+    def get_move(self, fen, depth=8, movetime=0, wtime=0, btime=0, winc=0, binc=0):
         with self.lock:
             if not self.process or self.process.poll() is not None:
                 self.start_engine()
@@ -50,7 +50,9 @@ class EngineBridge:
                 return {"error": "Engine process not available"}
 
             self._send_command(f"position fen {fen}")
-            if movetime > 0:
+            if wtime > 0 and btime > 0:
+                self._send_command(f"go wtime {wtime} btime {btime} winc {winc} binc {binc}")
+            elif movetime > 0:
                 self._send_command(f"go movetime {movetime}")
             else:
                 self._send_command(f"go depth {depth}")
@@ -117,8 +119,12 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
             fen = req.get("fen", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             depth = req.get("depth", 8)
             movetime = req.get("movetime", 0)
+            wtime = req.get("wtime", 0)
+            btime = req.get("btime", 0)
+            winc = req.get("winc", 0)
+            binc = req.get("binc", 0)
             
-            res = bridge.get_move(fen, depth=depth, movetime=movetime)
+            res = bridge.get_move(fen, depth=depth, movetime=movetime, wtime=wtime, btime=btime, winc=winc, binc=binc)
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')

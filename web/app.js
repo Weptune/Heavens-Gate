@@ -332,6 +332,14 @@ class ChessApp {
         this.enPassantTarget = null; // [r, c] square or null
 
         this.engineDepth = 9;
+        this.timeControl = 'blitz_3_0';
+        this.wTime = 180000;
+        this.bTime = 180000;
+        this.wInc = 0;
+        this.bInc = 0;
+        this.fixedMovetime = 0;
+        this.clockInterval = null;
+
         this.playMode = 'human_white';
         this.isFlipped = false;
         this.isThinking = false;
@@ -339,6 +347,7 @@ class ChessApp {
         this.sound = new SoundFX();
 
         this.initDOM();
+        this.resetClocks();
         this.renderBoard();
         this.updateEvalBar(0);
     }
@@ -357,6 +366,11 @@ class ChessApp {
         this.teleDepthEl = document.getElementById('tele-depth');
         this.telePvEl = document.getElementById('tele-pv');
 
+        this.topClockEl = document.getElementById('top-clock');
+        this.bottomClockEl = document.getElementById('bottom-clock');
+        this.topPlayerNameEl = document.getElementById('top-player-name');
+        this.bottomPlayerNameEl = document.getElementById('bottom-player-name');
+
         this.promoModalEl = document.getElementById('promotion-modal');
         this.promoChoicesEl = document.getElementById('promotion-choices');
         this.gameoverModalEl = document.getElementById('gameover-modal');
@@ -373,6 +387,11 @@ class ChessApp {
         document.getElementById('undo-btn')?.addEventListener('click', () => this.undoMove());
         document.getElementById('hint-btn')?.addEventListener('click', () => this.getHint());
 
+        document.getElementById('tc-select')?.addEventListener('change', (e) => {
+            this.timeControl = e.target.value;
+            this.resetGame();
+        });
+
         document.getElementById('depth-select')?.addEventListener('change', (e) => {
             this.engineDepth = parseInt(e.target.value);
             if (this.teleDepthEl) this.teleDepthEl.textContent = `Depth ${this.engineDepth}`;
@@ -387,6 +406,81 @@ class ChessApp {
         document.getElementById('theme-select')?.addEventListener('change', (e) => {
             document.body.className = `theme-${e.target.value}`;
         });
+    }
+
+    resetClocks() {
+        if (this.clockInterval) clearInterval(this.clockInterval);
+
+        this.fixedMovetime = 0;
+        this.wInc = 0;
+        this.bInc = 0;
+
+        switch (this.timeControl) {
+            case 'bullet_1_0': this.wTime = 60000; this.bTime = 60000; break;
+            case 'bullet_1_1': this.wTime = 60000; this.bTime = 60000; this.wInc = 1000; this.bInc = 1000; break;
+            case 'blitz_3_0': this.wTime = 180000; this.bTime = 180000; break;
+            case 'blitz_3_2': this.wTime = 180000; this.bTime = 180000; this.wInc = 2000; this.bInc = 2000; break;
+            case 'rapid_10_0': this.wTime = 600000; this.bTime = 600000; break;
+            case 'movetime_1': this.fixedMovetime = 1000; this.wTime = 0; this.bTime = 0; break;
+            case 'movetime_3': this.fixedMovetime = 3000; this.wTime = 0; this.bTime = 0; break;
+            case 'fixed_depth': this.wTime = 0; this.bTime = 0; break;
+        }
+
+        this.updateClockUI();
+
+        if (this.wTime > 0) {
+            this.clockInterval = setInterval(() => this.tickClock(), 100);
+        }
+    }
+
+    tickClock() {
+        if (this.isGameOver || this.wTime <= 0 && this.bTime <= 0) return;
+
+        if (this.turn === 'w' && this.wTime > 0) {
+            this.wTime = Math.max(0, this.wTime - 100);
+            if (this.wTime === 0) {
+                this.isGameOver = true;
+                this.showGameOver("Time Out!", "White ran out of time.");
+            }
+        } else if (this.turn === 'b' && this.bTime > 0) {
+            this.bTime = Math.max(0, this.bTime - 100);
+            if (this.bTime === 0) {
+                this.isGameOver = true;
+                this.showGameOver("Time Out!", "Black ran out of time.");
+            }
+        }
+        this.updateClockUI();
+    }
+
+    updateClockUI() {
+        const formatTime = (ms) => {
+            if (ms <= 0) return "--:--";
+            const sec = Math.ceil(ms / 1000);
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        };
+
+        const whiteStr = formatTime(this.wTime);
+        const blackStr = formatTime(this.bTime);
+
+        if (this.isFlipped) {
+            if (this.topClockEl) this.topClockEl.textContent = whiteStr;
+            if (this.bottomClockEl) this.bottomClockEl.textContent = blackStr;
+            if (this.topPlayerNameEl) this.topPlayerNameEl.textContent = (this.playMode === 'human_black') ? "Player (Human)" : "Heaven's Gate AI";
+            if (this.bottomPlayerNameEl) this.bottomPlayerNameEl.textContent = (this.playMode === 'human_black') ? "Heaven's Gate AI" : "Player (Human)";
+
+            if (this.topClockEl) this.topClockEl.className = `clock-box ${this.turn === 'w' ? 'active' : ''} ${this.wTime > 0 && this.wTime < 30000 ? 'low-time' : ''}`;
+            if (this.bottomClockEl) this.bottomClockEl.className = `clock-box ${this.turn === 'b' ? 'active' : ''} ${this.bTime > 0 && this.bTime < 30000 ? 'low-time' : ''}`;
+        } else {
+            if (this.topClockEl) this.topClockEl.textContent = blackStr;
+            if (this.bottomClockEl) this.bottomClockEl.textContent = whiteStr;
+            if (this.topPlayerNameEl) this.topPlayerNameEl.textContent = "Heaven's Gate AI";
+            if (this.bottomPlayerNameEl) this.bottomPlayerNameEl.textContent = "Player (Human)";
+
+            if (this.topClockEl) this.topClockEl.className = `clock-box ${this.turn === 'b' ? 'active' : ''} ${this.bTime > 0 && this.bTime < 30000 ? 'low-time' : ''}`;
+            if (this.bottomClockEl) this.bottomClockEl.className = `clock-box ${this.turn === 'w' ? 'active' : ''} ${this.wTime > 0 && this.wTime < 30000 ? 'low-time' : ''}`;
+        }
     }
 
     resetGame() {
@@ -829,13 +923,24 @@ class ChessApp {
         this.isThinking = true;
         this.setStatus("Engine Searching...", true);
 
-        const fen = this.getFEN();
+        const payload = { fen: fen };
+
+        if (this.wTime > 0 && this.bTime > 0) {
+            payload.wtime = this.wTime;
+            payload.btime = this.bTime;
+            payload.winc = this.wInc;
+            payload.binc = this.bInc;
+        } else if (this.fixedMovetime > 0) {
+            payload.movetime = this.fixedMovetime;
+        } else {
+            payload.depth = this.engineDepth;
+        }
 
         try {
             const resp = await fetch('/api/move', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fen: fen, depth: this.engineDepth })
+                body: JSON.stringify(payload)
             });
             const data = await resp.json();
 

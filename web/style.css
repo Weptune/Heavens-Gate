@@ -194,8 +194,62 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1.2rem;
+    gap: 0.8rem;
     width: 100%;
+}
+
+.player-hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 560px;
+    background: rgba(22, 27, 38, 0.7);
+    border: 1px solid var(--border-card);
+    border-radius: 12px;
+    padding: 0.6rem 1rem;
+    backdrop-filter: blur(12px);
+}
+
+.hud-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.hud-name {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+.hud-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.clock-box {
+    font-family: 'Fira Code', monospace;
+    font-size: 1.3rem;
+    font-weight: 700;
+    background: #0f172a;
+    color: var(--text-primary);
+    padding: 0.35rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-card);
+    transition: all 0.3s ease;
+}
+
+.clock-box.active {
+    background: #1e293b;
+    color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 12px rgba(0, 242, 254, 0.3);
+}
+
+.clock-box.low-time {
+    color: var(--accent-red);
+    border-color: var(--accent-red);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
 }
 
 .board-frame {
