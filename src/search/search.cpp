@@ -1,4 +1,5 @@
 #include "search.hpp"
+#include "syzygy.hpp"
 #include "../core/fen.hpp"
 #include "../evaluation/eval.hpp"
 #include <iostream>
@@ -187,6 +188,15 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                     return tt_score;
                 }
             }
+        }
+    }
+
+    // 1.5 Syzygy Tablebase Probe (5 or fewer pieces, 0.00ms overhead)
+    if (popcount(board.occupied()) <= 5) {
+        int tb_score = SyzygyTablebase::instance().probe_wdl(board, ply);
+        if (tb_score != SyzygyTablebase::NO_SCORE) {
+            metrics_tracker_.add_cut();
+            return tb_score;
         }
     }
 

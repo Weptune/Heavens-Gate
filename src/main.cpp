@@ -9,6 +9,7 @@
 #include "evaluation/tensor_eval.hpp"
 #include "evaluation/tensor_train.hpp"
 #include "search/search.hpp"
+#include "search/syzygy.hpp"
 #include "benchmark/metrics.hpp"
 #include "uci/uci.hpp"
 #include "uci/stockfish_client.hpp"
@@ -344,6 +345,7 @@ int main(int argc, char* argv[]) {
     Zobrist::init();
     MoveGenerator::init();
     Evaluator::init();
+    SyzygyTablebase::instance().init("syzygy");
 
     if (argc > 1) {
         std::string cmd = argv[1];
