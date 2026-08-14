@@ -13,7 +13,7 @@ enum class TTBound : uint8_t {
     Upper = 3  // Fail-low cutoff (score <= alpha)
 };
 
-struct TTEntry {
+struct alignas(16) TTEntry {
     uint64_t key{0};
     Move move;
     int16_t score{0};
