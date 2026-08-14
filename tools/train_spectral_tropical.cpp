@@ -290,8 +290,8 @@ int main(int argc, char* argv[]) {
     // Append new round samples to rolling buffer
     dataset_buffer.insert(dataset_buffer.end(), dataset.begin(), dataset.end());
 
-    // Trim to most recent 500,000 samples
-    constexpr size_t MAX_BUFFER_SIZE = 500000;
+    // Trim to most recent 2,000,000 samples (2 Million Mega-Dataset Buffer)
+    constexpr size_t MAX_BUFFER_SIZE = 2000000;
     if (dataset_buffer.size() > MAX_BUFFER_SIZE) {
         size_t excess = dataset_buffer.size() - MAX_BUFFER_SIZE;
         dataset_buffer.erase(dataset_buffer.begin(), dataset_buffer.begin() + excess);
@@ -434,7 +434,7 @@ int main(int argc, char* argv[]) {
                 const auto& g_acc = batch_grads[sec_idx];
 
                 for (size_t i = 0; i < TropicalEvaluator::NUM_FEATURES; i++) {
-                    float grad = std::max(-50.0f, std::min(50.0f, g_acc.grad_w[i]));
+                    float grad = std::max(-50.0f, std::min(50.0f, g_acc.grad_w[i])) + 0.0001f * sec.w[i]; // L2 Weight Decay
                     if (std::abs(grad) < 1e-7f) continue;
 
                     adam.m_w[i] = beta1 * adam.m_w[i] + (1.0f - beta1) * grad;
