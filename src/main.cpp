@@ -243,9 +243,28 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
             Color side_before = board.side_to_move();
             board.make_move(chosen_move);
 
-            if (std::abs(res.best_score) > 25000) {
+            // Check if game ended in checkmate or stalemate on the board
+            MoveList next_legal;
+            MoveGenerator::generate_legal_moves(board, next_legal);
+            if (next_legal.empty()) {
+                bool in_chk = MoveGenerator::in_check(board, board.side_to_move());
+                if (in_chk) {
+                    result_str = (board.side_to_move() == Color::White) ? "0-1" : "1-0";
+                    end_reason = "Checkmate";
+                } else {
+                    result_str = "1/2-1/2";
+                    end_reason = "Stalemate";
+                }
+                break;
+            }
+
+            // Early exit for proven forced mates (Score >= 24000 cp)
+            if (std::abs(res.best_score) >= 24000) {
+                int raw_score = std::abs(res.best_score);
+                int mate_ply = (raw_score >= 29000) ? (30000 - raw_score) : (25000 - raw_score);
                 result_str = (res.best_score > 0) ? ((side_before == Color::White) ? "1-0" : "0-1") : ((side_before == Color::White) ? "0-1" : "1-0");
-                end_reason = "Mate Detected"; break;
+                end_reason = "Forced Mate in " + std::to_string(std::max(1, mate_ply)) + " moves";
+                break;
             }
         }
 
