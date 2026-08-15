@@ -47,7 +47,7 @@ public:
 private:
     int quiescence_search(Board& board, int alpha, int beta, int ply);
     int negamax_minimax(Board& board, int depth, int ply, TreeNodeJSON* json_node);
-    int negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move, Move prev_move, TreeNodeJSON* json_node);
+    int negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move = Move(), Move prev_move = Move(), TreeNodeJSON* json_node = nullptr, int prev_eval = -ScoreInfinity);
 
     bool is_time_up() {
         if (time_stop_flag_) return true;

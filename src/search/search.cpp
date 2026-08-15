@@ -146,7 +146,7 @@ int SearchEngine::negamax_minimax(Board& board, int depth, int ply, TreeNodeJSON
     return best_score;
 }
 
-int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move, Move prev_move, TreeNodeJSON* json_node) {
+int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move, Move prev_move, TreeNodeJSON* json_node, int prev_eval) {
     metrics_tracker_.add_nodes(1);
 
     if (is_time_up()) return 0;
@@ -191,14 +191,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 }
             }
         }
-
-        // 1.1 Internal Iterative Deepening (IID): At PV nodes where no TT move exists and depth >= 4
-        if (!static_cast<bool>(tt_move) && depth >= 4 && (beta - alpha > 1)) {
-            negamax_alphabeta(board, depth - 2, ply, alpha, beta, use_move_ordering, use_tt, Move(), prev_move, nullptr);
-            TTEntry* iid_entry = tt_.probe(board.zobrist_key());
-            if (iid_entry && static_cast<bool>(iid_entry->move)) {
-                tt_move = iid_entry->move;
-            }
+            tt_move = tt_entry->move;
         }
     }
 
@@ -216,7 +209,6 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         int q_eval = quiescence_search(board, alpha, beta, ply);
         if (json_node) {
             json_node->eval = q_eval;
-            json_node->is_terminal = true;
         }
         return q_eval;
     }
@@ -225,6 +217,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     int raw_static_eval = 0;
     int static_eval = 0;
     bool can_futility_prune = false;
+    bool improving = false;
     size_t c_idx = static_cast<size_t>(us);
 
     uint64_t w_pawns = board.pieces(Piece::WhitePawn);
@@ -235,6 +228,10 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         raw_static_eval = Evaluator::evaluate_fast(board);
         int corr = corr_history_[c_idx][pawn_hash];
         static_eval = raw_static_eval + (corr / 256);
+
+        if (ply >= 2 && prev_eval != -ScoreInfinity) {
+            improving = (static_eval > prev_eval);
+        }
 
         // Reverse Futility Pruning (Static Null Move Pruning)
         if (depth <= 3) {
@@ -251,17 +248,20 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
     }
 
-    // 3. Adaptive Null Move Pruning (NMP) (R=2 for shallow depth, R=3 for depth >= 6, R=4 if static_eval >= beta+200)
+    // 3. Adaptive Null Move Pruning (NMP) (R=2 for shallow depth, R=3 for depth >= 6, R=4 if static_eval >= beta+200, +1 if !improving)
     if (depth >= 3 && !in_chk && board.has_non_pawn_material(us)) {
         int R = (depth >= 6) ? 3 : 2;
         if (static_eval - beta >= 200) {
+            R += 1;
+        }
+        if (!improving && depth >= 4) {
             R += 1;
         }
         R = std::min(R, depth - 1);
 
         board.make_null_move();
 
-        int null_score = -negamax_alphabeta(board, depth - 1 - R, ply + 1, -beta, -beta + 1, use_move_ordering, use_tt, Move(), Move(), nullptr);
+        int null_score = -negamax_alphabeta(board, depth - 1 - R, ply + 1, -beta, -beta + 1, use_move_ordering, use_tt, Move(), Move(), nullptr, static_eval);
 
         board.unmake_null_move();
 
@@ -275,28 +275,23 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     if (depth >= 5 && !in_chk && std::abs(beta) < ScoreMate - 1000 && board.has_non_pawn_material(us)) {
         int prob_beta = beta + 300;
         int prob_depth = depth - 4;
-        int prob_score = negamax_alphabeta(board, prob_depth, ply + 1, prob_beta - 1, prob_beta, use_move_ordering, use_tt, Move(), Move(), nullptr);
+        int prob_score = negamax_alphabeta(board, prob_depth, ply + 1, prob_beta - 1, prob_beta, use_move_ordering, use_tt, Move(), Move(), nullptr, static_eval);
         if (prob_score >= prob_beta) {
             metrics_tracker_.add_cut();
-            return prob_score;
+            return prob_beta;
         }
     }
 
+    // 4. Move Generation & Ordering
     MoveList moves;
     MoveGenerator::generate_legal_moves(board, moves);
 
     if (moves.empty()) {
-        int score = 0;
         if (in_chk) {
-            score = -ScoreMate + ply;
+            return -ScoreMate + ply;
         } else {
-            score = ScoreDraw;
+            return ScoreDraw;
         }
-        if (json_node) {
-            json_node->eval = score;
-            json_node->is_terminal = true;
-        }
-        return score;
     }
 
     if (use_move_ordering) {
@@ -304,35 +299,14 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     }
 
     int best_score = -ScoreInfinity;
-    Move best_move = Move();
+    Move best_move = moves[0];
 
     for (size_t i = 0; i < moves.size(); ++i) {
         Move m = moves[i];
 
-        bool is_quiet = !m.is_capture() && !m.is_promotion();
-
-        if (is_quiet && i > 0 && !in_chk) {
-            // Check if move gives check to opponent
-            board.make_move(m);
-            bool gives_check = MoveGenerator::in_check(board, board.side_to_move());
-            board.unmake_move(m);
-
-            if (!gives_check) {
-                // Late Move Pruning (LMP): At low depths, skip non-checking quiet moves past threshold
-                if (depth <= 3 && static_cast<int>(i) >= 3 + depth * depth) {
-                    continue;
-                }
-
-                // Forward Futility Pruning: static eval too far below alpha
-                if (can_futility_prune) {
-                    continue;
-                }
-            }
-        } else if (!is_quiet && i > 0 && !in_chk && depth <= 6) {
-            // SEE Bad Capture Pruning: Skip suicidal captures (SEE < -200 * depth)
-            if (!MovePicker::see_ge(board, m, -200 * depth)) {
-                continue;
-            }
+        // Futility Pruning: Skip quiet moves at low depth if static eval is far below alpha
+        if (can_futility_prune && i >= 1 && !m.is_capture() && !m.is_promotion() && !MoveGenerator::in_check(board, us)) {
+            continue;
         }
 
         board.make_move(m);
@@ -350,26 +324,27 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         int score = 0;
 
         if (i == 0) {
-            score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
+            score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node, static_eval);
         } else {
-            // History-Based Late Move Reductions (LMR) for quiet moves
+            // History-Based Late Move Reductions (LMR) for quiet moves (extra reduction when !improving)
             if (i >= 3 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk) {
                 int reduction = 1 + static_cast<int>(std::log(depth) * std::log(i + 1) / 2.2);
                 int history_val = move_picker_.get_history_score(us, m);
                 if (history_val > 500) reduction = std::max(1, reduction - 1);
-                if (history_val < 100 && i >= 6) reduction += 1; // Extra reduction for low-history late moves
-                reduction = std::min(reduction, depth - 2); // Never reduce below depth 1
+                if (history_val < 100 && i >= 6) reduction += 1;
+                if (!improving) reduction += 1;
+                reduction = std::min(reduction, depth - 2);
                 int reduced_depth = std::max(1, depth - 1 - reduction);
 
-                score = -negamax_alphabeta(board, reduced_depth, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
+                score = -negamax_alphabeta(board, reduced_depth, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node, static_eval);
             } else {
                 // Zero-window search
-                score = -negamax_alphabeta(board, depth - 1, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
+                score = -negamax_alphabeta(board, depth - 1, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, child_node, static_eval);
             }
 
             // PVS Re-Search: If zero-window search raised alpha, re-search with full [alpha, beta] window!
             if (score > alpha && score < beta) {
-                score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node);
+                score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, child_node, static_eval);
             }
         }
 
