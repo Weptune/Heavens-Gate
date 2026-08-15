@@ -94,7 +94,8 @@ bool Board::has_non_pawn_material(Color c) const {
 
 bool Board::is_repetition(int fold) const {
     int count = 0;
-    for (int i = static_cast<int>(pos_history_.size()) - 1; i >= 0; --i) {
+    int limit = std::max(0, static_cast<int>(pos_history_.size()) - halfmove_clock_ - 1);
+    for (int i = static_cast<int>(pos_history_.size()) - 1; i >= limit; --i) {
         if (pos_history_[static_cast<size_t>(i)] == zobrist_key_) {
             count++;
             if (count >= fold) return true;
