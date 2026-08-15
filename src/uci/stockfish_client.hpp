@@ -151,66 +151,63 @@ public:
 
     bool init(int elo = 2700, int threads = 6) {
         current_elo = elo;
-        if (check_process_alive()) return true;
-        close(); // Clean up handles if dead process was lingering
-
-        for (int attempt = 1; attempt <= 3; ++attempt) {
-            SECURITY_ATTRIBUTES sa;
-            sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-            sa.bInheritHandle = TRUE;
-            sa.lpSecurityDescriptor = NULL;
-
-            HANDLE hOutRd, hOutWr, hInRd, hInWr;
-            if (!CreatePipe(&hOutRd, &hOutWr, &sa, 0)) { Sleep(300); continue; }
-            SetHandleInformation(hOutRd, HANDLE_FLAG_INHERIT, 0);
-            if (!CreatePipe(&hInRd, &hInWr, &sa, 0)) { CloseHandle(hOutRd); CloseHandle(hOutWr); Sleep(300); continue; }
-            SetHandleInformation(hInWr, HANDLE_FLAG_INHERIT, 0);
-
-            STARTUPINFOA si;
-            ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
-            ZeroMemory(&si, sizeof(STARTUPINFOA));
-            si.cb = sizeof(STARTUPINFOA);
-            si.hStdError = hOutWr;
-            si.hStdOutput = hOutWr;
-            si.hStdInput = hInRd;
-            si.dwFlags |= STARTF_USESTDHANDLES;
-
-            char cmd_buf[512] = "c:\\Users\\abhin\\heavensgate\\tools\\stockfish.exe";
-            BOOL ok = CreateProcessA(NULL, cmd_buf, NULL, NULL, TRUE, 0, NULL, NULL, &si, &piProcInfo);
-
-            CloseHandle(hOutWr);
-            CloseHandle(hInRd);
-
-            if (!ok) { CloseHandle(hOutRd); CloseHandle(hInWr); Sleep(300); continue; }
-
-            hChildStd_OUT_Rd = hOutRd;
-            hChildStd_IN_Wr = hInWr;
-            is_running = true;
-
-            send_cmd("uci");
-            std::string uciok = read_until("uciok", 15);
-            if (uciok.empty()) { close(); Sleep(300); continue; }
-
-            if (current_elo >= 3500 || current_elo <= 0) {
-                send_cmd("setoption name UCI_LimitStrength value false");
-            } else {
-                send_cmd("setoption name UCI_Elo value " + std::to_string(current_elo));
-                send_cmd("setoption name UCI_LimitStrength value true");
-            }
-            send_cmd("setoption name Threads value " + std::to_string(threads));
-            send_cmd("setoption name Hash value 256");
-            send_cmd("isready");
-
-            std::string ready = read_until("readyok", 15);
-            if (!ready.empty()) {
-                return true;
-            }
-
+        if (!check_process_alive()) {
             close();
-            Sleep(500);
+
+            for (int attempt = 1; attempt <= 3; ++attempt) {
+                SECURITY_ATTRIBUTES sa;
+                sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+                sa.bInheritHandle = TRUE;
+                sa.lpSecurityDescriptor = NULL;
+
+                HANDLE hOutRd, hOutWr, hInRd, hInWr;
+                if (!CreatePipe(&hOutRd, &hOutWr, &sa, 0)) { Sleep(300); continue; }
+                SetHandleInformation(hOutRd, HANDLE_FLAG_INHERIT, 0);
+                if (!CreatePipe(&hInRd, &hInWr, &sa, 0)) { CloseHandle(hOutRd); CloseHandle(hOutWr); Sleep(300); continue; }
+                SetHandleInformation(hInWr, HANDLE_FLAG_INHERIT, 0);
+
+                STARTUPINFOA si;
+                ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
+                ZeroMemory(&si, sizeof(STARTUPINFOA));
+                si.cb = sizeof(STARTUPINFOA);
+                si.hStdError = hOutWr;
+                si.hStdOutput = hOutWr;
+                si.hStdInput = hInRd;
+                si.dwFlags |= STARTF_USESTDHANDLES;
+
+                char cmd_buf[512] = "c:\\Users\\abhin\\heavensgate\\tools\\stockfish.exe";
+                BOOL ok = CreateProcessA(NULL, cmd_buf, NULL, NULL, TRUE, 0, NULL, NULL, &si, &piProcInfo);
+
+                CloseHandle(hOutWr);
+                CloseHandle(hInRd);
+
+                if (!ok) { CloseHandle(hOutRd); CloseHandle(hInWr); Sleep(300); continue; }
+
+                hChildStd_OUT_Rd = hOutRd;
+                hChildStd_IN_Wr = hInWr;
+                is_running = true;
+
+                send_cmd("uci");
+                std::string uciok = read_until("uciok", 15);
+                if (uciok.empty()) { close(); Sleep(300); continue; }
+                break;
+            }
         }
-        std::cerr << "[SF CRITICAL ERROR] Failed to initialize Stockfish after 3 attempts!\n";
-        return false;
+
+        if (!is_running) return false;
+
+        if (current_elo >= 3500 || current_elo <= 0) {
+            send_cmd("setoption name UCI_LimitStrength value false");
+        } else {
+            send_cmd("setoption name UCI_Elo value " + std::to_string(current_elo));
+            send_cmd("setoption name UCI_LimitStrength value true");
+        }
+        send_cmd("setoption name Threads value " + std::to_string(threads));
+        send_cmd("setoption name Hash value 256");
+        send_cmd("isready");
+
+        std::string ready = read_until("readyok", 15);
+        return !ready.empty();
     }
 
     void reset_game() {
