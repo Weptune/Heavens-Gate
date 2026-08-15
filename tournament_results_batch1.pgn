@@ -3,350 +3,359 @@
 [Date "2026.08.13"]
 [Round "1"]
 [White "Master Edition"]
-[Black "Stockfish 16.1 (3400 Elo)"]
+[Black "Stockfish 16.1 (Uncapped ~3500 Elo)"]
 [FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]
-1. e2e3 { [%eval 18] [%clk 3428.7ms] } d7d5 { [%eval -9] [%clk 3435.18ms] }
-2. b1c3 { [%eval 34] [%clk 3330.68ms] } e7e5 { [%eval 21] [%clk 3339.2ms] }
-3. d1h5 { [%eval 125] [%clk 3235.51ms] } f8d6 { [%eval 35] [%clk 3239.96ms] }
-4. c3d5 { [%eval 141] [%clk 3143.06ms] } c8e6 { [%eval -52] [%clk 3147.56ms] }
-5. d5c3 { [%eval 140] [%clk 3053.24ms] } b8d7 { [%eval -61] [%clk 3058.24ms] }
-6. g1f3 { [%eval 144] [%clk 2965.97ms] } g8f6 { [%eval -25] [%clk 2966.69ms] }
-7. h5g5 { [%eval 140] [%clk 2881.22ms] } h7h6 { [%eval 40] [%clk 2888.16ms] }
-8. g5h4 { [%eval 168] [%clk 2798.88ms] } a7a6 { [%eval 41] [%clk 2806.95ms] }
-9. d2d4 { [%eval 187] [%clk 2718.9ms] } c7c5 { [%eval 51] [%clk 2721.85ms] }
-10. f1d3 { [%eval 211] [%clk 2641.23ms] } c5c4 { [%eval 21] [%clk 2642.72ms] }
-11. d3e4 { [%eval 236] [%clk 2565.73ms] } d8c7 { [%eval 160] [%clk 2567.73ms] }
-12. f3g5 { [%eval 242] [%clk 2492.42ms] } e6g4 { [%eval -14] [%clk 2497.07ms] }
-13. e1f1 { [%eval 248] [%clk 2421.24ms] } e8c8 { [%eval 200] [%clk 2426.72ms] }
-14. g5f7 { [%eval 424] [%clk 2352.01ms] } h8f8 { [%eval -86] [%clk 2355.62ms] }
-15. c3d5 { [%eval 539] [%clk 2284.76ms] } c7c6 { [%eval -18] [%clk 2284.08ms] }
-16. f7d8 { [%eval 1123] [%clk 2219.49ms] } c6b5 { [%eval -379] [%clk 2217.9ms] }
-17. a2a4 { [%eval 1236] [%clk 2156.05ms] } b5b4 { [%eval -553] [%clk 2170.29ms] }
-18. d5b4 { [%eval 1303] [%clk 2094.43ms] } f8d8 { [%eval -556] [%clk 2098.49ms] }
-19. b4d5 { [%eval 1468] [%clk 2034.57ms] } c8b8 { [%eval -634] [%clk 2037.14ms] }
-20. e4f3 { [%eval 1582] [%clk 1976.49ms] } g4e6 { [%eval -649] [%clk 1977.4ms] }
-21. d5f6 { [%eval 1632] [%clk 1920ms] } g7f6 { [%eval -657] [%clk 1924.27ms] }
-22. h4e4 { [%eval 2301] [%clk 1865.1ms] } e6d5 { [%eval -894] [%clk 1865.14ms] }
-23. e4d5 { [%eval 2841] [%clk 1811.78ms] } d7c5 { [%eval -1241] [%clk 1826.95ms] }
-24. d4c5 { [%eval 3012] [%clk 1760.13ms] } d8d7 { [%eval -1372] [%clk 1762ms] }
-25. c5d6 { [%eval 3033] [%clk 1709.68ms] } f6f5 { [%eval -29983] [%clk 1710.69ms] }
-1-0 {Forced Mate in 17 moves}
+1. e2e3 { [%eval 18] [%clk 3428.69ms] } g8f6 { [%eval -5] [%clk 3432.85ms] }
+2. b1c3 { [%eval 14] [%clk 3330.69ms] } d7d5 { [%eval 17] [%clk 3338.37ms] }
+3. f1b5 { [%eval 27] [%clk 3235.6ms] } c7c6 { [%eval 96] [%clk 3240.65ms] }
+4. b5e2 { [%eval 22] [%clk 3143.05ms] } e7e5 { [%eval 105] [%clk 3149.76ms] }
+5. g1f3 { [%eval 31] [%clk 3053.23ms] } f8d6 { [%eval 114] [%clk 3054.19ms] }
+6. f3g5 { [%eval 14] [%clk 2965.95ms] } e5e4 { [%eval 176] [%clk 2972.65ms] }
+7. e2h5 { [%eval 16] [%clk 2881.22ms] } f6h5 { [%eval 377] [%clk 2887.11ms] }
+8. d1h5 { [%eval 28] [%clk 2798.88ms] } g7g6 { [%eval 367] [%clk 2804.41ms] }
+9. h5h6 { [%eval -92] [%clk 2718.91ms] } d6f8 { [%eval 383] [%clk 2724.01ms] }
+10. h6h4 { [%eval -50] [%clk 2641.21ms] } h7h6 { [%eval 377] [%clk 2652.28ms] }
+11. c3e4 { [%eval 36] [%clk 2565.73ms] } d8e7 { [%eval 370] [%clk 2572.22ms] }
+12. h4f4 { [%eval 35] [%clk 2492.42ms] } f7f5 { [%eval 398] [%clk 2495.52ms] }
+13. e4g3 { [%eval -22] [%clk 2421.19ms] } h6g5 { [%eval 490] [%clk 2426.4ms] }
+14. f4d4 { [%eval -40] [%clk 2351.98ms] } f8g7 { [%eval 498] [%clk 2351.7ms] }
+15. d4d3 { [%eval -76] [%clk 2284.79ms] } c8e6 { [%eval 509] [%clk 2284.98ms] }
+16. g3e2 { [%eval -71] [%clk 2219.5ms] } a7a5 { [%eval 500] [%clk 2221.61ms] }
+17. d3b3 { [%eval 2] [%clk 2156.08ms] } a5a4 { [%eval 520] [%clk 2165.31ms] }
+18. b3d3 { [%eval -48] [%clk 2094.47ms] } e8f7 { [%eval 512] [%clk 2100.04ms] }
+19. e2d4 { [%eval -19] [%clk 2034.59ms] } b8a6 { [%eval 520] [%clk 2039.34ms] }
+20. d3a3 { [%eval -17] [%clk 1976.45ms] } a6b4 { [%eval 525] [%clk 1989.65ms] }
+21. e1d1 { [%eval -59] [%clk 1919.96ms] } g7d4 { [%eval 546] [%clk 1926.44ms] }
+22. e3d4 { [%eval -39] [%clk 1865.12ms] } f5f4 { [%eval 566] [%clk 1862.77ms] }
+23. a3f3 { [%eval -172] [%clk 1811.79ms] } a8e8 { [%eval 546] [%clk 1810.19ms] }
+24. a2a3 { [%eval -51] [%clk 1760.02ms] } e6f5 { [%eval 771] [%clk 1769.83ms] }
+25. a3b4 { [%eval -765] [%clk 1709.71ms] } h8h2 { [%eval 928] [%clk 1720.02ms] }
+26. h1g1 { [%eval -985] [%clk 1660.85ms] } h2g2 { [%eval 29988] [%clk 1661.13ms] }
+0-1 {Forced Mate in 12 moves}
 
 [Event "Heaven's Gate Grandmaster Tournament"]
 [Site "Localhost"]
 [Date "2026.08.13"]
 [Round "2"]
-[White "Stockfish 16.1 (3400 Elo)"]
+[White "Stockfish 16.1 (Uncapped ~3500 Elo)"]
 [Black "Master Edition"]
 [FEN "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"]
-1. a2a4 { [%eval 38] [%clk 3436.67ms] } b8c6 { [%eval 17] [%clk 3428.66ms] }
-2. c2c3 { [%eval -1] [%clk 3334.92ms] } g8f6 { [%eval 110] [%clk 3330.68ms] }
-3. d1f3 { [%eval -78] [%clk 3239.48ms] } d8b6 { [%eval 123] [%clk 3235.51ms] }
-4. f1e2 { [%eval -33] [%clk 3156.62ms] } c6a5 { [%eval 116] [%clk 3143.09ms] }
-5. a1a3 { [%eval -100] [%clk 3057.23ms] } a5b3 { [%eval 113] [%clk 3053.23ms] }
-6. e4e5 { [%eval -89] [%clk 2965.19ms] } b3c1 { [%eval 312] [%clk 2966.09ms] }
-7. a4a5 { [%eval -299] [%clk 2884.64ms] } b6b2 { [%eval 691] [%clk 2881.23ms] }
-8. g1h3 { [%eval -498] [%clk 2811.49ms] } b2b1 { [%eval 965] [%clk 2798.84ms] }
-9. e2d1 { [%eval -543] [%clk 2725.91ms] } c1d3 { [%eval 1127] [%clk 2718.9ms] }
-10. e1f1 { [%eval -649] [%clk 2641.35ms] } d3e5 { [%eval 1261] [%clk 2641.2ms] }
-11. f1e1 { [%eval -679] [%clk 2568.09ms] } e5f3 { [%eval 1770] [%clk 2565.75ms] }
-12. e1e2 { [%eval -760] [%clk 2498.21ms] } b1e4 { [%eval 24997] [%clk 2492.39ms] }
-0-1 {Forced Mate in 3 moves}
+1. g1f3 { [%eval 33] [%clk 3436.81ms] } b8c6 { [%eval -38] [%clk 3428.65ms] }
+2. d2d4 { [%eval 32] [%clk 3332.08ms] } c5d4 { [%eval 39] [%clk 3330.68ms] }
+3. f3d4 { [%eval 29] [%clk 3238.09ms] } d8a5 { [%eval -6] [%clk 3235.49ms] }
+4. b1c3 { [%eval 105] [%clk 3148.86ms] } g8f6 { [%eval -6] [%clk 3143.05ms] }
+5. d4b3 { [%eval 93] [%clk 3057.18ms] } a5e5 { [%eval 21] [%clk 3053.22ms] }
+6. f2f4 { [%eval 206] [%clk 2973.25ms] } e5e6 { [%eval 23] [%clk 2965.95ms] }
+7. e4e5 { [%eval 309] [%clk 2884.84ms] } c6b4 { [%eval 15] [%clk 2881.24ms] }
+8. a2a3 { [%eval 435] [%clk 2802.15ms] } b4d5 { [%eval -94] [%clk 2798.88ms] }
+9. b3d4 { [%eval 412] [%clk 2725.91ms] } d5c3 { [%eval -100] [%clk 2718.9ms] }
+10. b2c3 { [%eval 406] [%clk 2646.71ms] } e6g4 { [%eval -115] [%clk 2641.22ms] }
+11. e5f6 { [%eval 418] [%clk 2570.43ms] } g4h4 { [%eval -106] [%clk 2565.75ms] }
+12. g2g3 { [%eval 423] [%clk 2497.85ms] } h4f6 { [%eval -98] [%clk 2492.44ms] }
+13. c1e3 { [%eval 439] [%clk 2423.84ms] } f6b6 { [%eval -78] [%clk 2421.18ms] }
+14. f1g2 { [%eval 452] [%clk 2357.18ms] } b6a6 { [%eval -72] [%clk 2352ms] }
+15. d1d3 { [%eval 487] [%clk 2288.3ms] } a6d3 { [%eval -97] [%clk 2284.76ms] }
+16. c2d3 { [%eval 492] [%clk 2221.94ms] } a7a6 { [%eval -99] [%clk 2219.57ms] }
+17. a3a4 { [%eval 494] [%clk 2162.32ms] } e7e6 { [%eval -81] [%clk 2156.05ms] }
+18. e1d2 { [%eval 485] [%clk 2100.61ms] } a8b8 { [%eval -88] [%clk 2094.42ms] }
+19. a4a5 { [%eval 480] [%clk 2036.95ms] } f8d6 { [%eval -79] [%clk 2034.58ms] }
+20. d4e2 { [%eval 508] [%clk 1979.56ms] } e8g8 { [%eval -83] [%clk 1976.5ms] }
+21. h1b1 { [%eval 502] [%clk 1920.62ms] } d6e7 { [%eval -92] [%clk 1919.95ms] }
+22. h2h4 { [%eval 498] [%clk 1869.14ms] } f8e8 { [%eval -51] [%clk 1865.08ms] }
+23. e3a7 { [%eval 497] [%clk 1813.43ms] } b8a8 { [%eval -70] [%clk 1811.77ms] }
+24. a7d4 { [%eval 491] [%clk 1768.03ms] } a8b8 { [%eval -70] [%clk 1759.99ms] }
+25. g2f3 { [%eval 495] [%clk 1712.61ms] } g8h8 { [%eval -51] [%clk 1709.73ms] }
+26. d4a7 { [%eval 507] [%clk 1661.37ms] } b8a8 { [%eval -78] [%clk 1660.85ms] }
+27. a7f2 { [%eval 501] [%clk 1611.08ms] } d7d5 { [%eval -78] [%clk 1613.41ms] }
+28. f2d4 { [%eval 492] [%clk 1567.96ms] } e8d8 { [%eval -60] [%clk 1567.29ms] }
+29. e2g1 { [%eval 496] [%clk 1520.57ms] } a8b8 { [%eval -50] [%clk 1522.48ms] }
+30. d4e5 { [%eval 500] [%clk 1482.53ms] } b8a8 { [%eval -62] [%clk 1478.95ms] }
+31. f3h1 { [%eval 495] [%clk 1441.36ms] } e7d6 { [%eval -49] [%clk 1436.71ms] }
+32. g1f3 { [%eval 491] [%clk 1392.96ms] } d6c5 { [%eval -50] [%clk 1395.65ms] }
+33. d3d4 { [%eval 487] [%clk 1357.94ms] } c5e7 { [%eval -52] [%clk 1355.76ms] }
+34. e5c7 { [%eval 505] [%clk 1315.07ms] } d8d7 { [%eval -60] [%clk 1317.01ms] }
+35. c7b6 { [%eval 479] [%clk 1278.67ms] } e7d6 { [%eval -77] [%clk 1279.37ms] }
+36. c3c4 { [%eval 476] [%clk 1240.49ms] } d5c4 { [%eval -34] [%clk 1242.81ms] }
+37. f3e5 { [%eval 493] [%clk 1210.68ms] } d6e5 { [%eval -50] [%clk 1207.29ms] }
+38. f4e5 { [%eval 491] [%clk 1171.68ms] } a8b8 { [%eval -86] [%clk 1172.76ms] }
+39. a1a4 { [%eval 513] [%clk 1138.23ms] } d7d5 { [%eval -113] [%clk 1139.25ms] }
+40. a4c4 { [%eval 555] [%clk 1106.58ms] } d5b5 { [%eval -232] [%clk 1106.67ms] }
+41. b1b5 { [%eval 616] [%clk 1079.97ms] } a6b5 { [%eval -301] [%clk 1075.06ms] }
+42. c4c7 { [%eval 622] [%clk 1043.97ms] } h8g8 { [%eval -567] [%clk 1044.31ms] }
+43. a5a6 { [%eval 664] [%clk 1017.57ms] } h7h6 { [%eval -611] [%clk 1014.44ms] }
+44. a6a7 { [%eval 696] [%clk 983.654ms] } b8a8 { [%eval -900] [%clk 985.447ms] }
+45. d2c3 { [%eval 695] [%clk 958.681ms] } g7g6 { [%eval -710] [%clk 957.269ms] }
+46. h1e4 { [%eval 752] [%clk 929.179ms] } g8g7 { [%eval -689] [%clk 929.899ms] }
+47. c3b4 { [%eval 757] [%clk 906.299ms] } g6g5 { [%eval -704] [%clk 903.329ms] }
+48. h4h5 { [%eval 843] [%clk 882.884ms] } g7h8 { [%eval -977] [%clk 877.523ms] }
+49. b4b5 { [%eval 898] [%clk 849.256ms] } h8g7 { [%eval -1193] [%clk 852.431ms] }
+50. b5c5 { [%eval 29978] [%clk 825.271ms] } 1-0 {Forced Mate in 22 moves}
 
 [Event "Heaven's Gate Grandmaster Tournament"]
 [Site "Localhost"]
 [Date "2026.08.13"]
 [Round "3"]
 [White "Master Edition"]
-[Black "Stockfish 16.1 (3400 Elo)"]
+[Black "Stockfish 16.1 (Uncapped ~3500 Elo)"]
 [FEN "rnbqkb1r/pp2pppp/3p1n2/8/3NP3/8/PPP2PPP/RNBQKB1R w KQkq - 0 5"]
-1. b1c3 { [%eval 25] [%clk 3428.7ms] } e7e5 { [%eval -26] [%clk 3431.2ms] }
-2. d4f3 { [%eval 41] [%clk 3330.69ms] } f8e7 { [%eval -14] [%clk 3336.68ms] }
-3. c1e3 { [%eval 41] [%clk 3235.49ms] } b8c6 { [%eval 1] [%clk 3244.42ms] }
-4. f1b5 { [%eval 42] [%clk 3143.05ms] } d8c7 { [%eval 13] [%clk 3144.77ms] }
-5. e1g1 { [%eval 38] [%clk 3053.24ms] } e8g8 { [%eval -18] [%clk 3064.05ms] }
-6. c3d5 { [%eval 38] [%clk 2966.02ms] } c7d7 { [%eval 9] [%clk 2975.94ms] }
-7. d1d3 { [%eval 82] [%clk 2881.19ms] } d7d8 { [%eval -77] [%clk 2886.18ms] }
-8. f1d1 { [%eval 86] [%clk 2798.84ms] } f6g4 { [%eval -21] [%clk 2800.97ms] }
-9. d5e7 { [%eval 203] [%clk 2718.88ms] } d8e7 { [%eval -180] [%clk 2722.63ms] }
-10. b5c6 { [%eval 216] [%clk 2641.2ms] } g4e3 { [%eval -117] [%clk 2641.48ms] }
-11. f2e3 { [%eval 247] [%clk 2565.71ms] } c8e6 { [%eval -101] [%clk 2567.47ms] }
-12. c6d5 { [%eval 328] [%clk 2492.39ms] } f7f5 { [%eval -472] [%clk 2497.57ms] }
-13. e4f5 { [%eval 621] [%clk 2421.16ms] } e5e4 { [%eval -513] [%clk 2427.86ms] }
-14. d3e4 { [%eval 999] [%clk 2351.97ms] } e6d5 { [%eval -650] [%clk 2355.16ms] }
-15. e4e7 { [%eval 1353] [%clk 2284.86ms] } d5f3 { [%eval -678] [%clk 2288.32ms] }
-16. g2f3 { [%eval 1390] [%clk 2219.47ms] } a8c8 { [%eval -674] [%clk 2220.57ms] }
-17. d1d6 { [%eval 1633] [%clk 2156.05ms] } c8c6 { [%eval -776] [%clk 2158.92ms] }
-18. d6d7 { [%eval 24993] [%clk 2094.42ms] } 1-0 {Forced Mate in 7 moves}
+1. b1c3 { [%eval 31] [%clk 3428.68ms] } a7a6 { [%eval -36] [%clk 3429.97ms] }
+2. c1g5 { [%eval 80] [%clk 3330.71ms] } e7e6 { [%eval -32] [%clk 3337.69ms] }
+3. f1e2 { [%eval 89] [%clk 3235.51ms] } f8e7 { [%eval 6] [%clk 3240.47ms] }
+4. d1d3 { [%eval 82] [%clk 3143.04ms] } b8d7 { [%eval 7] [%clk 3147.84ms] }
+5. e1c1 { [%eval 73] [%clk 3053.21ms] } d8c7 { [%eval 0] [%clk 3057.2ms] }
+6. d3e3 { [%eval 87] [%clk 2965.97ms] } b7b5 { [%eval 71] [%clk 2974.58ms] }
+7. d1d2 { [%eval 131] [%clk 2881.22ms] } b5b4 { [%eval 146] [%clk 2886.44ms] }
+8. c3d1 { [%eval 71] [%clk 2798.87ms] } c8b7 { [%eval 136] [%clk 2811.42ms] }
+9. g5f6 { [%eval 50] [%clk 2718.9ms] } d7f6 { [%eval 137] [%clk 2728.81ms] }
+10. e2f3 { [%eval 64] [%clk 2641.21ms] } e8g8 { [%eval 204] [%clk 2641.57ms] }
+11. d2e2 { [%eval 77] [%clk 2565.75ms] } a6a5 { [%eval 269] [%clk 2568.84ms] }
+12. e2e1 { [%eval 78] [%clk 2492.43ms] } f8c8 { [%eval 343] [%clk 2498.16ms] }
+13. e3d2 { [%eval 61] [%clk 2421.19ms] } a5a4 { [%eval 368] [%clk 2436.27ms] }
+14. e1e2 { [%eval 43] [%clk 2351.99ms] } d6d5 { [%eval 401] [%clk 2363.38ms] }
+15. e4d5 { [%eval 46] [%clk 2284.8ms] } b7d5 { [%eval 419] [%clk 2294.43ms] }
+16. d1e3 { [%eval 50] [%clk 2219.5ms] } d5f3 { [%eval 475] [%clk 2222.55ms] }
+17. g2f3 { [%eval 6] [%clk 2156.07ms] } c8d8 { [%eval 495] [%clk 2158.49ms] }
+18. c2c3 { [%eval -105] [%clk 2094.45ms] } a4a3 { [%eval 505] [%clk 2103.64ms] }
+19. c1b1 { [%eval -203] [%clk 2034.6ms] } a3b2 { [%eval 558] [%clk 2038.08ms] }
+20. d2d3 { [%eval -285] [%clk 1976.45ms] } b4c3 { [%eval 602] [%clk 1983.76ms] }
+21. h1d1 { [%eval -379] [%clk 1919.95ms] } f6d5 { [%eval 607] [%clk 1922.98ms] }
+22. e3d5 { [%eval -360] [%clk 1865.1ms] } d8d5 { [%eval 658] [%clk 1862.81ms] }
+23. e2e4 { [%eval -586] [%clk 1811.78ms] } c7a5 { [%eval 826] [%clk 1811.85ms] }
+24. d3c4 { [%eval -1006] [%clk 1760.03ms] } c3c2 { [%eval 874] [%clk 1769.69ms] }
+25. b1c2 { [%eval -1027] [%clk 1709.72ms] } d5c5 { [%eval 979] [%clk 1720.15ms] }
+26. d4b3 { [%eval -1027] [%clk 1660.87ms] } a5a2 { [%eval 1413] [%clk 1661.66ms] }
+27. d1b1 { [%eval -1209] [%clk 1613.39ms] } c5c4 { [%eval 29977] [%clk 1616.97ms] }
+0-1 {Forced Mate in 23 moves}
 
 [Event "Heaven's Gate Grandmaster Tournament"]
 [Site "Localhost"]
 [Date "2026.08.13"]
 [Round "4"]
-[White "Stockfish 16.1 (3400 Elo)"]
+[White "Stockfish 16.1 (Uncapped ~3500 Elo)"]
 [Black "Master Edition"]
 [FEN "r1bqkb1r/pp1ppp1p/2n2np1/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6"]
-1. d4b5 { [%eval 43] [%clk 3434.18ms] } f8g7 { [%eval -32] [%clk 3428.64ms] }
-2. f2f4 { [%eval -25] [%clk 3338.4ms] } e8g8 { [%eval 11] [%clk 3330.67ms] }
-3. f1e2 { [%eval -74] [%clk 3238.23ms] } d8a5 { [%eval 23] [%clk 3235.5ms] }
-4. b5a3 { [%eval -42] [%clk 3148.8ms] } f6e4 { [%eval 290] [%clk 3143.04ms] }
-5. a3b1 { [%eval -324] [%clk 3058.04ms] } e4c3 { [%eval 304] [%clk 3053.22ms] }
-6. b2c3 { [%eval -286] [%clk 2972.21ms] } g7c3 { [%eval 309] [%clk 2965.95ms] }
-7. c1d2 { [%eval -251] [%clk 2885.5ms] } c3b4 { [%eval 348] [%clk 2881.23ms] }
-8. c2c4 { [%eval -298] [%clk 2803.49ms] } a5f5 { [%eval 456] [%clk 2798.88ms] }
-9. a2a3 { [%eval -268] [%clk 2725.59ms] } b4d6 { [%eval 437] [%clk 2718.9ms] }
-10. b1c3 { [%eval -307] [%clk 2647.44ms] } d6f4 { [%eval 506] [%clk 2641.22ms] }
-11. a1b1 { [%eval -321] [%clk 2567.39ms] } f5e5 { [%eval 568] [%clk 2565.72ms] }
-12. e1g1 { [%eval -336] [%clk 2491.99ms] } e5d4 { [%eval 877] [%clk 2492.41ms] }
-13. g1h1 { [%eval -544] [%clk 2430.96ms] } d4d2 { [%eval 878] [%clk 2421.2ms] }
-14. c4c5 { [%eval -548] [%clk 2353.2ms] } d2c3 { [%eval 959] [%clk 2352.06ms] }
-15. d1d5 { [%eval -537] [%clk 2287.74ms] } f4e3 { [%eval 1286] [%clk 2284.76ms] }
-16. f1f7 { [%eval -680] [%clk 2221.86ms] } f8f7 { [%eval 1692] [%clk 2219.49ms] }
-17. d5a2 { [%eval -750] [%clk 2161.89ms] } e3c1 { [%eval 1839] [%clk 2156.18ms] }
-18. g2g3 { [%eval -29980] [%clk 2095.78ms] } 0-1 {Forced Mate in 20 moves}
+1. f1c4 { [%eval 40] [%clk 3436.11ms] } d8b6 { [%eval -48] [%clk 3428.66ms] }
+2. d4c6 { [%eval 44] [%clk 3340.33ms] } b6c6 { [%eval -31] [%clk 3330.8ms] }
+3. d1d4 { [%eval 184] [%clk 3244.32ms] } h8g8 { [%eval -41] [%clk 3235.5ms] }
+4. c4b5 { [%eval 280] [%clk 3150.38ms] } c6e6 { [%eval -32] [%clk 3143.06ms] }
+5. e4e5 { [%eval 336] [%clk 3059.51ms] } f8g7 { [%eval -30] [%clk 3053.22ms] }
+6. e1g1 { [%eval 339] [%clk 2973.06ms] } f6g4 { [%eval -31] [%clk 2965.96ms] }
+7. f2f4 { [%eval 350] [%clk 2884.34ms] } e6f5 { [%eval -31] [%clk 2881.21ms] }
+8. h2h3 { [%eval 451] [%clk 2801.42ms] } g4h6 { [%eval -24] [%clk 2798.88ms] }
+9. c3d5 { [%eval 472] [%clk 2726.18ms] } f5c2 { [%eval -44] [%clk 2718.91ms] }
+10. c1e3 { [%eval 454] [%clk 2647.17ms] } h6f5 { [%eval 200] [%clk 2641.21ms] }
+11. d4b4 { [%eval 470] [%clk 2571.53ms] } a7a5 { [%eval 10] [%clk 2565.72ms] }
+12. b4a3 { [%eval 471] [%clk 2510.16ms] } e7e6 { [%eval -2] [%clk 2492.43ms] }
+13. f1c1 { [%eval 519] [%clk 2432.08ms] } c2c1 { [%eval -70] [%clk 2421.19ms] }
+14. a1c1 { [%eval 523] [%clk 2352.77ms] } e6d5 { [%eval -70] [%clk 2351.99ms] }
+15. e3b6 { [%eval 523] [%clk 2296.95ms] } g7h6 { [%eval -50] [%clk 2284.83ms] }
+16. g2g3 { [%eval 530] [%clk 2221.11ms] } h6f8 { [%eval -22] [%clk 2219.51ms] }
+17. a3c3 { [%eval 536] [%clk 2166.84ms] } e8e7 { [%eval -37] [%clk 2156.11ms] }
+18. g3g4 { [%eval 642] [%clk 2102.14ms] } f5h4 { [%eval -50] [%clk 2094.51ms] }
+19. c3c7 { [%eval 717] [%clk 2034.86ms] } e7e6 { [%eval -314] [%clk 2034.71ms] }
+20. b6f2 { [%eval 765] [%clk 1974.53ms] } h4f3 { [%eval -362] [%clk 1976.49ms] }
+21. g1g2 { [%eval 868] [%clk 1917.94ms] } f8b4 { [%eval -371] [%clk 1919.99ms] }
+22. f2c5 { [%eval 29991] [%clk 1865.96ms] } 1-0 {Forced Mate in 9 moves}
 
 [Event "Heaven's Gate Grandmaster Tournament"]
 [Site "Localhost"]
 [Date "2026.08.13"]
 [Round "5"]
 [White "Master Edition"]
-[Black "Stockfish 16.1 (3400 Elo)"]
+[Black "Stockfish 16.1 (Uncapped ~3500 Elo)"]
 [FEN "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3"]
-g8f6 { [%eval -28] [%clk 3436.25ms] }
-1. b1c3 { [%eval 5] [%clk 3428.65ms] } f8c5 { [%eval -3] [%clk 3339.76ms] }
-2. f3g5 { [%eval 6] [%clk 3330.7ms] } c5b4 { [%eval 91] [%clk 3236.9ms] }
-3. b5c4 { [%eval 25] [%clk 3235.51ms] } h8f8 { [%eval 49] [%clk 3157ms] }
-4. c3b5 { [%eval 27] [%clk 3143.03ms] } h7h6 { [%eval 62] [%clk 3058.03ms] }
-5. g5f7 { [%eval 36] [%clk 3053.24ms] } f6e4 { [%eval 236] [%clk 2972.18ms] }
-6. d1h5 { [%eval 653] [%clk 2966.02ms] } a7a6 { [%eval -461] [%clk 2886.29ms] }
-7. f7h6 { [%eval 24993] [%clk 2881.19ms] } 1-0 {Forced Mate in 7 moves}
+g8f6 { [%eval -27] [%clk 3436.84ms] }
+1. b1c3 { [%eval 5] [%clk 3428.68ms] } c6d4 { [%eval -1] [%clk 3335.02ms] }
+2. b5c4 { [%eval 5] [%clk 3330.7ms] } d7d6 { [%eval -17] [%clk 3236.92ms] }
+3. f3g5 { [%eval 48] [%clk 3235.55ms] } d6d5 { [%eval 6] [%clk 3150.75ms] }
+4. e4d5 { [%eval 50] [%clk 3143.06ms] } h7h6 { [%eval 1] [%clk 3055.31ms] }
+5. g5f3 { [%eval 131] [%clk 3053.22ms] } c8g4 { [%eval 4] [%clk 2970.1ms] }
+6. e1g1 { [%eval 131] [%clk 2965.97ms] } g4f3 { [%eval 173] [%clk 2888.7ms] }
+7. g2f3 { [%eval 69] [%clk 2881.21ms] } d8d7 { [%eval 189] [%clk 2802.38ms] }
+8. g1g2 { [%eval 74] [%clk 2798.92ms] } f6h7 { [%eval 196] [%clk 2721.45ms] }
+9. c3e2 { [%eval 152] [%clk 2718.94ms] } h7g5 { [%eval 193] [%clk 2657.11ms] }
+10. e2d4 { [%eval 55] [%clk 2641.26ms] } e5d4 { [%eval 205] [%clk 2572.5ms] }
+11. g2h1 { [%eval -43] [%clk 2565.76ms] } e8c8 { [%eval 234] [%clk 2507.67ms] }
+12. f3f4 { [%eval 80] [%clk 2492.52ms] } f8d6 { [%eval 254] [%clk 2422.76ms] }
+13. f4g5 { [%eval 118] [%clk 2421.22ms] } h6g5 { [%eval 392] [%clk 2361.94ms] }
+14. f2f4 { [%eval 116] [%clk 2352ms] } h8h4 { [%eval 430] [%clk 2285.33ms] }
+15. d2d3 { [%eval 177] [%clk 2284.78ms] } d8h8 { [%eval 449] [%clk 2227.95ms] }
+16. f1f2 { [%eval -20] [%clk 2219.49ms] } g5f4 { [%eval 469] [%clk 2163.7ms] }
+17. d1f3 { [%eval -27] [%clk 2156.07ms] } g7g5 { [%eval 519] [%clk 2098.11ms] }
+18. c4b3 { [%eval 59] [%clk 2094.44ms] } g5g4 { [%eval 602] [%clk 2032.63ms] }
+19. f3e4 { [%eval -126] [%clk 2034.58ms] } g4g3 { [%eval 972] [%clk 1980.57ms] }
+20. f2g2 { [%eval -242] [%clk 1976.45ms] } d7g4 { [%eval 29985] [%clk 1930.85ms] }
+0-1 {Forced Mate in 15 moves}
 
 [Event "Heaven's Gate Grandmaster Tournament"]
 [Site "Localhost"]
 [Date "2026.08.13"]
 [Round "6"]
-[White "Stockfish 16.1 (3400 Elo)"]
+[White "Stockfish 16.1 (Uncapped ~3500 Elo)"]
 [Black "Master Edition"]
 [FEN "r1bqkb1r/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"]
-1. e1g1 { [%eval 504] [%clk 3432.47ms] } c6d4 { [%eval -331] [%clk 3428.65ms] }
-2. b5c4 { [%eval 500] [%clk 3332.75ms] } d8f6 { [%eval -324] [%clk 3330.68ms] }
-3. f3e1 { [%eval 516] [%clk 3237.78ms] } f6c6 { [%eval -283] [%clk 3235.51ms] }
-4. d2d3 { [%eval 545] [%clk 3147.73ms] } c6c5 { [%eval -298] [%clk 3143.05ms] }
-5. a2a4 { [%eval 605] [%clk 3058.57ms] } f8e7 { [%eval -278] [%clk 3053.22ms] }
-6. c1e3 { [%eval 595] [%clk 2967.91ms] } c5b4 { [%eval -263] [%clk 2965.97ms] }
-7. g2g3 { [%eval 577] [%clk 2885.72ms] } b4b2 { [%eval -239] [%clk 2881.23ms] }
-8. a1a2 { [%eval 494] [%clk 2802.07ms] } b2b6 { [%eval -251] [%clk 2798.99ms] }
-9. b1d2 { [%eval 507] [%clk 2725.3ms] } b6d6 { [%eval -93] [%clk 2718.89ms] }
-10. c2c3 { [%eval 517] [%clk 2647.84ms] } d4c6 { [%eval -97] [%clk 2641.21ms] }
-11. c4d5 { [%eval 495] [%clk 2566.24ms] } c6a5 { [%eval -86] [%clk 2565.73ms] }
-12. f2f4 { [%eval 467] [%clk 2492.83ms] } e7f6 { [%eval -89] [%clk 2492.45ms] }
-13. f1f3 { [%eval 534] [%clk 2428.81ms] } e5f4 { [%eval -50] [%clk 2421.19ms] }
-14. f3f4 { [%eval 490] [%clk 2354.92ms] } e8g8 { [%eval -36] [%clk 2351.99ms] }
-15. e1g2 { [%eval 465] [%clk 2288.6ms] } c7c6 { [%eval 39] [%clk 2284.78ms] }
-16. d2c4 { [%eval 386] [%clk 2223.23ms] } a5c4 { [%eval 51] [%clk 2219.52ms] }
-17. d5c4 { [%eval 476] [%clk 2162.26ms] } f6c3 { [%eval 50] [%clk 2156.07ms] }
-18. f4f1 { [%eval 498] [%clk 2099.93ms] } c3f6 { [%eval 50] [%clk 2094.51ms] }
-19. g2f4 { [%eval 469] [%clk 2036.88ms] } f6g5 { [%eval 55] [%clk 2034.66ms] }
-20. h2h4 { [%eval 401] [%clk 1981.23ms] } g5h6 { [%eval 85] [%clk 1976.45ms] }
-21. a2f2 { [%eval 398] [%clk 1920.69ms] } g8h8 { [%eval 91] [%clk 1919.96ms] }
-22. a4a5 { [%eval 444] [%clk 1867.73ms] } d6e7 { [%eval 108] [%clk 1865.11ms] }
-23. d1d2 { [%eval 379] [%clk 1815.75ms] } e7e5 { [%eval 68] [%clk 1811.79ms] }
-24. d2c1 { [%eval 433] [%clk 1764.14ms] } d7d5 { [%eval 111] [%clk 1760.03ms] }
-25. e4d5 { [%eval 359] [%clk 1712.33ms] } c6d5 { [%eval 114] [%clk 1709.7ms] }
-26. c4a2 { [%eval 365] [%clk 1671.23ms] } c8d7 { [%eval 115] [%clk 1660.84ms] }
-27. d3d4 { [%eval 388] [%clk 1611.27ms] } e5d6 { [%eval 131] [%clk 1613.38ms] }
-28. e3d2 { [%eval 373] [%clk 1567.04ms] } d7b5 { [%eval 123] [%clk 1567.27ms] }
-29. f1e1 { [%eval 334] [%clk 1522.23ms] } f8e8 { [%eval 126] [%clk 1522.47ms] }
-30. g1g2 { [%eval 354] [%clk 1483.68ms] } b5c6 { [%eval 131] [%clk 1478.96ms] }
-31. e1e8 { [%eval 364] [%clk 1434.42ms] } a8e8 { [%eval 128] [%clk 1436.71ms] }
-32. g2h2 { [%eval 350] [%clk 1402ms] } h6f4 { [%eval 143] [%clk 1395.64ms] }
-33. d2f4 { [%eval 328] [%clk 1356.53ms] } d6b4 { [%eval 112] [%clk 1355.75ms] }
-34. f4e5 { [%eval 350] [%clk 1317.73ms] } f7f6 { [%eval 156] [%clk 1317.04ms] }
-35. e5f4 { [%eval 167] [%clk 1280.16ms] } b4a5 { [%eval 198] [%clk 1279.35ms] }
-36. a2b3 { [%eval 208] [%clk 1241.57ms] } e8e7 { [%eval 198] [%clk 1242.78ms] }
-37. b3a2 { [%eval 227] [%clk 1211.67ms] } c6d7 { [%eval 211] [%clk 1207.27ms] }
-38. a2b3 { [%eval 239] [%clk 1170.15ms] } e7e8 { [%eval 197] [%clk 1172.78ms] }
-39. b3d1 { [%eval 239] [%clk 1136.29ms] } e8e4 { [%eval 223] [%clk 1139.24ms] }
-40. f2d2 { [%eval 252] [%clk 1109.63ms] } e4e7 { [%eval 209] [%clk 1106.68ms] }
-41. d2c2 { [%eval 248] [%clk 1079.65ms] } d7e8 { [%eval 199] [%clk 1075.05ms] }
-42. c1b1 { [%eval 280] [%clk 1046.55ms] } g7g6 { [%eval 171] [%clk 1044.38ms] }
-43. b1c1 { [%eval 306] [%clk 1017.6ms] } e8d7 { [%eval 135] [%clk 1014.44ms] }
-44. f4h6 { [%eval 343] [%clk 995.846ms] } a5a6 { [%eval 161] [%clk 985.436ms] }
-45. c1f4 { [%eval 609] [%clk 959.364ms] } h8g8 { [%eval 116] [%clk 957.277ms] }
-46. f4f2 { [%eval 454] [%clk 929.489ms] } d7f5 { [%eval 132] [%clk 929.915ms] }
-47. c2d2 { [%eval 273] [%clk 905.273ms] } f5e4 { [%eval 166] [%clk 903.331ms] }
-48. d1g4 { [%eval 226] [%clk 879.227ms] } e4b1 { [%eval 137] [%clk 877.503ms] }
-49. d2b2 { [%eval 379] [%clk 848.781ms] } b1d3 { [%eval 151] [%clk 852.422ms] }
-50. g4f3 { [%eval 393] [%clk 833.681ms] } d3e4 { [%eval 127] [%clk 828.043ms] }
-51. f3e2 { [%eval 283] [%clk 801.13ms] } a6c6 { [%eval 165] [%clk 804.364ms] }
-52. f2f4 { [%eval 288] [%clk 781.463ms] } e7e8 { [%eval 166] [%clk 781.465ms] }
-53. f4f2 { [%eval 337] [%clk 761.672ms] } e8e6 { [%eval 140] [%clk 759.136ms] }
-54. e2g4 { [%eval 289] [%clk 734.684ms] } f6f5 { [%eval 155] [%clk 737.332ms] }
-55. g4f3 { [%eval 273] [%clk 714.913ms] } c6a6 { [%eval 149] [%clk 716.216ms] }
-56. h6f4 { [%eval 326] [%clk 693.889ms] } e6e8 { [%eval 137] [%clk 695.737ms] }
-57. f4g5 { [%eval 296] [%clk 673.191ms] } e4f3 { [%eval 135] [%clk 675.838ms] }
-58. f2f3 { [%eval 257] [%clk 664.638ms] } e8e4 { [%eval 139] [%clk 656.624ms] }
-59. b2c2 { [%eval 270] [%clk 639.487ms] } a6b6 { [%eval 182] [%clk 637.865ms] }
-60. g5f4 { [%eval 744] [%clk 623.004ms] } b6d4 { [%eval 155] [%clk 619.527ms] }
-61. f3b3 { [%eval 261] [%clk 598.186ms] } b7b6 { [%eval 235] [%clk 601.816ms] }
-62. b3a3 { [%eval 257] [%clk 584.944ms] } e4e8 { [%eval 80] [%clk 584.619ms] }
-63. a3d6 { [%eval 268] [%clk 566.255ms] } d4d3 { [%eval 233] [%clk 567.898ms] }
-64. c2g2 { [%eval 220] [%clk 550.438ms] } d3b5 { [%eval 173] [%clk 551.667ms] }
-65. g2f2 { [%eval 187] [%clk 536.494ms] } g8f7 { [%eval 229] [%clk 536.003ms] }
-66. f4g5 { [%eval 188] [%clk 523.513ms] } e8e2 { [%eval 132] [%clk 520.551ms] }
-67. h2g1 { [%eval 203] [%clk 506.223ms] } b5b1 { [%eval 202] [%clk 505.667ms] }
-68. f2f1 { [%eval 0] [%clk 495.637ms] } b1e4 { [%eval 85] [%clk 491.218ms] }
-69. d6f6 { [%eval 0] [%clk 476.726ms] } f7g8 { [%eval 128] [%clk 477.233ms] }
-70. f6h8 { [%eval 0] [%clk 460.734ms] } g8h8 { [%eval 2234] [%clk 463.508ms] }
-71. f1f2 { [%eval -29993] [%clk 447.515ms] } 0-1 {Forced Mate in 7 moves}
+1. e1g1 { [%eval 494] [%clk 3433.03ms] } c6d4 { [%eval -331] [%clk 3428.67ms] }
+2. f3d4 { [%eval 494] [%clk 3341.42ms] } e5d4 { [%eval -318] [%clk 3330.67ms] }
+3. b5e2 { [%eval 495] [%clk 3238.3ms] } f8d6 { [%eval -263] [%clk 3235.5ms] }
+4. f2f4 { [%eval 521] [%clk 3149.68ms] } d6c5 { [%eval -276] [%clk 3143.06ms] }
+5. d2d3 { [%eval 516] [%clk 3056.71ms] } d8f6 { [%eval -272] [%clk 3053.21ms] }
+6. b1d2 { [%eval 540] [%clk 2969.53ms] } e8g8 { [%eval -272] [%clk 2965.97ms] }
+7. g1h1 { [%eval 533] [%clk 2885.87ms] } f6c6 { [%eval -279] [%clk 2881.24ms] }
+8. d2b3 { [%eval 532] [%clk 2798.68ms] } c5b6 { [%eval -287] [%clk 2798.9ms] }
+9. a2a4 { [%eval 504] [%clk 2725.1ms] } g8h8 { [%eval -259] [%clk 2718.91ms] }
+10. a4a5 { [%eval 599] [%clk 2650.67ms] } b6c5 { [%eval -258] [%clk 2641.23ms] }
+11. e2f3 { [%eval 587] [%clk 2575.43ms] } a8b8 { [%eval -264] [%clk 2565.81ms] }
+12. f4f5 { [%eval 606] [%clk 2506.24ms] } c6b5 { [%eval -238] [%clk 2492.5ms] }
+13. b3c5 { [%eval 617] [%clk 2420.2ms] } b5c5 { [%eval -260] [%clk 2421.22ms] }
+14. b2b4 { [%eval 594] [%clk 2351.21ms] } c5d6 { [%eval -198] [%clk 2351.99ms] }
+15. d1e1 { [%eval 607] [%clk 2290.13ms] } f8e8 { [%eval -225] [%clk 2284.8ms] }
+16. e1h4 { [%eval 634] [%clk 2224.19ms] } d6b4 { [%eval -119] [%clk 2219.53ms] }
+17. f3h5 { [%eval 668] [%clk 2153.84ms] } b4f8 { [%eval -279] [%clk 2156.07ms] }
+18. f5f6 { [%eval 655] [%clk 2099.1ms] } g7g6 { [%eval -112] [%clk 2094.47ms] }
+19. h5g6 { [%eval 748] [%clk 2041.29ms] } f8g8 { [%eval -956] [%clk 2034.64ms] }
+20. g6h5 { [%eval 820] [%clk 1975.08ms] } g8f8 { [%eval -593] [%clk 1976.46ms] }
+21. h5f3 { [%eval 805] [%clk 1918.24ms] } f8c5 { [%eval -273] [%clk 1919.96ms] }
+22. c1h6 { [%eval 29978] [%clk 1864.61ms] } 1-0 {Forced Mate in 22 moves}
 
 [Event "Heaven's Gate Grandmaster Tournament"]
 [Site "Localhost"]
 [Date "2026.08.13"]
 [Round "7"]
 [White "Master Edition"]
-[Black "Stockfish 16.1 (3400 Elo)"]
+[Black "Stockfish 16.1 (Uncapped ~3500 Elo)"]
 [FEN "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"]
-1. b1c3 { [%eval 1] [%clk 3428.66ms] } f8b4 { [%eval -31] [%clk 3436.62ms] }
-2. g1f3 { [%eval 13] [%clk 3330.67ms] } d7d5 { [%eval -51] [%clk 3344.29ms] }
-3. e4d5 { [%eval 45] [%clk 3235.63ms] } g8f6 { [%eval -36] [%clk 3235.68ms] }
-4. d5e6 { [%eval 140] [%clk 3143.04ms] } c8e6 { [%eval -110] [%clk 3158.51ms] }
-5. d1e2 { [%eval 137] [%clk 3053.32ms] } b8c6 { [%eval 5] [%clk 3062.11ms] }
-6. f3g5 { [%eval 147] [%clk 2965.97ms] } e8g8 { [%eval -67] [%clk 2973.66ms] }
-7. g5e6 { [%eval 251] [%clk 2881.25ms] } d8d7 { [%eval -82] [%clk 2887.68ms] }
-8. e6f8 { [%eval 598] [%clk 2798.91ms] } a8f8 { [%eval -316] [%clk 2810.21ms] }
-9. c3d1 { [%eval 595] [%clk 2718.89ms] } f8d8 { [%eval -361] [%clk 2722.89ms] }
-10. d1e3 { [%eval 601] [%clk 2641.23ms] } d7e6 { [%eval -385] [%clk 2639.8ms] }
-11. e2b5 { [%eval 642] [%clk 2565.74ms] } d8e8 { [%eval -343] [%clk 2567.08ms] }
-12. c2c3 { [%eval 761] [%clk 2492.41ms] } e6g4 { [%eval -430] [%clk 2497.85ms] }
-13. b5b7 { [%eval 1026] [%clk 2421.19ms] } g4d7 { [%eval -575] [%clk 2419.53ms] }
-14. f1b5 { [%eval 1062] [%clk 2352.01ms] } h7h6 { [%eval -604] [%clk 2354.74ms] }
-15. b5c6 { [%eval 1548] [%clk 2284.76ms] } d7d6 { [%eval -716] [%clk 2289.68ms] }
-16. c6e8 { [%eval 1715] [%clk 2219.48ms] } d6e7 { [%eval -767] [%clk 2220.59ms] }
-17. e8f7 { [%eval 1956] [%clk 2156.12ms] } g8f7 { [%eval -777] [%clk 2165.74ms] }
-18. c3b4 { [%eval 1949] [%clk 2094.45ms] } f7g8 { [%eval -800] [%clk 2096.3ms] }
-19. b7a7 { [%eval 2030] [%clk 2034.57ms] } g8h7 { [%eval -788] [%clk 2033.13ms] }
-20. a7c5 { [%eval 2035] [%clk 1976.42ms] } e7e6 { [%eval -829] [%clk 1979.33ms] }
-21. c5c7 { [%eval 2198] [%clk 1919.93ms] } f6e4 { [%eval -843] [%clk 1919.46ms] }
-22. e1g1 { [%eval 2194] [%clk 1865.09ms] } e4f6 { [%eval -832] [%clk 1866.34ms] }
-23. f1e1 { [%eval 2216] [%clk 1811.77ms] } f6d5 { [%eval -831] [%clk 1810.46ms] }
-24. c7c4 { [%eval 2466] [%clk 1760ms] } e6d6 { [%eval -991] [%clk 1761.4ms] }
-25. e3d5 { [%eval 2804] [%clk 1709.71ms] } d6d7 { [%eval -1048] [%clk 1712.45ms] }
-26. c4d3 { [%eval 24989] [%clk 1660.91ms] } 1-0 {Forced Mate in 11 moves}
+1. b1c3 { [%eval 1] [%clk 3428.68ms] } d7d5 { [%eval -34] [%clk 3436.63ms] }
+2. e4d5 { [%eval 59] [%clk 3330.7ms] } e6d5 { [%eval 3] [%clk 3345.44ms] }
+3. f1b5 { [%eval 61] [%clk 3235.52ms] } c7c6 { [%eval 29] [%clk 3236.09ms] }
+4. b5d3 { [%eval 52] [%clk 3143.05ms] } b8d7 { [%eval 60] [%clk 3146.16ms] }
+5. g1f3 { [%eval 56] [%clk 3053.22ms] } d7c5 { [%eval 79] [%clk 3065.59ms] }
+6. e1g1 { [%eval 51] [%clk 2965.96ms] } c5d3 { [%eval 76] [%clk 2974.16ms] }
+7. d1e2 { [%eval 45] [%clk 2881.23ms] } c8e6 { [%eval 85] [%clk 2887.77ms] }
+8. e2d3 { [%eval 44] [%clk 2798.88ms] } f8d6 { [%eval 74] [%clk 2808.99ms] }
+9. f3d4 { [%eval 45] [%clk 2718.94ms] } e6d7 { [%eval 83] [%clk 2722.95ms] }
+10. d3e2 { [%eval 42] [%clk 2641.25ms] } g8e7 { [%eval 144] [%clk 2646.9ms] }
+11. f1e1 { [%eval 34] [%clk 2565.75ms] } d8b6 { [%eval 158] [%clk 2571.79ms] }
+12. e2d3 { [%eval 35] [%clk 2492.48ms] } e8g8 { [%eval 194] [%clk 2497.26ms] }
+13. c3e2 { [%eval 32] [%clk 2421.2ms] } c6c5 { [%eval 303] [%clk 2421.3ms] }
+14. d4f3 { [%eval 7] [%clk 2352ms] } c5c4 { [%eval 330] [%clk 2365.32ms] }
+15. d3c3 { [%eval 18] [%clk 2284.77ms] } d6b4 { [%eval 320] [%clk 2285.01ms] }
+16. c3e5 { [%eval 50] [%clk 2219.48ms] } f7f6 { [%eval 319] [%clk 2230.5ms] }
+17. e5g3 { [%eval 45] [%clk 2156.06ms] } e7f5 { [%eval 389] [%clk 2155.19ms] }
+18. g3h3 { [%eval -171] [%clk 2094.45ms] } a8e8 { [%eval 394] [%clk 2098.59ms] }
+19. g2g4 { [%eval -61] [%clk 2034.55ms] } f5h6 { [%eval 392] [%clk 2035.48ms] }
+20. h3g2 { [%eval -113] [%clk 1976.45ms] } h6g4 { [%eval 418] [%clk 1981.41ms] }
+21. g1f1 { [%eval -158] [%clk 1919.96ms] } g4f2 { [%eval 467] [%clk 1918.72ms] }
+22. g2f2 { [%eval -244] [%clk 1865.1ms] } d7h3 { [%eval 530] [%clk 1865.66ms] }
+23. f1g1 { [%eval -327] [%clk 1811.78ms] } b4c5 { [%eval 529] [%clk 1818.9ms] }
+24. e2d4 { [%eval -348] [%clk 1760.02ms] } c5d4 { [%eval 537] [%clk 1768.49ms] }
+25. f3d4 { [%eval -348] [%clk 1709.68ms] } e8e1 { [%eval 29989] [%clk 1718.27ms] }
+0-1 {Forced Mate in 11 moves}
 
 [Event "Heaven's Gate Grandmaster Tournament"]
 [Site "Localhost"]
 [Date "2026.08.13"]
 [Round "8"]
-[White "Stockfish 16.1 (3400 Elo)"]
+[White "Stockfish 16.1 (Uncapped ~3500 Elo)"]
 [Black "Master Edition"]
 [FEN "rnbqk1nr/pppp1ppp/4p3/8/3PP3/2b5/PPP2PPP/R1BQKBNR w KQkq - 0 4"]
-1. b2c3 { [%eval 131] [%clk 3435.47ms] } d8h4 { [%eval 43] [%clk 3428.67ms] }
-2. d1e2 { [%eval 163] [%clk 3344.75ms] } g8f6 { [%eval 50] [%clk 3330.67ms] }
-3. g2g4 { [%eval 176] [%clk 3246.68ms] } h4g4 { [%eval 172] [%clk 3235.5ms] }
-4. e2g4 { [%eval 10] [%clk 3146.5ms] } f6g4 { [%eval 151] [%clk 3143.05ms] }
-5. a2a4 { [%eval 14] [%clk 3057.42ms] } g4f6 { [%eval 208] [%clk 3053.23ms] }
-6. f1d3 { [%eval -15] [%clk 2965.63ms] } b8c6 { [%eval 212] [%clk 2965.95ms] }
-7. g1e2 { [%eval -22] [%clk 2884.05ms] } a8b8 { [%eval 232] [%clk 2881.21ms] }
-8. e4e5 { [%eval 16] [%clk 2802.11ms] } f6d5 { [%eval 214] [%clk 2798.89ms] }
-9. h1g1 { [%eval 18] [%clk 2725.81ms] } g7g6 { [%eval 212] [%clk 2718.91ms] }
-10. c1g5 { [%eval -1] [%clk 2647.44ms] } b8a8 { [%eval 206] [%clk 2641.22ms] }
-11. a4a5 { [%eval 121] [%clk 2566.5ms] } e8f8 { [%eval 196] [%clk 2565.76ms] }
-12. c3c4 { [%eval 189] [%clk 2492.11ms] } d5b4 { [%eval 189] [%clk 2492.41ms] }
-13. e1d2 { [%eval 171] [%clk 2425.58ms] } b4d3 { [%eval 200] [%clk 2421.19ms] }
-14. g5f6 { [%eval 168] [%clk 2353.18ms] } d3e5 { [%eval 307] [%clk 2351.99ms] }
-15. d4e5 { [%eval 77] [%clk 2288.47ms] } h8g8 { [%eval 301] [%clk 2284.78ms] }
-16. c4c5 { [%eval 83] [%clk 2221.98ms] } h7h6 { [%eval 333] [%clk 2219.51ms] }
-17. e2g3 { [%eval 153] [%clk 2169.96ms] } a8b8 { [%eval 318] [%clk 2156.07ms] }
-18. g1d1 { [%eval 155] [%clk 2092.3ms] } c6e7 { [%eval 328] [%clk 2094.46ms] }
-19. a1b1 { [%eval 72] [%clk 2039.63ms] } e7d5 { [%eval 346] [%clk 2034.59ms] }
-20. g3e4 { [%eval 6] [%clk 1973.83ms] } g6g5 { [%eval 348] [%clk 1976.45ms] }
-21. a5a6 { [%eval 9] [%clk 1921.56ms] } b7b6 { [%eval 316] [%clk 1919.96ms] }
-22. c2c4 { [%eval -64] [%clk 1869.8ms] } d5f6 { [%eval 318] [%clk 1865.11ms] }
-23. e4f6 { [%eval -79] [%clk 1815.74ms] } g8g6 { [%eval 306] [%clk 1811.78ms] }
-24. b1b3 { [%eval 30] [%clk 1761.22ms] } d7d6 { [%eval 382] [%clk 1760.02ms] }
-25. d2e2 { [%eval -11] [%clk 1711.7ms] } g6f6 { [%eval 361] [%clk 1709.7ms] }
-26. e5f6 { [%eval 52] [%clk 1662.31ms] } c8a6 { [%eval 248] [%clk 1660.84ms] }
-27. e2d3 { [%eval 63] [%clk 1618.76ms] } d6d5 { [%eval 280] [%clk 1613.38ms] }
-28. b3b4 { [%eval -20] [%clk 1566.68ms] } a6c4 { [%eval 399] [%clk 1567.27ms] }
-29. d3d2 { [%eval -297] [%clk 1521.2ms] } b8b7 { [%eval 397] [%clk 1522.48ms] }
-30. b4c4 { [%eval -18] [%clk 1481.81ms] } d5c4 { [%eval 463] [%clk 1478.98ms] }
-31. c5c6 { [%eval -328] [%clk 1436.85ms] } b7b8 { [%eval 557] [%clk 1436.69ms] }
-32. d2c2 { [%eval -404] [%clk 1401.12ms] } b6b5 { [%eval 587] [%clk 1395.64ms] }
-33. c2c3 { [%eval -381] [%clk 1358.97ms] } a7a6 { [%eval 585] [%clk 1355.76ms] }
-34. h2h3 { [%eval -457] [%clk 1326.28ms] } f8g8 { [%eval 590] [%clk 1317.02ms] }
-35. d1d7 { [%eval -521] [%clk 1280.98ms] } b8c8 { [%eval 586] [%clk 1279.35ms] }
-36. c3d2 { [%eval -488] [%clk 1241.42ms] } g8h7 { [%eval 603] [%clk 1242.79ms] }
-37. f2f4 { [%eval -538] [%clk 1211.58ms] } h7g6 { [%eval 830] [%clk 1207.27ms] }
-38. d2c1 { [%eval -575] [%clk 1171.49ms] } g5f4 { [%eval 979] [%clk 1172.78ms] }
-39. d7d4 { [%eval -641] [%clk 1144.15ms] } e6e5 { [%eval 979] [%clk 1139.24ms] }
-40. d4f4 { [%eval -662] [%clk 1106.05ms] } e5f4 { [%eval 2346] [%clk 1106.68ms] }
-41. c1b1 { [%eval -29992] [%clk 1074.56ms] } 0-1 {Forced Mate in 8 moves}
+1. b2c3 { [%eval 129] [%clk 3435.16ms] } d8h4 { [%eval 43] [%clk 3428.66ms] }
+2. f1d3 { [%eval 173] [%clk 3331.41ms] } g8f6 { [%eval -10] [%clk 3330.67ms] }
+3. g1f3 { [%eval 267] [%clk 3238.04ms] } h4g4 { [%eval -6] [%clk 3235.52ms] }
+4. e1g1 { [%eval 274] [%clk 3149.54ms] } f6e4 { [%eval 57] [%clk 3143.06ms] }
+5. h2h3 { [%eval 350] [%clk 3053.4ms] } g4f5 { [%eval -2] [%clk 3053.22ms] }
+6. g2g4 { [%eval 358] [%clk 2968.89ms] } f5d5 { [%eval 22] [%clk 2965.95ms] }
+7. c3c4 { [%eval 426] [%clk 2892.08ms] } e4f2 { [%eval 13] [%clk 2881.23ms] }
+8. f1f2 { [%eval 480] [%clk 2804.45ms] } d5d6 { [%eval 50] [%clk 2798.89ms] }
+9. c4c5 { [%eval 479] [%clk 2721.93ms] } d6e7 { [%eval -98] [%clk 2718.92ms] }
+10. c1a3 { [%eval 487] [%clk 2645.9ms] } h7h6 { [%eval 15] [%clk 2641.26ms] }
+11. d1e2 { [%eval 523] [%clk 2577.67ms] } b8c6 { [%eval 9] [%clk 2565.74ms] }
+12. a1e1 { [%eval 531] [%clk 2498.06ms] } h6h5 { [%eval 22] [%clk 2492.46ms] }
+13. g4g5 { [%eval 553] [%clk 2428.22ms] } e8d8 { [%eval 9] [%clk 2421.76ms] }
+14. d4d5 { [%eval 610] [%clk 2356.66ms] } c6d4 { [%eval -94] [%clk 2352.05ms] }
+15. f3d4 { [%eval 625] [%clk 2285.15ms] } e7g5 { [%eval -193] [%clk 2284.85ms] }
+16. f2g2 { [%eval 646] [%clk 2218.24ms] } g5d5 { [%eval -255] [%clk 2219.49ms] }
+17. e2e3 { [%eval 647] [%clk 2159.47ms] } h5h4 { [%eval -289] [%clk 2156.07ms] }
+18. g2g5 { [%eval 682] [%clk 2335.54ms] } d5a2 { [%eval -254] [%clk 2094.42ms] }
+19. g5g7 { [%eval 722] [%clk 3291.47ms] } a2d5 { [%eval -384] [%clk 2034.58ms] }
+20. e3f4 { [%eval 851] [%clk 1935.2ms] } c7c6 { [%eval -435] [%clk 1978.44ms] }
+21. f4f6 { [%eval 870] [%clk 1885.34ms] } d8c7 { [%eval -455] [%clk 1919.89ms] }
+22. f6f4 { [%eval 883] [%clk 1841.57ms] } c7d8 { [%eval 50] [%clk 1865.04ms] }
+23. f4f6 { [%eval 916] [%clk 1774.28ms] } d8c7 { [%eval 50] [%clk 1811.71ms] }
+24. f6f4 { [%eval 925] [%clk 1726.49ms] } c7d8 { [%eval 50] [%clk 1759.97ms] }
+1/2-1/2 {Threefold Repetition}
 
 [Event "Heaven's Gate Grandmaster Tournament"]
 [Site "Localhost"]
 [Date "2026.08.13"]
 [Round "9"]
 [White "Master Edition"]
-[Black "Stockfish 16.1 (3400 Elo)"]
+[Black "Stockfish 16.1 (Uncapped ~3500 Elo)"]
 [FEN "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2"]
-g8f6 { [%eval -26] [%clk 3431.22ms] }
-1. c4d5 { [%eval -43] [%clk 3428.65ms] } e7e6 { [%eval -71] [%clk 3331.38ms] }
-2. d5e6 { [%eval 50] [%clk 3330.67ms] } c8e6 { [%eval -97] [%clk 3238.78ms] }
-3. e2e3 { [%eval 62] [%clk 3235.52ms] } b8c6 { [%eval -92] [%clk 3146.24ms] }
-4. g1f3 { [%eval 64] [%clk 3143.05ms] } f8d6 { [%eval -169] [%clk 3053.34ms] }
-5. b1d2 { [%eval 77] [%clk 3053.23ms] } d8e7 { [%eval -121] [%clk 2973.94ms] }
-6. f1b5 { [%eval 85] [%clk 2966.02ms] } e8c8 { [%eval -137] [%clk 2892.5ms] }
-7. d1a4 { [%eval 128] [%clk 2881.18ms] } c8b8 { [%eval -69] [%clk 2800.71ms] }
-8. b5c6 { [%eval 211] [%clk 2798.85ms] } e6c8 { [%eval -147] [%clk 2725.98ms] }
-9. c6b5 { [%eval 404] [%clk 2718.87ms] } h7h5 { [%eval -311] [%clk 2646.99ms] }
-10. d2c4 { [%eval 465] [%clk 2641.19ms] } d6b4 { [%eval -324] [%clk 2566.62ms] }
-11. c1d2 { [%eval 474] [%clk 2565.71ms] } b4d2 { [%eval -404] [%clk 2493.44ms] }
-12. c4d2 { [%eval 469] [%clk 2492.39ms] } g7g5 { [%eval -417] [%clk 2421.62ms] }
-13. f3g5 { [%eval 594] [%clk 2421.16ms] } h8g8 { [%eval -373] [%clk 2352.28ms] }
-14. h2h4 { [%eval 566] [%clk 2351.96ms] } a7a6 { [%eval -375] [%clk 2288.53ms] }
-15. b5c4 { [%eval 639] [%clk 2284.76ms] } d8d6 { [%eval -395] [%clk 2222.21ms] }
-16. c4f7 { [%eval 760] [%clk 2219.47ms] } g8f8 { [%eval -375] [%clk 2155.2ms] }
-17. f7b3 { [%eval 773] [%clk 2156.04ms] } b7b5 { [%eval -389] [%clk 2098.6ms] }
-18. a4a3 { [%eval 817] [%clk 2094.43ms] } c7c5 { [%eval -456] [%clk 2036.38ms] }
-19. a3c5 { [%eval 1007] [%clk 2034.56ms] } c8g4 { [%eval -578] [%clk 1977.13ms] }
-20. d2e4 { [%eval 1188] [%clk 1976.44ms] } f6e8 { [%eval -611] [%clk 1921.05ms] }
-21. g5f7 { [%eval 1307] [%clk 1919.93ms] } d6e6 { [%eval -658] [%clk 1869.02ms] }
-22. b3e6 { [%eval 1520] [%clk 1865.09ms] } e7e6 { [%eval -719] [%clk 1815.5ms] }
-23. c5f8 { [%eval 1696] [%clk 1811.78ms] } e6e4 { [%eval -735] [%clk 1768.82ms] }
-24. f7e5 { [%eval 1704] [%clk 1759.99ms] } e4g2 { [%eval -819] [%clk 1712.33ms] }
-25. f8e8 { [%eval 1729] [%clk 1709.74ms] } b8c7 { [%eval -29974] [%clk 1661.57ms] }
-1-0 {Forced Mate in 26 moves}
+c7c6 { [%eval -31] [%clk 3433.86ms] }
+1. c4d5 { [%eval 28] [%clk 3428.68ms] } c6d5 { [%eval -21] [%clk 3338ms] }
+2. b1c3 { [%eval 28] [%clk 3330.7ms] } g8f6 { [%eval -25] [%clk 3237.9ms] }
+3. d1b3 { [%eval 30] [%clk 3235.52ms] } b8c6 { [%eval 8] [%clk 3149.31ms] }
+4. g1f3 { [%eval 20] [%clk 3143.1ms] } e7e6 { [%eval 10] [%clk 3083.8ms] }
+5. f3e5 { [%eval 22] [%clk 3053.29ms] } c6d4 { [%eval 140] [%clk 2969.68ms] }
+6. b3a4 { [%eval 1] [%clk 2966.02ms] } d4c6 { [%eval 143] [%clk 2883.58ms] }
+7. e5c6 { [%eval -10] [%clk 2881.25ms] } b7c6 { [%eval 181] [%clk 2802.87ms] }
+8. a4c6 { [%eval 4] [%clk 2798.86ms] } c8d7 { [%eval 315] [%clk 2722.75ms] }
+9. c6b7 { [%eval -16] [%clk 2718.9ms] } d5d4 { [%eval 337] [%clk 2644.08ms] }
+10. c3e4 { [%eval 13] [%clk 2641.23ms] } f6e4 { [%eval 401] [%clk 2573.92ms] }
+11. b7e4 { [%eval 14] [%clk 2565.72ms] } f8b4 { [%eval 409] [%clk 2501.68ms] }
+12. e1d1 { [%eval -1] [%clk 2492.41ms] } a8c8 { [%eval 418] [%clk 2434.45ms] }
+13. e4d3 { [%eval -5] [%clk 2421.19ms] } d8a5 { [%eval 461] [%clk 2365.62ms] }
+14. b2b3 { [%eval -3] [%clk 2351.95ms] } d7b5 { [%eval 488] [%clk 2286.59ms] }
+15. d3e4 { [%eval -98] [%clk 2284.75ms] } e8g8 { [%eval 527] [%clk 2226.73ms] }
+16. a2a3 { [%eval -95] [%clk 2219.48ms] } b5c6 { [%eval 548] [%clk 2156.14ms] }
+17. e4d3 { [%eval -136] [%clk 2156.05ms] } c6d5 { [%eval 578] [%clk 2097.83ms] }
+18. a1b1 { [%eval -196] [%clk 2094.43ms] } c8c3 { [%eval 587] [%clk 2035.1ms] }
+19. d3d2 { [%eval -322] [%clk 2034.58ms] } d5b3 { [%eval 646] [%clk 1980.89ms] }
+20. b1b3 { [%eval -591] [%clk 1976.41ms] } a5a4 { [%eval 700] [%clk 1924.69ms] }
+21. a3b4 { [%eval -589] [%clk 1919.93ms] } a4b3 { [%eval 722] [%clk 1863.03ms] }
+22. d1e1 { [%eval -588] [%clk 1865.07ms] } f8c8 { [%eval 739] [%clk 1812.09ms] }
+23. f2f3 { [%eval -586] [%clk 1811.77ms] } c3c1 { [%eval 752] [%clk 1767.18ms] }
+24. e1f2 { [%eval -587] [%clk 1760.01ms] } b3c3 { [%eval 762] [%clk 1711.09ms] }
+25. d2c3 { [%eval -904] [%clk 1709.73ms] } d4c3 { [%eval 766] [%clk 1663.27ms] }
+26. e2e3 { [%eval -1183] [%clk 1660.85ms] } c3c2 { [%eval 777] [%clk 1616.44ms] }
+27. f1d3 { [%eval -1392] [%clk 1613.42ms] } c1h1 { [%eval 791] [%clk 1579.97ms] }
+28. d3c2 { [%eval -1527] [%clk 1567.24ms] } c8c2 { [%eval 831] [%clk 1519.37ms] }
+29. f2g3 { [%eval -1640] [%clk 1522.53ms] } h1g1 { [%eval 919] [%clk 1481.78ms] }
+30. g3f4 { [%eval -1699] [%clk 1478.95ms] } c2g2 { [%eval 995] [%clk 1433.5ms] }
+31. h2h4 { [%eval -1714] [%clk 1436.71ms] } h7h5 { [%eval 1013] [%clk 1392.92ms] }
+32. f4e4 { [%eval -1689] [%clk 1395.62ms] } g1f1 { [%eval 1039] [%clk 1365.9ms] }
+33. b4b5 { [%eval -1626] [%clk 1355.74ms] } g2d2 { [%eval 29990] [%clk 1315.15ms] }
+0-1 {Forced Mate in 10 moves}
 
 [Event "Heaven's Gate Grandmaster Tournament"]
 [Site "Localhost"]
 [Date "2026.08.13"]
 [Round "10"]
-[White "Stockfish 16.1 (3400 Elo)"]
+[White "Stockfish 16.1 (Uncapped ~3500 Elo)"]
 [Black "Master Edition"]
 [FEN "rnbqkbnr/ppp1pppp/8/8/2pP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3"]
-1. e2e4 { [%eval 39] [%clk 3435.95ms] } g8f6 { [%eval 76] [%clk 3428.66ms] }
-2. e4e5 { [%eval 52] [%clk 3340.07ms] } f6d5 { [%eval 68] [%clk 3330.68ms] }
-3. b1c3 { [%eval 57] [%clk 3237.7ms] } c8e6 { [%eval 148] [%clk 3235.52ms] }
-4. f1c4 { [%eval -45] [%clk 3149.53ms] } d5c3 { [%eval 365] [%clk 3143.07ms] }
-5. d1d3 { [%eval -383] [%clk 3057.78ms] } e6c4 { [%eval 379] [%clk 3053.26ms] }
-6. d3c2 { [%eval -391] [%clk 2972.46ms] } c4d5 { [%eval 865] [%clk 2965.97ms] }
-7. b2c3 { [%eval -523] [%clk 2886.1ms] } d5g2 { [%eval 1058] [%clk 2881.24ms] }
-8. e5e6 { [%eval -542] [%clk 2802.43ms] } f7e6 { [%eval 1083] [%clk 2798.9ms] }
-9. c1d2 { [%eval -551] [%clk 2725.9ms] } g2h1 { [%eval 1165] [%clk 2718.96ms] }
-10. f2f3 { [%eval -583] [%clk 2647.38ms] } d8d5 { [%eval 1244] [%clk 2641.26ms] }
-11. c2a4 { [%eval -625] [%clk 2566.73ms] } b8c6 { [%eval 1266] [%clk 2565.74ms] }
-12. d2e3 { [%eval -607] [%clk 2505.22ms] } h1f3 { [%eval 1389] [%clk 2492.46ms] }
-13. a1d1 { [%eval -678] [%clk 2424.27ms] } f3d1 { [%eval 1665] [%clk 2421.21ms] }
-14. a4d1 { [%eval -725] [%clk 2349.85ms] } d5a2 { [%eval 1723] [%clk 2352ms] }
-15. d1h5 { [%eval -715] [%clk 2288.3ms] } e8d7 { [%eval 1733] [%clk 2284.81ms] }
-16. g1e2 { [%eval -689] [%clk 2223.36ms] } a2b1 { [%eval 1733] [%clk 2219.5ms] }
-17. e3c1 { [%eval -711] [%clk 2170.18ms] } b1f5 { [%eval 1740] [%clk 2156.08ms] }
-18. h5g5 { [%eval -715] [%clk 2100.05ms] } f5g5 { [%eval 1813] [%clk 2094.45ms] }
-19. c1g5 { [%eval -756] [%clk 2036.49ms] } e6e5 { [%eval 1800] [%clk 2034.61ms] }
-20. d4d5 { [%eval -761] [%clk 1979.75ms] } c6a5 { [%eval 1946] [%clk 1976.47ms] }
-21. g5e3 { [%eval -770] [%clk 1921.86ms] } d7d6 { [%eval 1967] [%clk 1919.99ms] }
-22. e2f4 { [%eval -768] [%clk 1868.58ms] } e5f4 { [%eval 2151] [%clk 1865.1ms] }
-23. e3b6 { [%eval -850] [%clk 1814.35ms] } c7b6 { [%eval 2810] [%clk 1811.8ms] }
-24. e1f1 { [%eval -29986] [%clk 1761.09ms] } 0-1 {Forced Mate in 14 moves}
+1. e2e4 { [%eval 40] [%clk 3437.2ms] } g8f6 { [%eval 80] [%clk 3428.69ms] }
+2. e4e5 { [%eval 39] [%clk 3332.52ms] } f6d5 { [%eval 69] [%clk 3330.68ms] }
+3. f1c4 { [%eval 34] [%clk 3247.84ms] } b8c6 { [%eval 53] [%clk 3235.51ms] }
+4. b1c3 { [%eval 55] [%clk 3143.75ms] } c8e6 { [%eval 73] [%clk 3143.04ms] }
+5. c4b3 { [%eval 59] [%clk 3061.24ms] } d5c3 { [%eval 74] [%clk 3053.2ms] }
+6. b2c3 { [%eval 85] [%clk 2973.89ms] } d8c8 { [%eval 71] [%clk 2965.95ms] }
+7. d4d5 { [%eval 412] [%clk 2886.42ms] } e6g4 { [%eval 21] [%clk 2881.26ms] }
+8. f2f3 { [%eval 437] [%clk 2801.46ms] } c6e5 { [%eval 4] [%clk 2798.88ms] }
+9. f3g4 { [%eval 439] [%clk 2722.17ms] } c8g4 { [%eval 20] [%clk 2718.94ms] }
+10. d1g4 { [%eval 437] [%clk 2641.48ms] } e5g4 { [%eval 12] [%clk 2641.23ms] }
+11. b3a4 { [%eval 454] [%clk 2566.72ms] } e8d8 { [%eval -19] [%clk 2565.81ms] }
+12. g1f3 { [%eval 447] [%clk 2494.33ms] } f7f6 { [%eval -23] [%clk 2492.45ms] }
+13. h2h3 { [%eval 488] [%clk 2426.61ms] } g4h6 { [%eval 4] [%clk 2421.2ms] }
+14. c1h6 { [%eval 492] [%clk 2357.24ms] } g7h6 { [%eval -50] [%clk 2351.99ms] }
+15. a1b1 { [%eval 489] [%clk 2292.82ms] } d8c8 { [%eval -50] [%clk 2284.78ms] }
+16. a4c2 { [%eval 498] [%clk 2223.6ms] } b7b6 { [%eval -48] [%clk 2219.51ms] }
+17. f3d4 { [%eval 503] [%clk 2168.97ms] } a8b8 { [%eval -50] [%clk 2156.07ms] }
+18. c2f5 { [%eval 510] [%clk 2102.93ms] } c8b7 { [%eval -104] [%clk 2094.45ms] }
+19. f5e6 { [%eval 511] [%clk 2036.13ms] } b8d8 { [%eval -50] [%clk 2034.6ms] }
+20. e1g1 { [%eval 537] [%clk 1976.31ms] } b7a8 { [%eval -50] [%clk 1976.5ms] }
+21. h3h4 { [%eval 552] [%clk 1919.82ms] } a8b7 { [%eval -50] [%clk 1919.97ms] }
+22. a2a4 { [%eval 538] [%clk 1866.51ms] } b7a8 { [%eval -12] [%clk 1865.15ms] }
+23. a4a5 { [%eval 575] [%clk 1812.22ms] } b6a5 { [%eval -102] [%clk 1811.81ms] }
+24. d4c6 { [%eval 29986] [%clk 1771.05ms] } 1-0 {Forced Mate in 14 moves}
 
