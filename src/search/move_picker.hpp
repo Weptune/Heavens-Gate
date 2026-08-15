@@ -3,19 +3,29 @@
 #include "../board/board.hpp"
 #include "../movegen/move_list.hpp"
 #include <array>
+#include <memory>
 
 namespace heavensgate {
+
+struct ContHistoryTables {
+    std::array<std::array<std::array<std::array<int, 64>, 6>, 64>, 6> cont_history{};
+    std::array<std::array<std::array<std::array<int, 64>, 6>, 64>, 6> cont_history_2{};
+};
 
 class MovePicker {
 private:
     std::array<std::array<Move, 2>, 128> killer_moves_{};
     std::array<std::array<std::array<int, 64>, 64>, 2> history_scores_{};
     std::array<std::array<Move, 64>, 64> countermoves_{};
-    std::array<std::array<std::array<std::array<int, 64>, 6>, 64>, 6> cont_history_{};
-    std::array<std::array<std::array<std::array<int, 64>, 6>, 64>, 6> cont_history_2_{};
+    std::unique_ptr<ContHistoryTables> cont_tables_;
 
 public:
     MovePicker();
+    ~MovePicker();
+    MovePicker(const MovePicker& other);
+    MovePicker& operator=(const MovePicker& other);
+    MovePicker(MovePicker&&) noexcept;
+    MovePicker& operator=(MovePicker&&) noexcept;
 
     void clear() noexcept;
     void age_history() noexcept;

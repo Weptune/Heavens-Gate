@@ -347,6 +347,7 @@ void run_three_way_comparison(Board& board, int depth) {
 }
 
 int main(int argc, char* argv[]) {
+    std::setvbuf(stdout, NULL, _IONBF, 0);
     Zobrist::init();
     MoveGenerator::init();
     Evaluator::init();
@@ -374,6 +375,12 @@ int main(int argc, char* argv[]) {
             return success ? 0 : 1;
         } else if (cmd == "uci") {
             UCI::loop();
+            return 0;
+        } else if (cmd == "test_sf") {
+            StockfishClient sf;
+            std::cout << "Testing sf.init(3400)...\n";
+            bool ok = sf.init(3400);
+            std::cout << "sf.init result: " << ok << std::endl;
             return 0;
         }
     }

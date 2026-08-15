@@ -6,16 +6,46 @@
 
 namespace heavensgate {
 
-MovePicker::MovePicker() {
+MovePicker::MovePicker() : cont_tables_(std::make_unique<ContHistoryTables>()) {
     clear();
 }
+
+MovePicker::~MovePicker() = default;
+
+MovePicker::MovePicker(const MovePicker& other) 
+    : killer_moves_(other.killer_moves_), history_scores_(other.history_scores_), countermoves_(other.countermoves_) {
+    if (other.cont_tables_) {
+        cont_tables_ = std::make_unique<ContHistoryTables>(*other.cont_tables_);
+    } else {
+        cont_tables_ = std::make_unique<ContHistoryTables>();
+    }
+}
+
+MovePicker& MovePicker::operator=(const MovePicker& other) {
+    if (this != &other) {
+        killer_moves_ = other.killer_moves_;
+        history_scores_ = other.history_scores_;
+        countermoves_ = other.countermoves_;
+        if (other.cont_tables_) {
+            cont_tables_ = std::make_unique<ContHistoryTables>(*other.cont_tables_);
+        } else {
+            cont_tables_ = std::make_unique<ContHistoryTables>();
+        }
+    }
+    return *this;
+}
+
+MovePicker::MovePicker(MovePicker&&) noexcept = default;
+MovePicker& MovePicker::operator=(MovePicker&&) noexcept = default;
 
 void MovePicker::clear() noexcept {
     killer_moves_.fill({});
     history_scores_.fill({});
     countermoves_.fill({});
-    cont_history_.fill({});
-    cont_history_2_.fill({});
+    if (cont_tables_) {
+        cont_tables_->cont_history.fill({});
+        cont_tables_->cont_history_2.fill({});
+    }
 }
 
 void MovePicker::age_history() noexcept {
@@ -28,17 +58,19 @@ void MovePicker::age_history() noexcept {
             }
         }
     }
-    for (auto& a1 : cont_history_) {
-        for (auto& a2 : a1) {
-            for (auto& a3 : a2) {
-                for (auto& val : a3) val /= 2;
+    if (cont_tables_) {
+        for (auto& a1 : cont_tables_->cont_history) {
+            for (auto& a2 : a1) {
+                for (auto& a3 : a2) {
+                    for (auto& val : a3) val /= 2;
+                }
             }
         }
-    }
-    for (auto& a1 : cont_history_2_) {
-        for (auto& a2 : a1) {
-            for (auto& a3 : a2) {
-                for (auto& val : a3) val /= 2;
+        for (auto& a1 : cont_tables_->cont_history_2) {
+            for (auto& a2 : a1) {
+                for (auto& a3 : a2) {
+                    for (auto& val : a3) val /= 2;
+                }
             }
         }
     }
@@ -81,7 +113,7 @@ void MovePicker::add_countermove(Move prev_move, Move move) noexcept {
 }
 
 void MovePicker::add_continuation_history(const Board& board, Move prev_move, Move curr_move, int depth) noexcept {
-    if (!static_cast<bool>(prev_move) || !static_cast<bool>(curr_move)) return;
+    if (!cont_tables_ || !static_cast<bool>(prev_move) || !static_cast<bool>(curr_move)) return;
 
     Piece curr_p = board.piece_at(curr_move.from());
     Piece prev_p = board.piece_at(prev_move.to());
@@ -93,9 +125,9 @@ void MovePicker::add_continuation_history(const Board& board, Move prev_move, Mo
     size_t prev_to = static_cast<size_t>(prev_move.to());
 
     if (curr_pt < 6 && prev_pt < 6) {
-        cont_history_[curr_pt][curr_to][prev_pt][prev_to] += depth * depth;
-        if (cont_history_[curr_pt][curr_to][prev_pt][prev_to] > 10000) {
-            for (auto& a1 : cont_history_) {
+        cont_tables_->cont_history[curr_pt][curr_to][prev_pt][prev_to] += depth * depth;
+        if (cont_tables_->cont_history[curr_pt][curr_to][prev_pt][prev_to] > 10000) {
+            for (auto& a1 : cont_tables_->cont_history) {
                 for (auto& a2 : a1) {
                     for (auto& a3 : a2) {
                         for (auto& val : a3) val /= 2;
@@ -107,7 +139,7 @@ void MovePicker::add_continuation_history(const Board& board, Move prev_move, Mo
 }
 
 int MovePicker::get_continuation_history(const Board& board, Move prev_move, Move curr_move) const noexcept {
-    if (!static_cast<bool>(prev_move) || !static_cast<bool>(curr_move)) return 0;
+    if (!cont_tables_ || !static_cast<bool>(prev_move) || !static_cast<bool>(curr_move)) return 0;
 
     Piece curr_p = board.piece_at(curr_move.from());
     Piece prev_p = board.piece_at(prev_move.to());
@@ -119,13 +151,13 @@ int MovePicker::get_continuation_history(const Board& board, Move prev_move, Mov
     size_t prev_to = static_cast<size_t>(prev_move.to());
 
     if (curr_pt < 6 && prev_pt < 6) {
-        return cont_history_[curr_pt][curr_to][prev_pt][prev_to];
+        return cont_tables_->cont_history[curr_pt][curr_to][prev_pt][prev_to];
     }
     return 0;
 }
 
 void MovePicker::add_continuation_history_2(const Board& board, Move prev2_move, Move curr_move, int depth) noexcept {
-    if (!static_cast<bool>(prev2_move) || !static_cast<bool>(curr_move)) return;
+    if (!cont_tables_ || !static_cast<bool>(prev2_move) || !static_cast<bool>(curr_move)) return;
 
     Piece curr_p = board.piece_at(curr_move.from());
     Piece prev2_p = board.piece_at(prev2_move.to());
@@ -137,9 +169,9 @@ void MovePicker::add_continuation_history_2(const Board& board, Move prev2_move,
     size_t prev2_to = static_cast<size_t>(prev2_move.to());
 
     if (curr_pt < 6 && prev2_pt < 6) {
-        cont_history_2_[curr_pt][curr_to][prev2_pt][prev2_to] += depth * depth;
-        if (cont_history_2_[curr_pt][curr_to][prev2_pt][prev2_to] > 10000) {
-            for (auto& a1 : cont_history_2_) {
+        cont_tables_->cont_history_2[curr_pt][curr_to][prev2_pt][prev2_to] += depth * depth;
+        if (cont_tables_->cont_history_2[curr_pt][curr_to][prev2_pt][prev2_to] > 10000) {
+            for (auto& a1 : cont_tables_->cont_history_2) {
                 for (auto& a2 : a1) {
                     for (auto& a3 : a2) {
                         for (auto& val : a3) val /= 2;
@@ -151,7 +183,7 @@ void MovePicker::add_continuation_history_2(const Board& board, Move prev2_move,
 }
 
 int MovePicker::get_continuation_history_2(const Board& board, Move prev2_move, Move curr_move) const noexcept {
-    if (!static_cast<bool>(prev2_move) || !static_cast<bool>(curr_move)) return 0;
+    if (!cont_tables_ || !static_cast<bool>(prev2_move) || !static_cast<bool>(curr_move)) return 0;
 
     Piece curr_p = board.piece_at(curr_move.from());
     Piece prev2_p = board.piece_at(prev2_move.to());
@@ -163,7 +195,7 @@ int MovePicker::get_continuation_history_2(const Board& board, Move prev2_move, 
     size_t prev2_to = static_cast<size_t>(prev2_move.to());
 
     if (curr_pt < 6 && prev2_pt < 6) {
-        return cont_history_2_[curr_pt][curr_to][prev2_pt][prev2_to];
+        return cont_tables_->cont_history_2[curr_pt][curr_to][prev2_pt][prev2_to];
     }
     return 0;
 }
