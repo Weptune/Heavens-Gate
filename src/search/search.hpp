@@ -68,6 +68,15 @@ private:
     TranspositionTable tt_;
     GameTreeExporter exporter_;
     MetricsTracker metrics_tracker_;
+    std::array<std::array<int, 4096>, 2> corr_history_{};
+
+public:
+    void clear() noexcept {
+        pv_table_.clear();
+        move_picker_.clear();
+        tt_.clear();
+        corr_history_.fill({});
+    }
 
     std::chrono::high_resolution_clock::time_point search_start_time_;
     double max_time_ms_ = 0.0;

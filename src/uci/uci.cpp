@@ -109,6 +109,7 @@ void UCI::loop() {
             Evaluator::set_mode(EvalMode::SpectralTropical);
             board.clear();
             FEN::parse(FEN::StartPOS, board);
+            engine.clear();
         } else if (line.rfind("position", 0) == 0) {
             handle_position(line, board);
         } else if (line.rfind("go", 0) == 0) {

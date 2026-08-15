@@ -202,8 +202,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
     }
 
-    // 1.5 Syzygy Tablebase Probe (5 or fewer pieces, 0.00ms overhead)
-    if (popcount(board.occupied()) <= 5) {
+    // 1.5 Syzygy Tablebase Probe (6 or fewer pieces, 0.00ms overhead)
+    if (popcount(board.occupied()) <= 6) {
         int tb_score = SyzygyTablebase::instance().probe_wdl(board, ply);
         if (tb_score != SyzygyTablebase::NO_SCORE) {
             metrics_tracker_.add_cut();
@@ -221,11 +221,20 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         return q_eval;
     }
 
-    // 2. Static Eval for Pruning Decisions (computed once, reused by RFP + Futility)
+    // 2. Static Eval for Pruning Decisions (computed once, reused by RFP + Futility + CorrHist)
+    int raw_static_eval = 0;
     int static_eval = 0;
     bool can_futility_prune = false;
-    if (!in_chk && std::abs(beta) < ScoreMate - 1000 && depth <= 5) {
-        static_eval = Evaluator::evaluate_fast(board);
+    size_t c_idx = static_cast<size_t>(us);
+
+    uint64_t w_pawns = board.pieces(Piece::WhitePawn);
+    uint64_t b_pawns = board.pieces(Piece::BlackPawn);
+    size_t pawn_hash = static_cast<size_t>((w_pawns ^ (b_pawns * 0x9e3779b97f4a7c15ULL)) % 4096);
+
+    if (!in_chk && std::abs(beta) < ScoreMate - 1000) {
+        raw_static_eval = Evaluator::evaluate_fast(board);
+        int corr = corr_history_[c_idx][pawn_hash];
+        static_eval = raw_static_eval + (corr / 256);
 
         // Reverse Futility Pruning (Static Null Move Pruning)
         if (depth <= 3) {
@@ -386,6 +395,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             if (use_tt) {
                 tt_.store(board.zobrist_key(), m, score, depth, TTBound::Lower, ply);
             }
+            if (!in_chk && raw_static_eval != 0 && std::abs(score) < ScoreMate - 1000) {
+                int err = score - raw_static_eval;
+                err = std::max(-1024, std::min(1024, err));
+                corr_history_[c_idx][pawn_hash] = std::max(-1024, std::min(1024, corr_history_[c_idx][pawn_hash] + err / 16));
+            }
             if (child_node) {
                 child_node->is_pruned = true;
             }
@@ -396,6 +410,12 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             alpha = score;
             pv_table_.update(ply, m);
         }
+    }
+
+    if (!in_chk && raw_static_eval != 0 && std::abs(best_score) < ScoreMate - 1000) {
+        int err = best_score - raw_static_eval;
+        err = std::max(-1024, std::min(1024, err));
+        corr_history_[c_idx][pawn_hash] = std::max(-1024, std::min(1024, corr_history_[c_idx][pawn_hash] + err / 16));
     }
 
     if (use_tt && !time_stop_flag_) {
