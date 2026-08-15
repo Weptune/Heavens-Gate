@@ -92,12 +92,12 @@ bool Board::has_non_pawn_material(Color c) const {
     return (knights | bishops | rooks | queens) != EmptyBB;
 }
 
-bool Board::is_repetition() const {
+bool Board::is_repetition(int fold) const {
     int count = 0;
     for (int i = static_cast<int>(pos_history_.size()) - 1; i >= 0; --i) {
         if (pos_history_[static_cast<size_t>(i)] == zobrist_key_) {
             count++;
-            if (count >= 3) return true; // True 3-fold repetition per FIDE rules
+            if (count >= fold) return true;
         }
     }
     return false;

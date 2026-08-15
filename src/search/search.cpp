@@ -154,8 +154,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     if (is_time_up()) return 0;
 
-    if (ply > 0 && board.is_repetition()) {
-        // Anti-Repetition Contempt: Return a mild negative draw penalty for side-to-move so engine avoids repetition draws when winning!
+    if (ply > 0 && board.is_repetition(2)) {
+        // Anti-Repetition Contempt: Return a mild negative draw penalty (-50 cp) so search engine NEVER chooses a move that repeats a position!
         return -50;
     }
 

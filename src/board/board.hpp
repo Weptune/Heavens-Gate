@@ -68,7 +68,7 @@ public:
     void unmake_null_move();
 
     // Game end & draw checks
-    bool is_repetition() const;
+    bool is_repetition(int fold = 3) const;
     bool is_insufficient_material() const;
     std::string to_ascii() const;
 
