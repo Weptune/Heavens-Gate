@@ -20,6 +20,7 @@
 #include <cmath>
 #include <fstream>
 #include <atomic>
+#include <omp.h>
 
 using namespace heavensgate;
 
@@ -82,7 +83,9 @@ const std::vector<std::string> TournamentOpenings = {
     "rnbqkb1r/p2ppppp/5n2/1ppP4/2P5/8/PP2PPPP/RNBQKBNR w KQkq b6 0 4",     // 41. Benko Gambit
 };
 
-void run_automated_tournament(int num_games, int bank_param = 0, int inc_param = 0, int batch_id = 0, int elo_param = 3500) {
+void run_automated_tournament(int num_games, int bank_param = 0, int inc_param = 0, int batch_id = 0, int elo_param = 3500, int threads_param = 6) {
+    omp_set_num_threads(threads_param);
+
     bool is_fixed_depth = (bank_param > 0 && inc_param < 0);
     int target_fixed_depth = is_fixed_depth ? bank_param : 12;
 
@@ -105,13 +108,13 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
 
     std::cout << "\n======================================================\n";
     if (is_fixed_depth) {
-        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ Fixed Depth " << target_fixed_depth << " [NO TIME LIMIT] vs Stockfish " << opp_label << ")\n";
+        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ Fixed Depth " << target_fixed_depth << " [NO TIME LIMIT] vs Stockfish " << opp_label << " | " << threads_param << " Threads Equal Match)\n";
     } else if (is_fixed_movetime) {
-        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ Fixed " << static_cast<int>(fixed_movetime_ms / 1000.0) << "s / Move vs Stockfish " << opp_label << ")\n";
+        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ Fixed " << static_cast<int>(fixed_movetime_ms / 1000.0) << "s / Move vs Stockfish " << opp_label << " | " << threads_param << " Threads Equal Match)\n";
     } else if (is_time_control) {
-        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ " << (main_bank_ms / 1000) << "s Bank + " << (inc_ms / 1000) << "s Inc vs Stockfish " << opp_label << ")\n";
+        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ " << (main_bank_ms / 1000) << "s Bank + " << (inc_ms / 1000) << "s Inc vs Stockfish " << opp_label << " | " << threads_param << " Threads Equal Match)\n";
     } else {
-        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ Fixed Depth " << target_fixed_depth << " vs Stockfish " << opp_label << ")\n";
+        std::cout << "  HEAVEN'S GATE GRANDMASTER TOURNAMENT (" << num_games << " Games @ Fixed Depth " << target_fixed_depth << " vs Stockfish " << opp_label << " | " << threads_param << " Threads Equal Match)\n";
     }
     if (batch_id > 0) std::cout << "  Batch #" << batch_id << " -> " << pgn_filename << "\n";
     std::cout << "======================================================\n\n" << std::flush;
@@ -120,7 +123,7 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
     std::vector<std::string> pgn_records;
 
     StockfishClient sf;
-    bool sf_ok = sf.init(elo_param);
+    bool sf_ok = sf.init(elo_param, threads_param);
     if (!sf_ok) {
         std::cerr << "[FATAL] Could not start Stockfish! Aborting tournament.\n";
         return;
@@ -361,13 +364,15 @@ int main(int argc, char* argv[]) {
             int inc_ms   = (argc > 4) ? std::stoi(argv[4]) : 0;
             int batch_id = (argc > 5) ? std::stoi(argv[5]) : 0;
             int elo      = (argc > 6) ? std::stoi(argv[6]) : 3500;
-            run_automated_tournament(games, depth, inc_ms, batch_id, elo);
+            int threads  = (argc > 7) ? std::stoi(argv[7]) : 6;
+            run_automated_tournament(games, depth, inc_ms, batch_id, elo, threads);
             return 0;
         } else if (cmd == "depth_match") {
             int games    = (argc > 2) ? std::stoi(argv[2]) : 10;
             int depth    = (argc > 3) ? std::stoi(argv[3]) : 12;
             int elo      = (argc > 4) ? std::stoi(argv[4]) : 3500;
-            run_automated_tournament(games, depth, -1, 1, elo);
+            int threads  = (argc > 5) ? std::stoi(argv[5]) : 6;
+            run_automated_tournament(games, depth, -1, 1, elo, threads);
             return 0;
         } else if (cmd == "perft" || cmd == "perft_suite") {
             int max_d = (argc > 2) ? std::stoi(argv[2]) : 4;

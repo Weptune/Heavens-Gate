@@ -149,7 +149,7 @@ public:
 
     ~StockfishClient() { close(); }
 
-    bool init(int elo = 2700) {
+    bool init(int elo = 2700, int threads = 6) {
         current_elo = elo;
         if (check_process_alive()) return true;
         close(); // Clean up handles if dead process was lingering
@@ -194,11 +194,11 @@ public:
             if (current_elo >= 3500 || current_elo <= 0) {
                 send_cmd("setoption name UCI_LimitStrength value false");
             } else {
-                send_cmd("setoption name UCI_LimitStrength value true");
                 send_cmd("setoption name UCI_Elo value " + std::to_string(current_elo));
+                send_cmd("setoption name UCI_LimitStrength value true");
             }
-            send_cmd("setoption name Threads value 1");
-            send_cmd("setoption name Hash value 64");
+            send_cmd("setoption name Threads value " + std::to_string(threads));
+            send_cmd("setoption name Hash value 256");
             send_cmd("isready");
 
             std::string ready = read_until("readyok", 15);
