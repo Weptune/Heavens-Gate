@@ -15,6 +15,7 @@ void MovePicker::clear() noexcept {
     history_scores_.fill({});
     countermoves_.fill({});
     cont_history_.fill({});
+    cont_history_2_.fill({});
 }
 
 void MovePicker::age_history() noexcept {
@@ -28,6 +29,13 @@ void MovePicker::age_history() noexcept {
         }
     }
     for (auto& a1 : cont_history_) {
+        for (auto& a2 : a1) {
+            for (auto& a3 : a2) {
+                for (auto& val : a3) val /= 2;
+            }
+        }
+    }
+    for (auto& a1 : cont_history_2_) {
         for (auto& a2 : a1) {
             for (auto& a3 : a2) {
                 for (auto& val : a3) val /= 2;
@@ -116,7 +124,51 @@ int MovePicker::get_continuation_history(const Board& board, Move prev_move, Mov
     return 0;
 }
 
-void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move tt_move, Move prev_move) const noexcept {
+void MovePicker::add_continuation_history_2(const Board& board, Move prev2_move, Move curr_move, int depth) noexcept {
+    if (!static_cast<bool>(prev2_move) || !static_cast<bool>(curr_move)) return;
+
+    Piece curr_p = board.piece_at(curr_move.from());
+    Piece prev2_p = board.piece_at(prev2_move.to());
+    if (curr_p == Piece::None || prev2_p == Piece::None) return;
+
+    size_t curr_pt = static_cast<size_t>(piece_type_of(curr_p));
+    size_t curr_to = static_cast<size_t>(curr_move.to());
+    size_t prev2_pt = static_cast<size_t>(piece_type_of(prev2_p));
+    size_t prev2_to = static_cast<size_t>(prev2_move.to());
+
+    if (curr_pt < 6 && prev2_pt < 6) {
+        cont_history_2_[curr_pt][curr_to][prev2_pt][prev2_to] += depth * depth;
+        if (cont_history_2_[curr_pt][curr_to][prev2_pt][prev2_to] > 10000) {
+            for (auto& a1 : cont_history_2_) {
+                for (auto& a2 : a1) {
+                    for (auto& a3 : a2) {
+                        for (auto& val : a3) val /= 2;
+                    }
+                }
+            }
+        }
+    }
+}
+
+int MovePicker::get_continuation_history_2(const Board& board, Move prev2_move, Move curr_move) const noexcept {
+    if (!static_cast<bool>(prev2_move) || !static_cast<bool>(curr_move)) return 0;
+
+    Piece curr_p = board.piece_at(curr_move.from());
+    Piece prev2_p = board.piece_at(prev2_move.to());
+    if (curr_p == Piece::None || prev2_p == Piece::None) return 0;
+
+    size_t curr_pt = static_cast<size_t>(piece_type_of(curr_p));
+    size_t curr_to = static_cast<size_t>(curr_move.to());
+    size_t prev2_pt = static_cast<size_t>(piece_type_of(prev2_p));
+    size_t prev2_to = static_cast<size_t>(prev2_move.to());
+
+    if (curr_pt < 6 && prev2_pt < 6) {
+        return cont_history_2_[curr_pt][curr_to][prev2_pt][prev2_to];
+    }
+    return 0;
+}
+
+void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move tt_move, Move prev_move, Move prev2_move) const noexcept {
     std::vector<int> scores(moves.size(), 0);
 
     Move killer1 = (ply < 128) ? killer_moves_[static_cast<size_t>(ply)][0] : Move();
@@ -172,15 +224,16 @@ void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int p
         } else if (m == killer1) {
             scores[i] = 800000;
         } else if (m == killer2) {
-            scores[i] = 700000;
+            scores[i] = 750000;
         } else if (m == countermove) {
-            scores[i] = 600000;
+            scores[i] = 700000;
         } else {
-            size_t from_idx = static_cast<size_t>(m.from());
-            size_t to_idx   = static_cast<size_t>(m.to());
-            int hist = history_scores_[c_idx][from_idx][to_idx];
+            size_t from = static_cast<size_t>(m.from());
+            size_t to   = static_cast<size_t>(m.to());
+            int hist = history_scores_[c_idx][from][to];
             int cont = get_continuation_history(board, prev_move, m);
-            scores[i] = hist + cont;
+            int cont2 = get_continuation_history_2(board, prev2_move, m);
+            scores[i] = hist + cont + cont2;
         }
     }
 

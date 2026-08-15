@@ -12,6 +12,7 @@ private:
     std::array<std::array<std::array<int, 64>, 64>, 2> history_scores_{};
     std::array<std::array<Move, 64>, 64> countermoves_{};
     std::array<std::array<std::array<std::array<int, 64>, 6>, 64>, 6> cont_history_{};
+    std::array<std::array<std::array<std::array<int, 64>, 6>, 64>, 6> cont_history_2_{};
 
 public:
     MovePicker();
@@ -24,8 +25,10 @@ public:
     void add_countermove(Move prev_move, Move countermove) noexcept;
     void add_continuation_history(const Board& board, Move prev_move, Move curr_move, int depth) noexcept;
     int get_continuation_history(const Board& board, Move prev_move, Move curr_move) const noexcept;
+    void add_continuation_history_2(const Board& board, Move prev2_move, Move curr_move, int depth) noexcept;
+    int get_continuation_history_2(const Board& board, Move prev2_move, Move curr_move) const noexcept;
 
-    void score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move pv_move = Move(), Move prev_move = Move()) const noexcept;
+    void score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move pv_move = Move(), Move prev_move = Move(), Move prev2_move = Move()) const noexcept;
     static bool see_ge(const Board& board, Move m, int threshold) noexcept;
 };
 

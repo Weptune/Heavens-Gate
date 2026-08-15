@@ -47,7 +47,7 @@ public:
 private:
     int quiescence_search(Board& board, int alpha, int beta, int ply);
     int negamax_minimax(Board& board, int depth, int ply, TreeNodeJSON* json_node);
-    int negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move = Move(), Move prev_move = Move(), TreeNodeJSON* json_node = nullptr, int prev_eval = -ScoreInfinity);
+    int negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move = Move(), Move prev_move = Move(), Move prev2_move = Move(), TreeNodeJSON* json_node = nullptr, int prev_eval = -ScoreInfinity);
 
     bool is_time_up() {
         if (time_stop_flag_) return true;
@@ -69,6 +69,7 @@ private:
     GameTreeExporter exporter_;
     MetricsTracker metrics_tracker_;
     std::array<std::array<int, 4096>, 2> corr_history_{};
+    std::array<std::array<int, 4096>, 2> non_pawn_corr_history_{};
 
 public:
     void clear() noexcept {
@@ -76,6 +77,7 @@ public:
         move_picker_.clear();
         tt_.clear();
         corr_history_.fill({});
+        non_pawn_corr_history_.fill({});
     }
 
     std::chrono::high_resolution_clock::time_point search_start_time_;
