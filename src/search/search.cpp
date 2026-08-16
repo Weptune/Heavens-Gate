@@ -318,6 +318,13 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             continue;
         }
 
+        // SEE Bad Capture Pruning: Skip losing captures at shallow depth (depth <= 4)
+        if (depth <= 4 && !in_chk && i >= 1 && m.is_capture() && !m.is_promotion()) {
+            if (!MovePicker::see_ge(board, m, -100 * depth)) {
+                continue;
+            }
+        }
+
         board.make_move(m);
 
         TreeNodeJSON* child_node = nullptr;
