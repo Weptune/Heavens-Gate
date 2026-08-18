@@ -257,6 +257,17 @@ int EvalFeatures::evaluate_piece_activity(const Board& board, Color side) {
         score += 30;
     }
 
+    // Minor Piece Development Incentive: Penalize undeveloped minor pieces sleeping on starting squares (-12 cp each)
+    if (side == Color::White) {
+        Bitboard home_minors = (knights & (square_bb(Square::b1) | square_bb(Square::g1))) |
+                               (bishops & (square_bb(Square::c1) | square_bb(Square::f1)));
+        score -= popcount(home_minors) * 12;
+    } else {
+        Bitboard home_minors = (knights & (square_bb(Square::b8) | square_bb(Square::g8))) |
+                               (bishops & (square_bb(Square::c8) | square_bb(Square::f8)));
+        score -= popcount(home_minors) * 12;
+    }
+
     // Knights in Center (d4, e4, d5, e5) Bonus (+15 cp)
     Bitboard center_mask = square_bb(Square::d4) | square_bb(Square::e4) | square_bb(Square::d5) | square_bb(Square::e5);
     score += popcount(knights & center_mask) * 15;

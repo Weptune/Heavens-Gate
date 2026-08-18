@@ -19,12 +19,15 @@ struct alignas(16) TTEntry {
     int16_t score{0};
     uint8_t depth{0};
     TTBound bound{TTBound::None};
+    uint8_t generation{0};
+    uint8_t pad{0};
 };
 
 class TranspositionTable {
 private:
     std::vector<TTEntry> table_;
     size_t size_{0};
+    uint8_t generation_{0};
 
     size_t hits_{0};
     size_t probes_{0};
@@ -32,8 +35,10 @@ private:
 public:
     TranspositionTable(size_t size_mb = 64);
 
-    void resize(size_t size_mb);
+    void resize(size_t size_mb = 64);
     void clear();
+    void new_search() noexcept { generation_++; }
+    uint8_t generation() const noexcept { return generation_; }
 
     TTEntry* probe(uint64_t key) noexcept;
     void store(uint64_t key, Move move, int score, int depth, TTBound bound, int ply) noexcept;
