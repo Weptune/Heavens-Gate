@@ -28,7 +28,13 @@ struct SearchResult {
 
 class SearchEngine {
 public:
-    SearchEngine() = default;
+    explicit SearchEngine(TranspositionTable* shared_tt = nullptr)
+        : tt_ptr_(shared_tt ? shared_tt : &local_tt_) {}
+
+    SearchEngine(const SearchEngine&) = delete;
+    SearchEngine& operator=(const SearchEngine&) = delete;
+    SearchEngine(SearchEngine&&) = default;
+    SearchEngine& operator=(SearchEngine&&) = default;
 
     SearchResult search_minimax(Board& board, int depth, bool export_tree = false);
     SearchResult search_alphabeta(Board& board, int depth, bool use_move_ordering = true, bool use_tt = true, bool export_tree = false);
@@ -38,11 +44,13 @@ public:
     GameTreeExporter& exporter() { return exporter_; }
     const GameTreeExporter& tree_exporter() const { return exporter_; }
     GameTreeExporter& tree_exporter() { return exporter_; }
-    TranspositionTable& tt() { return tt_; }
-    const TranspositionTable& tt() const { return tt_; }
+    TranspositionTable& tt() { return *tt_ptr_; }
+    const TranspositionTable& tt() const { return *tt_ptr_; }
     PolyGlotBook& polyglot_book() { return polyglot_book_; }
     const PolyGlotBook& polyglot_book() const { return polyglot_book_; }
     void stop() { time_stop_flag_ = true; }
+    void set_threads(int threads) { num_threads_ = std::max(1, threads); }
+    int threads() const { return num_threads_; }
 
 private:
     int quiescence_search(Board& board, int alpha, int beta, int ply);
@@ -62,28 +70,34 @@ private:
         return false;
     }
 
+    TranspositionTable* tt_ptr_{nullptr};
+    TranspositionTable local_tt_;
     PolyGlotBook polyglot_book_;
     PVTable pv_table_;
     MovePicker move_picker_;
-    TranspositionTable tt_;
     GameTreeExporter exporter_;
     MetricsTracker metrics_tracker_;
     std::array<std::array<int, 4096>, 2> corr_history_{};
     std::array<std::array<int, 4096>, 2> non_pawn_corr_history_{};
+    int num_threads_{6};
 
 public:
     void clear() noexcept {
         pv_table_.clear();
         move_picker_.clear();
-        tt_.clear();
+        if (tt_ptr_ == &local_tt_) {
+            local_tt_.clear();
+        }
         corr_history_.fill({});
         non_pawn_corr_history_.fill({});
+        node_count_ = 0;
     }
 
     std::chrono::high_resolution_clock::time_point search_start_time_;
     double max_time_ms_ = 0.0;
     bool time_stop_flag_ = false;
     uint64_t q_nodes_ = 0;
+    uint64_t node_count_ = 0;
 };
 
 } // namespace heavensgate

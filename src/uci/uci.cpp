@@ -92,6 +92,7 @@ void UCI::loop() {
     Board board;
     FEN::parse(FEN::StartPOS, board);
     SearchEngine engine;
+    engine.set_threads(6);
 
     Evaluator::set_mode(EvalMode::SpectralTropical);
     engine.tt().resize(256);
@@ -101,10 +102,24 @@ void UCI::loop() {
         if (line == "uci") {
             std::cout << "id name Heaven's Gate Master Edition\n";
             std::cout << "id author DeepMind Antigravity\n";
+            std::cout << "option name Hash type spin default 256 min 1 max 16384\n";
+            std::cout << "option name Threads type spin default 6 min 1 max 64\n";
             std::cout << "uciok" << std::endl;
         } else if (line == "isready") {
             Evaluator::set_mode(EvalMode::SpectralTropical);
             std::cout << "readyok" << std::endl;
+        } else if (line.rfind("setoption", 0) == 0) {
+            std::stringstream ss(line);
+            std::string token, name, val;
+            ss >> token >> token; // setoption name
+            ss >> name;
+            ss >> token; // value
+            ss >> val;
+            if (name == "Threads" && !val.empty()) {
+                engine.set_threads(std::stoi(val));
+            } else if (name == "Hash" && !val.empty()) {
+                engine.tt().resize(std::stoul(val));
+            }
         } else if (line == "ucinewgame") {
             Evaluator::set_mode(EvalMode::SpectralTropical);
             board.clear();

@@ -54,13 +54,14 @@ void TranspositionTable::store(uint64_t key, Move move, int score, int depth, TT
 
     // Replacement Policy: Replace if slot is empty, key matches, or new depth >= old depth
     if (entry.bound == TTBound::None || entry.key == key || depth >= entry.depth) {
-        entry.key = key;
-        if (static_cast<bool>(move)) {
-            entry.move = move;
-        }
-        entry.score = static_cast<int16_t>(score);
-        entry.depth = static_cast<uint8_t>(depth);
-        entry.bound = bound;
+        TTEntry new_entry;
+        new_entry.key = key;
+        new_entry.move = static_cast<bool>(move) ? move : (entry.key == key ? entry.move : Move());
+        new_entry.score = static_cast<int16_t>(score);
+        new_entry.depth = static_cast<uint8_t>(depth);
+        new_entry.bound = bound;
+
+        entry = new_entry; // 16-byte aligned struct assignment
     }
 }
 

@@ -85,14 +85,13 @@ float SpectralGraph::compute_edge_weight(Piece p1, Square sq1, Piece p2, Square 
 // Helper: Compute Fiedler value (λ₂) for a subgraph of same-color pieces
 // =============================================================================
 static float compute_side_fiedler(
-    const std::vector<std::pair<Piece, Square>>& side_nodes
+    const std::pair<Piece, Square>* side_nodes, int N
 ) {
-    int N = static_cast<int>(side_nodes.size());
     if (N < 2) return 0.0f;
 
-    // Build adjacency and degree for this side's subgraph
-    std::vector<float> A(N * N, 0.0f);
-    std::vector<float> deg(N, 0.0f);
+    // Build adjacency and degree for this side's subgraph on stack (N <= 16)
+    alignas(32) float A[256] = {0.0f};
+    alignas(32) float deg[16] = {0.0f};
 
     for (int i = 0; i < N; i++) {
         for (int j = i + 1; j < N; j++) {
@@ -108,7 +107,7 @@ static float compute_side_fiedler(
     }
 
     // Build Laplacian L = D - A
-    std::vector<float> L(N * N, 0.0f);
+    alignas(32) float L[256] = {0.0f};
     for (int i = 0; i < N; i++) {
         L[i * N + i] = deg[i];
         for (int j = 0; j < N; j++) {
@@ -117,14 +116,16 @@ static float compute_side_fiedler(
     }
 
     // Power Iteration for max eigenvalue λ_N
-    std::vector<float> v(N, 1.0f / std::sqrt(static_cast<float>(N)));
-    std::vector<float> v_next(N, 0.0f);
+    alignas(32) float v[16];
+    alignas(32) float v_next[16] = {0.0f};
+    float inv_sqrt_n = 1.0f / std::sqrt(static_cast<float>(N));
+    for (int i = 0; i < N; i++) v[i] = inv_sqrt_n;
     float max_lambda = 0.0f;
 
     for (int iter = 0; iter < 4; iter++) {
         float norm_sq = 0.0f;
         for (int i = 0; i < N; i++) {
-            float sum = simd_dot_product(&L[i * N], v.data(), N);
+            float sum = simd_dot_product(&L[i * N], v, N);
             v_next[i] = sum;
             norm_sq += sum * sum;
         }
@@ -138,8 +139,7 @@ static float compute_side_fiedler(
     if (max_lambda < 1e-6f) return 0.0f;
 
     // Inverse Power Iteration for Fiedler value λ₂ (4 iterations, AVX2 SIMD vectorized)
-    // Iterate on M = (max_lambda * I - L), deflating the constant eigenvector
-    std::vector<float> u(N);
+    alignas(32) float u[16];
     for (int i = 0; i < N; i++) u[i] = (i % 2 == 0) ? 1.0f : -1.0f;
 
     float fiedler = 0.0f;
@@ -153,7 +153,7 @@ static float compute_side_fiedler(
         // Multiply by M = (max_lambda * I - L) using AVX2 SIMD dot product
         float norm_sq = 0.0f;
         for (int i = 0; i < N; i++) {
-            float sum = max_lambda * u[i] - simd_dot_product(&L[i * N], u.data(), N);
+            float sum = max_lambda * u[i] - simd_dot_product(&L[i * N], u, N);
             v_next[i] = sum;
             norm_sq += sum * sum;
         }
@@ -183,30 +183,29 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
 
     SpectralFeatures feat{};
 
-    // Collect active pieces
+    // Collect active pieces on stack
     struct Node {
         Piece piece;
         Square sq;
     };
-    std::vector<Node> nodes;
-    nodes.reserve(MAX_NODES);
+    Node nodes[MAX_NODES];
+    int N = 0;
 
     for (int s = 0; s < 64; s++) {
         Square sq = static_cast<Square>(s);
         Piece p = board.piece_at(sq);
-        if (p != Piece::None) {
-            nodes.push_back({p, sq});
+        if (p != Piece::None && N < MAX_NODES) {
+            nodes[N++] = {p, sq};
         }
     }
 
-    int N = static_cast<int>(nodes.size());
     if (N < 2) return feat;
 
     // =========================================================================
-    // Global Laplacian for spectral_gap and laplacian_trace
+    // Global Laplacian for spectral_gap and laplacian_trace (Stack Allocated)
     // =========================================================================
-    std::vector<float> A(N * N, 0.0f);
-    std::vector<float> deg(N, 0.0f);
+    alignas(32) float A[1024] = {0.0f};
+    alignas(32) float deg[32] = {0.0f};
 
     for (int i = 0; i < N; i++) {
         for (int j = i + 1; j < N; j++) {
@@ -219,7 +218,7 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     }
 
     // Compute Laplacian Matrix L = D - A
-    std::vector<float> L(N * N, 0.0f);
+    alignas(32) float L[1024] = {0.0f};
     float trace = 0.0f;
 
     for (int i = 0; i < N; i++) {
@@ -235,14 +234,16 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     feat.laplacian_trace = trace;
 
     // Power Iteration for Max Eigenvalue λ_N
-    std::vector<float> v(N, 1.0f / std::sqrt(static_cast<float>(N)));
-    std::vector<float> v_next(N, 0.0f);
+    alignas(32) float v[32];
+    alignas(32) float v_next[32] = {0.0f};
+    float inv_sqrt_n = 1.0f / std::sqrt(static_cast<float>(N));
+    for (int i = 0; i < N; i++) v[i] = inv_sqrt_n;
     float max_lambda = 0.0f;
 
     for (int iter = 0; iter < 4; iter++) {
         float norm_sq = 0.0f;
         for (int i = 0; i < N; i++) {
-            float sum = simd_dot_product(&L[i * N], v.data(), N);
+            float sum = simd_dot_product(&L[i * N], v, N);
             v_next[i] = sum;
             norm_sq += sum * sum;
         }
@@ -255,7 +256,7 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     }
 
     // Global Fiedler value for spectral_gap computation (4 iterations, AVX2 SIMD vectorized)
-    std::vector<float> u(N);
+    alignas(32) float u[32];
     for (int i = 0; i < N; i++) u[i] = (i % 2 == 0) ? 1.0f : -1.0f;
 
     float global_fiedler = 0.0f;
@@ -267,7 +268,7 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
 
         float norm_sq = 0.0f;
         for (int i = 0; i < N; i++) {
-            float sum = max_lambda * u[i] - simd_dot_product(&L[i * N], u.data(), N);
+            float sum = max_lambda * u[i] - simd_dot_product(&L[i * N], u, N);
             v_next[i] = sum;
             norm_sq += sum * sum;
         }
@@ -283,26 +284,26 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     feat.spectral_gap = std::max(0.0f, max_lambda - feat.fiedler_val);
 
     // =========================================================================
-    // Per-Side Fiedler Values (separate subgraph Laplacians)
+    // Per-Side Fiedler Values (separate subgraph Laplacians on stack)
     // =========================================================================
     Color us = board.side_to_move();
     Color them = ~us;
 
-    std::vector<std::pair<Piece, Square>> us_nodes, them_nodes;
-    us_nodes.reserve(16);
-    them_nodes.reserve(16);
+    std::pair<Piece, Square> us_nodes[16];
+    std::pair<Piece, Square> them_nodes[16];
+    int us_count = 0, them_count = 0;
 
     for (int i = 0; i < N; i++) {
         Color c = color_of(nodes[i].piece);
         if (c == us) {
-            us_nodes.push_back({nodes[i].piece, nodes[i].sq});
+            if (us_count < 16) us_nodes[us_count++] = {nodes[i].piece, nodes[i].sq};
         } else {
-            them_nodes.push_back({nodes[i].piece, nodes[i].sq});
+            if (them_count < 16) them_nodes[them_count++] = {nodes[i].piece, nodes[i].sq};
         }
     }
 
-    feat.fiedler_us = compute_side_fiedler(us_nodes);
-    feat.fiedler_them = compute_side_fiedler(them_nodes);
+    feat.fiedler_us = compute_side_fiedler(us_nodes, us_count);
+    feat.fiedler_them = compute_side_fiedler(them_nodes, them_count);
 
     // =========================================================================
     // Per-Side Features: Cohesion, King Pressure, Battery, Pawn Structure,

@@ -137,6 +137,7 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
         sf.reset_game();
 
         SearchEngine master_engine;
+        master_engine.set_threads(threads_param);
         master_engine.tt().resize(64);
         master_engine.tt().clear();
         master_engine.polyglot_book().load("performance.bin");

@@ -14,8 +14,9 @@ namespace heavensgate {
 int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) {
     metrics_tracker_.add_nodes(1);
     q_nodes_++;
+    node_count_++;
 
-    if (is_time_up()) return 0;
+    if (time_stop_flag_ || ((node_count_ & 2047) == 0 && is_time_up())) return 0;
 
     Color us = board.side_to_move();
     bool in_chk = MoveGenerator::in_check(board, us);
@@ -151,8 +152,9 @@ int SearchEngine::negamax_minimax(Board& board, int depth, int ply, TreeNodeJSON
 
 int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move, Move prev_move, Move prev2_move, TreeNodeJSON* json_node, int prev_eval) {
     metrics_tracker_.add_nodes(1);
+    node_count_++;
 
-    if (is_time_up()) return 0;
+    if (time_stop_flag_ || ((node_count_ & 2047) == 0 && is_time_up())) return 0;
 
     if (ply > 0 && board.is_repetition(2)) {
         // Anti-Repetition Contempt: Return a mild negative draw penalty (-50 cp) so search engine NEVER chooses a move that repeats a position!
@@ -172,8 +174,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     // 1. Transposition Table Probing
     if (use_tt) {
-        tt_.prefetch(board.zobrist_key());
-        TTEntry* tt_entry = tt_.probe(board.zobrist_key());
+        tt().prefetch(board.zobrist_key());
+        TTEntry* tt_entry = tt().probe(board.zobrist_key());
         if (tt_entry) {
             if (static_cast<bool>(tt_entry->move)) {
                 tt_move = tt_entry->move;
@@ -396,7 +398,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 }
             }
             if (use_tt) {
-                tt_.store(board.zobrist_key(), m, score, depth, TTBound::Lower, ply);
+                tt().store(board.zobrist_key(), m, score, depth, TTBound::Lower, ply);
             }
             if (!in_chk && raw_static_eval != 0 && std::abs(score) < ScoreMate - 1000) {
                 int err = score - raw_static_eval;
@@ -424,7 +426,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     if (use_tt && !time_stop_flag_) {
         TTBound bound = (best_score <= orig_alpha) ? TTBound::Upper : TTBound::Exact;
-        tt_.store(board.zobrist_key(), best_move, best_score, depth, bound, ply);
+        tt().store(board.zobrist_key(), best_move, best_score, depth, bound, ply);
     }
 
     if (json_node) {
@@ -499,7 +501,7 @@ SearchResult SearchEngine::search_minimax(Board& board, int depth, bool export_t
 SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_move_ordering, bool use_tt, bool export_tree) {
     pv_table_.clear();
     move_picker_.clear();
-    if (use_tt) tt_.clear();
+    if (use_tt) tt().clear();
     q_nodes_ = 0;
     Evaluator::reset_incremental_cache();
 
@@ -584,7 +586,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     result.best_score = best_score;
     result.pv = pv_table_.get_pv(depth).to_vector();
     result.metrics = metrics_tracker_.get_metrics();
-    result.tt_hits = tt_.hits();
+    result.tt_hits = tt().hits();
     result.q_nodes = q_nodes_;
 
     return result;
@@ -602,103 +604,222 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 
     metrics_tracker_.reset();
     metrics_tracker_.start_timer();
-    metrics_tracker_.set_version("v10.0 (Master Search Architecture)");
+    metrics_tracker_.set_version("v10.0 (Master Lazy SMP)");
 
     SearchResult final_result;
     Move best_pv_move = Move();
     int last_score = 0;
     int stable_move_count = 0;
 
-    for (int d = 1; d <= max_depth; ++d) {
-        if (max_nodes > 0 && metrics_tracker_.get_metrics().total_nodes >= max_nodes) break;
-        metrics_tracker_.set_depth(d);
+#if defined(_OPENMP)
+    int n_threads = num_threads_;
+    if (n_threads > 1) {
+        #pragma omp parallel num_threads(n_threads)
+        {
+            int tid = omp_get_thread_num();
+            if (tid == 0) {
+                for (int d = 1; d <= max_depth; ++d) {
+                    if (max_nodes > 0 && metrics_tracker_.get_metrics().total_nodes >= max_nodes) break;
+                    metrics_tracker_.set_depth(d);
 
-        MoveList moves;
-        MoveGenerator::generate_legal_moves(board, moves);
+                    MoveList moves;
+                    MoveGenerator::generate_legal_moves(board, moves);
 
-        if (moves.empty()) break;
-        // Ensure single legal moves run search to populate TT and evaluate position threats
-        if (!static_cast<bool>(final_result.best_move)) {
-            final_result.best_move = moves[0];
+                    if (moves.empty()) break;
+                    if (!static_cast<bool>(final_result.best_move)) {
+                        final_result.best_move = moves[0];
+                    }
+
+                    move_picker_.score_and_sort_moves(board, moves, 0, best_pv_move);
+
+                    int alpha = -ScoreInfinity;
+                    int beta  =  ScoreInfinity;
+                    constexpr int WindowDelta = 25;
+
+                    if (d >= 4 && std::abs(last_score) < ScoreMate - 1000) {
+                        alpha = last_score - WindowDelta;
+                        beta  = last_score + WindowDelta;
+                    }
+
+                    int current_best_score = -ScoreInfinity;
+                    Move current_best_move = moves[0];
+                    bool interrupted = false;
+
+                    while (true) {
+                        current_best_score = -ScoreInfinity;
+                        int orig_alpha = alpha;
+
+                        for (const auto& m : moves) {
+                            board.make_move(m);
+
+                            int score = -negamax_alphabeta(board, d - 1, 1, -beta, -alpha, true, true, Move(), m, Move(), nullptr);
+
+                            board.unmake_move(m);
+
+                            if (time_stop_flag_) {
+                                interrupted = true;
+                                break;
+                            }
+
+                            if (score > current_best_score) {
+                                current_best_score = score;
+                                current_best_move = m;
+                            }
+
+                            if (score > alpha) {
+                                alpha = score;
+                                pv_table_.set_move(0, m);
+                                pv_table_.update(0, m);
+                            }
+                        }
+
+                        if (interrupted) break;
+
+                        if (current_best_score <= orig_alpha) {
+                            alpha = -ScoreInfinity;
+                        } else if (current_best_score >= beta) {
+                            beta = ScoreInfinity;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    if (interrupted) break;
+
+                    if (current_best_move == best_pv_move) {
+                        stable_move_count++;
+                    } else {
+                        stable_move_count = 0;
+                    }
+
+                    best_pv_move = current_best_move;
+                    last_score   = current_best_score;
+
+                    final_result.best_move = current_best_move;
+                    final_result.best_score = current_best_score;
+                    final_result.pv = pv_table_.get_pv(d).to_vector();
+                    final_result.completed_depth = d;
+                    final_result.tt_hits = tt().hits();
+                    final_result.q_nodes = q_nodes_;
+
+                    if (is_time_up()) break;
+                }
+                time_stop_flag_ = true;
+            } else {
+                // Helper thread (private board and engine instance sharing master TT)
+                Board helper_board = board;
+                SearchEngine helper(tt_ptr_);
+                helper.search_start_time_ = search_start_time_;
+                helper.max_time_ms_ = max_time_ms_;
+
+                int depth_offset = (tid % 2);
+                for (int d = 1 + depth_offset; d <= max_depth; ++d) {
+                    if (time_stop_flag_ || helper.time_stop_flag_) break;
+
+                    MoveList moves;
+                    MoveGenerator::generate_legal_moves(helper_board, moves);
+                    if (moves.empty()) break;
+
+                    helper.move_picker_.score_and_sort_moves(helper_board, moves, 0);
+
+                    for (const auto& m : moves) {
+                        if (time_stop_flag_ || helper.time_stop_flag_) break;
+                        helper_board.make_move(m);
+                        helper.negamax_alphabeta(helper_board, d - 1, 1, -ScoreInfinity, ScoreInfinity, true, true, Move(), m, Move(), nullptr);
+                        helper_board.unmake_move(m);
+                    }
+                }
+            }
         }
+    } else
+#endif
+    {
+        for (int d = 1; d <= max_depth; ++d) {
+            if (max_nodes > 0 && metrics_tracker_.get_metrics().total_nodes >= max_nodes) break;
+            metrics_tracker_.set_depth(d);
 
-        move_picker_.score_and_sort_moves(board, moves, 0, best_pv_move);
+            MoveList moves;
+            MoveGenerator::generate_legal_moves(board, moves);
 
-        int alpha = -ScoreInfinity;
-        int beta  =  ScoreInfinity;
-        constexpr int WindowDelta = 25;
+            if (moves.empty()) break;
+            if (!static_cast<bool>(final_result.best_move)) {
+                final_result.best_move = moves[0];
+            }
 
-        if (d >= 4 && std::abs(last_score) < ScoreMate - 1000) {
-            alpha = last_score - WindowDelta;
-            beta  = last_score + WindowDelta;
-        }
+            move_picker_.score_and_sort_moves(board, moves, 0, best_pv_move);
 
-        int current_best_score = -ScoreInfinity;
-        Move current_best_move = moves[0];
-        bool interrupted = false;
+            int alpha = -ScoreInfinity;
+            int beta  =  ScoreInfinity;
+            constexpr int WindowDelta = 25;
 
-        while (true) {
-            current_best_score = -ScoreInfinity;
-            int orig_alpha = alpha;
+            if (d >= 4 && std::abs(last_score) < ScoreMate - 1000) {
+                alpha = last_score - WindowDelta;
+                beta  = last_score + WindowDelta;
+            }
 
-            for (const auto& m : moves) {
-                board.make_move(m);
+            int current_best_score = -ScoreInfinity;
+            Move current_best_move = moves[0];
+            bool interrupted = false;
 
-                int score = -negamax_alphabeta(board, d - 1, 1, -beta, -alpha, true, true, Move(), m, Move(), nullptr);
+            while (true) {
+                current_best_score = -ScoreInfinity;
+                int orig_alpha = alpha;
 
-                board.unmake_move(m);
+                for (const auto& m : moves) {
+                    board.make_move(m);
 
-                if (time_stop_flag_) {
-                    interrupted = true;
+                    int score = -negamax_alphabeta(board, d - 1, 1, -beta, -alpha, true, true, Move(), m, Move(), nullptr);
+
+                    board.unmake_move(m);
+
+                    if (time_stop_flag_) {
+                        interrupted = true;
+                        break;
+                    }
+
+                    if (score > current_best_score) {
+                        current_best_score = score;
+                        current_best_move = m;
+                    }
+
+                    if (score > alpha) {
+                        alpha = score;
+                        pv_table_.set_move(0, m);
+                        pv_table_.update(0, m);
+                    }
+                }
+
+                if (interrupted) break;
+
+                if (current_best_score <= orig_alpha) {
+                    alpha = -ScoreInfinity;
+                } else if (current_best_score >= beta) {
+                    beta = ScoreInfinity;
+                } else {
                     break;
-                }
-
-                if (score > current_best_score) {
-                    current_best_score = score;
-                    current_best_move = m;
-                }
-
-                if (score > alpha) {
-                    alpha = score;
-                    pv_table_.set_move(0, m);
-                    pv_table_.update(0, m);
                 }
             }
 
             if (interrupted) break;
 
-            if (current_best_score <= orig_alpha) {
-                alpha = -ScoreInfinity;
-            } else if (current_best_score >= beta) {
-                beta = ScoreInfinity;
+            if (current_best_move == best_pv_move) {
+                stable_move_count++;
             } else {
-                break;
+                stable_move_count = 0;
             }
+
+            best_pv_move = current_best_move;
+            last_score   = current_best_score;
+
+            final_result.best_move = current_best_move;
+            final_result.best_score = current_best_score;
+            final_result.pv = pv_table_.get_pv(d).to_vector();
+            final_result.completed_depth = d;
+            final_result.tt_hits = tt().hits();
+            final_result.q_nodes = q_nodes_;
+
+            if (is_time_up()) break;
         }
-
-        if (interrupted) break;
-
-        // 2. Smart Move Stability Check: Count how many depths best_move remained stable
-        if (current_best_move == best_pv_move) {
-            stable_move_count++;
-        } else {
-            stable_move_count = 0;
-        }
-
-        best_pv_move = current_best_move;
-        int eval_diff = std::abs(current_best_score - last_score);
-        last_score   = current_best_score;
-
-        final_result.best_move = current_best_move;
-        final_result.best_score = current_best_score;
-        final_result.pv = pv_table_.get_pv(d).to_vector();
-        final_result.completed_depth = d;
-        final_result.tt_hits = tt_.hits();
-        final_result.q_nodes = q_nodes_;
-
-        // Always complete full depth 8 search to prevent tactical blunders!
-
-        if (is_time_up()) break;
     }
 
     metrics_tracker_.stop_timer();
@@ -708,45 +829,8 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 }
 
 SearchResult SearchEngine::search_smp(Board& board, int max_depth, int num_threads) {
-    if (num_threads <= 1) {
-        return search_iterative_deepening(board, max_depth, 0.0);
-    }
-
-    metrics_tracker_.start_timer();
-    time_stop_flag_ = false;
-
-    SearchResult final_result;
-    final_result.best_score = -ScoreInfinity;
-    final_result.best_move = Move();
-
-    #if defined(_OPENMP)
-    #pragma omp parallel num_threads(num_threads)
-    {
-        int thread_id = omp_get_thread_num();
-        int depth_offset = (thread_id == 0) ? 0 : (thread_id % 2);
-
-        for (int d = 1 + depth_offset; d <= max_depth; ++d) {
-            if (time_stop_flag_) break;
-
-            int score = negamax_alphabeta(board, d, 0, -ScoreInfinity, ScoreInfinity, true, true, Move(), Move(), Move(), nullptr);
-
-            if (thread_id == 0 && !time_stop_flag_) {
-                final_result.completed_depth = d;
-                final_result.best_score = score;
-                final_result.pv = pv_table_.get_pv(d).to_vector();
-                if (!final_result.pv.empty()) {
-                    final_result.best_move = final_result.pv[0];
-                }
-            }
-        }
-    }
-    #else
+    set_threads(num_threads);
     return search_iterative_deepening(board, max_depth, 0.0);
-    #endif
-
-    metrics_tracker_.stop_timer();
-    final_result.metrics = metrics_tracker_.get_metrics();
-    return final_result;
 }
 
 } // namespace heavensgate
