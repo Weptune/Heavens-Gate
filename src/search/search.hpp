@@ -29,7 +29,12 @@ struct SearchResult {
 class SearchEngine {
 public:
     explicit SearchEngine(TranspositionTable* shared_tt = nullptr)
-        : tt_ptr_(shared_tt ? shared_tt : &local_tt_) {}
+        : tt_ptr_(shared_tt ? shared_tt : &local_tt_) {
+        if (!polyglot_book_.is_loaded()) {
+            polyglot_book_.load("performance.bin");
+            if (!polyglot_book_.is_loaded()) polyglot_book_.load("tools/performance.bin");
+        }
+    }
 
     SearchEngine(const SearchEngine&) = delete;
     SearchEngine& operator=(const SearchEngine&) = delete;

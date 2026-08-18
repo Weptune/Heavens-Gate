@@ -619,6 +619,23 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
 }
 
 SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_depth, double max_time_ms, uint64_t max_nodes) {
+    if (polyglot_book_.is_loaded()) {
+        Move book_move = polyglot_book_.probe(board);
+        if (static_cast<bool>(book_move)) {
+            SearchResult res;
+            res.best_move = book_move;
+            res.best_score = 15; // Standard opening tempo
+            res.depth = 1;
+            res.completed_depth = 1;
+            res.pv = {book_move};
+            metrics_tracker_.reset();
+            metrics_tracker_.start_timer();
+            metrics_tracker_.stop_timer();
+            res.metrics = metrics_tracker_.get_metrics();
+            return res;
+        }
+    }
+
     pv_table_.clear();
     move_picker_.age_history();
     tt().new_search();

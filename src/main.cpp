@@ -11,6 +11,7 @@
 #include "search/search.hpp"
 #include "search/syzygy.hpp"
 #include "benchmark/metrics.hpp"
+#include "benchmark/sts.hpp"
 #include "uci/uci.hpp"
 #include "uci/stockfish_client.hpp"
 #include <iostream>
@@ -388,6 +389,20 @@ int main(int argc, char* argv[]) {
             bool ok = sf.init(3400);
             std::cout << "sf.init result: " << ok << std::endl;
             return 0;
+        } else if (cmd == "sts") {
+            int time_ms = 1000;
+            int depth = 0;
+            int threads = 6;
+            std::string epd_path = "";
+
+            if (argc >= 3) time_ms = std::stoi(argv[2]);
+            if (argc >= 4) depth = std::stoi(argv[3]);
+            if (argc >= 5) threads = std::stoi(argv[4]);
+            if (argc >= 6) epd_path = argv[5];
+
+            STSOverallResult res = STSRunner::run_suite(epd_path, time_ms, depth, threads);
+            std::cout << res.format_report() << std::endl;
+            return 0;
         }
     }
 
@@ -397,6 +412,7 @@ int main(int argc, char* argv[]) {
     std::cout << "======================================================\n";
     std::cout << "Commands:\n";
     std::cout << "  uci                         - Switch to standard UCI Protocol mode\n";
+    std::cout << "  sts [time_ms] [depth] [thr] - Run Strategic Test Suite (STS) positional benchmark\n";
     std::cout << "  tournament [games] [depth]  - Run 100-game grandmaster tournament & save PGN\n";
     std::cout << "  id <depth> [time_ms]        - Run Iterative Deepening + PVS + Eval\n";
     std::cout << "  alphabeta <depth> / ab <d>  - Run Move-Ordered PVS search\n";
@@ -444,6 +460,25 @@ int main(int argc, char* argv[]) {
                 }
             } catch (...) {}
             run_automated_tournament(games, depth, inc_ms);
+        } else if (line.rfind("sts", 0) == 0) {
+            int time_ms = 1000;
+            int depth = 0;
+            int threads = 6;
+            std::string epd_path = "";
+            try {
+                std::stringstream ss(line);
+                std::string cmd;
+                ss >> cmd;
+                if (ss >> time_ms) {
+                    if (ss >> depth) {
+                        if (ss >> threads) {
+                            ss >> epd_path;
+                        }
+                    }
+                }
+            } catch (...) {}
+            STSOverallResult res = STSRunner::run_suite(epd_path, time_ms, depth, threads);
+            std::cout << res.format_report() << std::endl;
         } else if (line.rfind("id", 0) == 0 || line.rfind("go", 0) == 0) {
             int d = 6;
             double time_ms = 0.0;
