@@ -1,6 +1,5 @@
 #include "tropical_eval.hpp"
 #include "pst.hpp"
-#include "eval_features.hpp"
 #include "../board/board.hpp"
 #include <fstream>
 #include <iostream>
@@ -99,51 +98,64 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
     int white_pst = 0, black_pst = 0;
     int white_passed = 0, black_passed = 0;
 
-    int knights = popcount(board.pieces(Piece::WhiteKnight)) + popcount(board.pieces(Piece::BlackKnight));
-    int bishops = popcount(board.pieces(Piece::WhiteBishop)) + popcount(board.pieces(Piece::BlackBishop));
-    int rooks   = popcount(board.pieces(Piece::WhiteRook))   + popcount(board.pieces(Piece::BlackRook));
-    int queens  = popcount(board.pieces(Piece::WhiteQueen))  + popcount(board.pieces(Piece::BlackQueen));
+    int knights = popcount(board.pieces(make_piece(Color::White, PieceType::Knight))) + popcount(board.pieces(make_piece(Color::Black, PieceType::Knight)));
+    int bishops = popcount(board.pieces(make_piece(Color::White, PieceType::Bishop))) + popcount(board.pieces(make_piece(Color::Black, PieceType::Bishop)));
+    int rooks   = popcount(board.pieces(make_piece(Color::White, PieceType::Rook)))   + popcount(board.pieces(make_piece(Color::Black, PieceType::Rook)));
+    int queens  = popcount(board.pieces(make_piece(Color::White, PieceType::Queen)))  + popcount(board.pieces(make_piece(Color::Black, PieceType::Queen)));
     int raw_phase = knights * 1 + bishops * 1 + rooks * 2 + queens * 4;
     int phase_weight = std::min(raw_phase, 24);
 
-    Bitboard w_pawns = board.pieces(Piece::WhitePawn);
-    Bitboard b_pawns = board.pieces(Piece::BlackPawn);
+    for (int sq = 0; sq < 64; sq++) {
+        Square s = static_cast<Square>(sq);
+        Piece p = board.piece_at(s);
+        if (p == Piece::None) continue;
 
-    auto accumulate_side = [&](Color c, int& mat, int& pst_sum, int& passed_sum) {
-        for (int pt_idx = 1; pt_idx <= 6; ++pt_idx) {
-            PieceType pt = static_cast<PieceType>(pt_idx);
-            Bitboard bb = board.pieces(make_piece(c, pt));
+        PieceType pt = piece_type_of(p);
+        Color c = color_of(p);
 
-            int val = 100;
-            switch (pt) {
-                case PieceType::Pawn:   val = 100; break;
-                case PieceType::Knight: val = 320; break;
-                case PieceType::Bishop: val = 330; break;
-                case PieceType::Rook:   val = 500; break;
-                case PieceType::Queen:  val = 900; break;
-                default: val = 0; break;
-            }
+        int val = 100;
+        switch (pt) {
+            case PieceType::Pawn:   val = 100; break;
+            case PieceType::Knight: val = 320; break;
+            case PieceType::Bishop: val = 330; break;
+            case PieceType::Rook:   val = 500; break;
+            case PieceType::Queen:  val = 900; break;
+            default: break;
+        }
 
-            while (bb) {
-                Square s = pop_lsb(bb);
-                mat += val;
-                int mg_pst = PST::get_mg(pt, c, s);
-                int eg_pst = PST::get_eg(pt, c, s);
-                pst_sum += (mg_pst * phase_weight + eg_pst * (24 - phase_weight)) / 24;
+        int mg_pst = PST::get_mg(pt, c, s);
+        int eg_pst = PST::get_eg(pt, c, s);
+        int interpolated_pst = (mg_pst * phase_weight + eg_pst * (24 - phase_weight)) / 24;
 
-                if (pt == PieceType::Pawn) {
-                    Bitboard opp_p = (c == Color::White) ? b_pawns : w_pawns;
-                    size_t c_idx = (c == Color::White) ? 0 : 1;
-                    if ((opp_p & EvalFeatures::PassedPawnMask[c_idx][static_cast<size_t>(s)]) == EmptyBB) {
-                        passed_sum++;
-                    }
+        if (c == Color::White) {
+            white_mat += val;
+            white_pst += interpolated_pst;
+        } else {
+            black_mat += val;
+            black_pst += interpolated_pst;
+        }
+
+        if (pt == PieceType::Pawn) {
+            int file = static_cast<int>(file_of(s));
+            int rank = static_cast<int>(rank_of(s));
+            bool passed = true;
+            for (int sq2 = 0; sq2 < 64 && passed; sq2++) {
+                Piece p2 = board.piece_at(static_cast<Square>(sq2));
+                if (p2 == Piece::None || piece_type_of(p2) != PieceType::Pawn) continue;
+                if (color_of(p2) == c) continue;
+                int f2 = sq2 % 8;
+                int r2 = sq2 / 8;
+                if (std::abs(file - f2) <= 1) {
+                    if (c == Color::White && r2 > rank) passed = false;
+                    if (c == Color::Black && r2 < rank) passed = false;
                 }
             }
+            if (passed) {
+                if (c == Color::White) white_passed++;
+                else black_passed++;
+            }
         }
-    };
-
-    accumulate_side(Color::White, white_mat, white_pst, white_passed);
-    accumulate_side(Color::Black, black_mat, black_pst, black_passed);
+    }
 
     Color us = board.side_to_move();
     int material_diff = (us == Color::White) ? (white_mat - black_mat) : (black_mat - white_mat);
