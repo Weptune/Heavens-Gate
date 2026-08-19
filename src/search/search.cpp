@@ -11,6 +11,19 @@
 
 namespace heavensgate {
 
+// Precomputed LMR reduction table for fast O(1) integer lookups (Zero log() overhead)
+static int lmr_table[64][64];
+
+static struct LMRInit {
+    LMRInit() {
+        for (int d = 0; d < 64; d++) {
+            for (int m = 0; m < 64; m++) {
+                lmr_table[d][m] = (d == 0 || m == 0) ? 0 : 1 + static_cast<int>(std::log(d) * std::log(m) / 2.2);
+            }
+        }
+    }
+} lmr_init;
+
 int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) {
     metrics_tracker_.add_nodes(1);
     q_nodes_++;
@@ -157,8 +170,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     if (time_stop_flag_ || ((node_count_ & 2047) == 0 && is_time_up())) return 0;
 
     if (ply > 0 && board.is_repetition(2)) {
-        // Anti-Repetition Contempt: Return a mild negative draw penalty (-50 cp) so search engine NEVER chooses a move that repeats a position!
-        return -50;
+        // Return neutral draw score (0 cp)
+        return 0;
     }
 
     Color us = board.side_to_move();
@@ -372,7 +385,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         } else {
             // History-Based Late Move Reductions (LMR) for quiet moves (extra reduction when !improving)
             if (i >= 3 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk) {
-                int reduction = 1 + static_cast<int>(std::log(depth) * std::log(i + 1) / 2.2);
+                int reduction = lmr_table[std::min(static_cast<size_t>(depth), static_cast<size_t>(63))][std::min(i + 1, static_cast<size_t>(63))];
                 int history_val = move_picker_.get_history_score(us, m);
                 int cont_val = move_picker_.get_continuation_history(board, prev_move, m);
                 int cont2_val = move_picker_.get_continuation_history_2(board, prev2_move, m);
