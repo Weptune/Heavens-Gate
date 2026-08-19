@@ -54,14 +54,14 @@ int Evaluator::evaluate_side(const Board& board, Color side) {
         return mg_material + mg_pst;
     }
 
-    // Master Positional Features
-    int pawn_struct  = EvalFeatures::evaluate_pawn_structure(board, side);
-    int passed_pawns = EvalFeatures::evaluate_passed_pawns(board, side);
-    int king_safety  = EvalFeatures::evaluate_king_safety(board, side);
-    int activity     = EvalFeatures::evaluate_piece_activity(board, side);
-    int mobility     = EvalFeatures::evaluate_mobility(board, side);
+    // Master Positional Features with true MG/EG phase tapering
+    ScorePair pawn_struct  = EvalFeatures::evaluate_pawn_structure(board, side);
+    ScorePair passed_pawns = EvalFeatures::evaluate_passed_pawns(board, side);
+    ScorePair king_safety  = EvalFeatures::evaluate_king_safety(board, side);
+    ScorePair activity     = EvalFeatures::evaluate_piece_activity(board, side);
+    ScorePair mobility     = EvalFeatures::evaluate_mobility(board, side);
 
-    int pos_total = pawn_struct + passed_pawns + king_safety + activity + mobility;
+    ScorePair pos_total = pawn_struct + passed_pawns + king_safety + activity + mobility;
 
     int knights = popcount(board.pieces(make_piece(Color::White, PieceType::Knight))) + popcount(board.pieces(make_piece(Color::Black, PieceType::Knight)));
     int bishops = popcount(board.pieces(make_piece(Color::White, PieceType::Bishop))) + popcount(board.pieces(make_piece(Color::Black, PieceType::Bishop)));
@@ -69,8 +69,8 @@ int Evaluator::evaluate_side(const Board& board, Color side) {
     int queens  = popcount(board.pieces(make_piece(Color::White, PieceType::Queen)))  + popcount(board.pieces(make_piece(Color::Black, PieceType::Queen)));
     int game_phase = knights * 1 + bishops * 1 + rooks * 2 + queens * 4;
 
-    int mg_total = mg_material + mg_pst + pos_total;
-    int eg_total = eg_material + eg_pst + pos_total;
+    int mg_total = mg_material + mg_pst + pos_total.mg;
+    int eg_total = eg_material + eg_pst + pos_total.eg;
 
     int mg_weight = std::min(game_phase, 24);
     int eg_weight = 24 - mg_weight;
