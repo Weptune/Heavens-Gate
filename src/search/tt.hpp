@@ -27,6 +27,7 @@ class TranspositionTable {
 private:
     std::vector<TTEntry> table_;
     size_t size_{0};
+    size_t mask_{0};
     uint8_t generation_{0};
 
     size_t hits_{0};

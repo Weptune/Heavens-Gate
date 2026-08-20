@@ -23,7 +23,12 @@ heavensgate.qtnw
 
 # Continuous Training Buffer & Optimizer State
 dataset_buffer.bin
+dataset_buffer_v7.bin
+dataset_buffer_v7_pod.bin
 heavensgate_adam.dat
+heavensgate_adam_v7.dat
+heavensgate_v7_*.trm
+heavensgate_tropical_BACKUP_*.trm
 *.bak
 *.tmp
 
