@@ -201,8 +201,7 @@ int MovePicker::get_continuation_history_2(const Board& board, Move prev2_move, 
 }
 
 void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move tt_move, Move prev_move, Move prev2_move) const noexcept {
-    if (moves.empty()) return;
-    std::array<int, 256> scores{};
+    std::vector<int> scores(moves.size(), 0);
 
     Move killer1 = (ply < 128) ? killer_moves_[static_cast<size_t>(ply)][0] : Move();
     Move killer2 = (ply < 128) ? killer_moves_[static_cast<size_t>(ply)][1] : Move();
