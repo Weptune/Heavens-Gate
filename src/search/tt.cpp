@@ -10,14 +10,8 @@ TranspositionTable::TranspositionTable(size_t size_mb) {
 
 void TranspositionTable::resize(size_t size_mb) {
     size_t num_entries = (size_mb * 1024 * 1024) / sizeof(TTEntry);
-    // Round down to nearest power of 2 for O(1) single-cycle bitwise masking
-    size_t pow2_entries = 1;
-    while (pow2_entries * 2 <= num_entries) {
-        pow2_entries *= 2;
-    }
-    size_ = pow2_entries;
-    mask_ = (pow2_entries > 0) ? (pow2_entries - 1) : 0;
-    table_.assign(pow2_entries, TTEntry{});
+    size_ = num_entries;
+    table_.assign(num_entries, TTEntry{});
     clear();
 }
 
@@ -31,7 +25,7 @@ TTEntry* TranspositionTable::probe(uint64_t key) noexcept {
     if (size_ == 0) return nullptr;
     probes_++;
 
-    size_t idx = static_cast<size_t>(key & mask_);
+    size_t idx = static_cast<size_t>(key % size_);
     TTEntry& entry = table_[idx];
 
     if (entry.key == key && entry.bound != TTBound::None) {
@@ -43,7 +37,7 @@ TTEntry* TranspositionTable::probe(uint64_t key) noexcept {
 
 void TranspositionTable::prefetch(uint64_t key) const noexcept {
     if (size_ > 0) {
-        size_t idx = static_cast<size_t>(key & mask_);
+        size_t idx = static_cast<size_t>(key % size_);
         __builtin_prefetch(&table_[idx], 0, 3);
     }
 }
@@ -55,7 +49,7 @@ void TranspositionTable::store(uint64_t key, Move move, int score, int depth, TT
     if (score > ScoreMate - 1000) score += ply;
     else if (score < -ScoreMate + 1000) score -= ply;
 
-    size_t idx = static_cast<size_t>(key & mask_);
+    size_t idx = static_cast<size_t>(key % size_);
     TTEntry& entry = table_[idx];
 
     // Replacement Policy: Replace if slot is empty, key matches, entry is from older search generation, or new depth >= old depth
@@ -69,7 +63,7 @@ void TranspositionTable::store(uint64_t key, Move move, int score, int depth, TT
         new_entry.generation = generation_;
         new_entry.pad = 0;
 
-        entry = new_entry; // 16-byte aligned atomic/struct assignment
+        entry = new_entry; // 16-byte aligned struct assignment
     }
 }
 
