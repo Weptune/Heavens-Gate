@@ -1,5 +1,6 @@
 #include "search.hpp"
 #include "syzygy.hpp"
+#include "search_params.hpp"
 #include "../core/fen.hpp"
 #include "../evaluation/eval.hpp"
 #include <iostream>
@@ -251,7 +252,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         // Reverse Futility Pruning (Static Null Move Pruning)
         if (depth <= 3) {
-            int margin = 120 * depth;
+            int margin = g_search_params.rfp_margin * depth;
             if (static_eval - margin >= beta) {
                 metrics_tracker_.add_cut();
                 return static_eval - margin;
@@ -259,15 +260,15 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
 
         // Forward Futility Pruning flag (checked per-move in the loop below)
-        if (depth <= 2 && static_eval + 200 * depth <= alpha) {
+        if (depth <= 2 && static_eval + g_search_params.futility_margin * depth <= alpha) {
             can_futility_prune = true;
         }
     }
 
-    // 3. Adaptive Null Move Pruning (NMP) (R=2 for shallow depth, R=3 for depth >= 6, R=4 if static_eval >= beta+200, +1 if !improving)
+    // 3. Adaptive Null Move Pruning (NMP) (R=2 for shallow depth, R=3 for depth >= 6, R=4 if static_eval >= beta + nmp_eval_margin, +1 if !improving)
     if (depth >= 3 && !in_chk && board.has_non_pawn_material(us)) {
         int R = (depth >= 6) ? 3 : 2;
-        if (static_eval - beta >= 200) {
+        if (static_eval - beta >= g_search_params.nmp_eval_margin) {
             R += 1;
         }
         if (!improving && depth >= 4) {
@@ -339,14 +340,14 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         // SEE Bad Capture Pruning: Skip losing captures at shallow depth (depth <= 4)
         if (depth <= 4 && !in_chk && i >= 1 && m.is_capture() && !m.is_promotion()) {
-            if (!MovePicker::see_ge(board, m, -100 * depth)) {
+            if (!MovePicker::see_ge(board, m, -g_search_params.see_bad_capture_slope * depth)) {
                 continue;
             }
         }
 
         // SEE Quiet Pruning: Skip quiet moves that drop material at shallow depth
         if (depth <= 4 && !in_chk && i >= 1 && is_quiet) {
-            if (!MovePicker::see_ge(board, m, -40 * depth)) {
+            if (!MovePicker::see_ge(board, m, -g_search_params.see_quiet_slope * depth)) {
                 continue;
             }
         }
@@ -372,14 +373,14 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         } else {
             // History-Based Late Move Reductions (LMR) for quiet moves (extra reduction when !improving)
             if (i >= 3 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk) {
-                int reduction = 1 + static_cast<int>(std::log(depth) * std::log(i + 1) / 2.2);
+                int reduction = 1 + static_cast<int>(std::log(depth) * std::log(i + 1) / g_search_params.lmr_divisor);
                 int history_val = move_picker_.get_history_score(us, m);
                 int cont_val = move_picker_.get_continuation_history(board, prev_move, m);
                 int cont2_val = move_picker_.get_continuation_history_2(board, prev2_move, m);
                 int total_hist = history_val + cont_val + cont2_val;
 
-                if (total_hist > 500) reduction = std::max(1, reduction - 1);
-                if (total_hist < 100 && i >= 6) reduction += 1;
+                if (total_hist > g_search_params.lmr_hist_bonus) reduction = std::max(1, reduction - 1);
+                if (total_hist < g_search_params.lmr_hist_malus && i >= 6) reduction += 1;
                 if (!improving) reduction += 1;
                 reduction = std::min(reduction, depth - 2);
                 int reduced_depth = std::max(1, depth - 1 - reduction);
