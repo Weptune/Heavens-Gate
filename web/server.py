@@ -28,11 +28,12 @@ class EngineBridge:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                bufsize=1
+                bufsize=1,
+                cwd=os.path.dirname(self.engine_path)
             )
             self._send_command("uci")
             self._send_command("isready")
-            print(f"[ENGINE BRIDGE] Successfully launched Heaven's Gate UCI Process (PID {self.process.pid})")
+            print(f"[ENGINE BRIDGE] Successfully launched Heaven's Gate UCI Process (PID {self.process.pid}) in {os.path.dirname(self.engine_path)}")
         except Exception as e:
             print(f"[ERROR] Failed to start engine process: {e}")
 

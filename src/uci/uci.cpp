@@ -52,7 +52,9 @@ void UCI::handle_go(const std::string& line, Board& board, SearchEngine& engine)
     if (!uci_book_attempted) {
         uci_book_attempted = true;
         uci_book.load("performance.bin");
+        if (!uci_book.is_loaded()) uci_book.load("../performance.bin");
         if (!uci_book.is_loaded()) uci_book.load("tools/performance.bin");
+        if (!uci_book.is_loaded()) uci_book.load("c:/Users/abhin/heavensgate/performance.bin");
     }
 
     if (uci_book.is_loaded()) {
@@ -87,6 +89,12 @@ void UCI::handle_go(const std::string& line, Board& board, SearchEngine& engine)
         int my_inc  = (board.side_to_move() == Color::White) ? winc  : binc;
         double alloc = (my_time / 35.0) + (my_inc * 0.8);
         time_ms = std::min(alloc, my_time * 0.8);
+
+        // Smart Opening Time Allocation: moves 1-5 use fast 150-350ms development
+        if (board.fullmove_number() <= 5) {
+            time_ms = std::min(time_ms * 0.35, 350.0);
+            time_ms = std::max(time_ms, 120.0);
+        }
     }
 
     SearchResult res = engine.search_iterative_deepening(board, depth, time_ms);

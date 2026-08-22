@@ -1,6 +1,6 @@
 /**
- * HEAVEN'S GATE CHESS ENGINE - WEB CLIENT
- * Standard Chess Rules Engine + Professional Telemetry HUD + Analysis
+ * HEAVEN'S GATE CHESS ENGINE - WEB CLIENT (MASTER EDITION)
+ * Active Precision Clock Timers + Smart Opening Time Management + UCI Engine Bridge
  */
 
 const SVG_PIECES = {
@@ -279,10 +279,12 @@ class ChessApp {
 
         this.sound = new SoundFX();
         this.playMode = 'human_white';
-        this.persona = 'unchained';
         this.timeControl = 'blitz_3_0';
-        this.whiteTime = 180;
-        this.blackTime = 180;
+        this.whiteTime = 180.0;
+        this.blackTime = 180.0;
+        this.increment = 0.0;
+        this.clockInterval = null;
+        this.lastClockTick = 0;
         this.lastEvalScore = 0;
 
         this.puzzles = [];
@@ -335,11 +337,6 @@ class ChessApp {
             this.startNewGame();
         });
 
-        document.getElementById('persona-select').addEventListener('change', (e) => {
-            this.persona = e.target.value;
-            this.updatePersonaHUD();
-        });
-
         document.getElementById('tc-select').addEventListener('change', (e) => {
             this.timeControl = e.target.value;
             this.resetClocks();
@@ -368,6 +365,7 @@ class ChessApp {
         const settingsPanel = document.getElementById('settings-panel');
 
         if (tab === 'puzzles') {
+            this.stopClock();
             puzzlesPanel.classList.remove('hidden');
             settingsPanel.classList.add('hidden');
             this.loadPuzzle(this.currentPuzzleIdx);
@@ -377,45 +375,99 @@ class ChessApp {
         }
     }
 
-    updatePersonaHUD() {
-        const topName = document.getElementById('top-player-name');
-        const topSub = document.getElementById('top-player-sub');
-        const topAvatar = document.getElementById('top-avatar');
+    resetClocks() {
+        this.stopClock();
+        this.increment = 0.0;
 
-        if (this.persona === 'initiate') {
-            topName.textContent = "The Initiate";
-            topSub.textContent = "Level 1 (~1200 Elo)";
-            topAvatar.textContent = "BOT";
-        } else if (this.persona === 'tactician') {
-            topName.textContent = "The Tactician";
-            topSub.textContent = "Level 2 (~1800 Elo)";
-            topAvatar.textContent = "BOT";
-        } else if (this.persona === 'master') {
-            topName.textContent = "The Grandmaster";
-            topSub.textContent = "Level 3 (~2600 Elo)";
-            topAvatar.textContent = "BOT";
+        if (this.timeControl === 'bullet_1_0') {
+            this.whiteTime = 60.0;
+            this.blackTime = 60.0;
+        } else if (this.timeControl === 'bullet_1_1') {
+            this.whiteTime = 60.0;
+            this.blackTime = 60.0;
+            this.increment = 1.0;
+        } else if (this.timeControl === 'blitz_3_0') {
+            this.whiteTime = 180.0;
+            this.blackTime = 180.0;
+        } else if (this.timeControl === 'blitz_3_2') {
+            this.whiteTime = 180.0;
+            this.blackTime = 180.0;
+            this.increment = 2.0;
+        } else if (this.timeControl === 'rapid_10_0') {
+            this.whiteTime = 600.0;
+            this.blackTime = 600.0;
         } else {
-            topName.textContent = "Heaven's Gate";
-            topSub.textContent = "Master Edition (~3450 Elo)";
-            topAvatar.textContent = "AI";
+            this.whiteTime = 0.0;
+            this.blackTime = 0.0;
+        }
+        this.updateClockDisplay();
+    }
+
+    startClock() {
+        this.stopClock();
+        if (this.timeControl === 'fixed_depth') return;
+        this.lastClockTick = performance.now();
+        this.clockInterval = setInterval(() => this.tickClock(), 100);
+        this.updateActiveClockHUD();
+    }
+
+    stopClock() {
+        if (this.clockInterval) {
+            clearInterval(this.clockInterval);
+            this.clockInterval = null;
         }
     }
 
-    resetClocks() {
-        if (this.timeControl.startsWith('bullet_1')) {
-            this.whiteTime = 60;
-            this.blackTime = 60;
-        } else if (this.timeControl.startsWith('blitz_3')) {
-            this.whiteTime = 180;
-            this.blackTime = 180;
-        } else if (this.timeControl.startsWith('rapid_10')) {
-            this.whiteTime = 600;
-            this.blackTime = 600;
+    tickClock() {
+        if (this.isGameOver || this.timeControl === 'fixed_depth') return;
+        const now = performance.now();
+        const elapsed = (now - this.lastClockTick) / 1000.0;
+        this.lastClockTick = now;
+
+        if (this.turn === 'w') {
+            this.whiteTime = Math.max(0.0, this.whiteTime - elapsed);
+            if (this.whiteTime <= 0.0) {
+                this.isGameOver = true;
+                this.stopClock();
+                this.sound.playGameOver();
+                this.showGameOver("Time Out", "Black won on time.");
+            }
         } else {
-            this.whiteTime = 0;
-            this.blackTime = 0;
+            this.blackTime = Math.max(0.0, this.blackTime - elapsed);
+            if (this.blackTime <= 0.0) {
+                this.isGameOver = true;
+                this.stopClock();
+                this.sound.playGameOver();
+                this.showGameOver("Time Out", "White won on time.");
+            }
         }
         this.updateClockDisplay();
+    }
+
+    updateActiveClockHUD() {
+        if (this.timeControl === 'fixed_depth') {
+            this.topClockEl.classList.remove('active');
+            this.bottomClockEl.classList.remove('active');
+            return;
+        }
+        const isWhiteBottom = !this.isFlipped;
+        if (this.turn === 'w') {
+            if (isWhiteBottom) {
+                this.bottomClockEl.classList.add('active');
+                this.topClockEl.classList.remove('active');
+            } else {
+                this.topClockEl.classList.add('active');
+                this.bottomClockEl.classList.remove('active');
+            }
+        } else {
+            if (isWhiteBottom) {
+                this.topClockEl.classList.add('active');
+                this.bottomClockEl.classList.remove('active');
+            } else {
+                this.bottomClockEl.classList.add('active');
+                this.topClockEl.classList.remove('active');
+            }
+        }
     }
 
     startNewGame() {
@@ -441,7 +493,10 @@ class ChessApp {
         this.openingBadgeEl.textContent = 'Standard Start';
         this.moveGradeEl.classList.add('hidden');
         this.setStatus('Engine Ready', false);
-        this.updatePersonaHUD();
+
+        if (this.timeControl !== 'fixed_depth') {
+            this.startClock();
+        }
 
         if (this.playMode === 'human_black' && this.turn === 'w') {
             this.triggerEngineMove();
@@ -623,12 +678,20 @@ class ChessApp {
         this.lastMove = { from: this.coordsToSquare(srcR, srcC), to: this.coordsToSquare(tr, tc) };
         this.uciHistory.push(uciStr);
 
+        // Add clock increment to the side that just moved
+        if (this.increment > 0) {
+            if (this.turn === 'w') this.whiteTime += this.increment;
+            else this.blackTime += this.increment;
+            this.updateClockDisplay();
+        }
+
         if (isCapture) this.sound.playCapture();
         else this.sound.playMove();
 
         this.turn = this.turn === 'w' ? 'b' : 'w';
         if (this.turn === 'w') this.fullMoveNumber++;
 
+        this.updateActiveClockHUD();
         this.renderBoard();
         this.appendMoveHistory(uciStr, piece, isCapture);
         this.checkGameEnd();
@@ -679,6 +742,7 @@ class ChessApp {
 
         if (legalMoves.length === 0) {
             this.isGameOver = true;
+            this.stopClock();
             if (inCheck) {
                 this.sound.playGameOver();
                 const winner = this.turn === 'w' ? "Black" : "White";
@@ -731,16 +795,23 @@ class ChessApp {
         this.setStatus("Engine Calculating...", true);
 
         const fen = this.getFEN();
-        let depth = 12;
-        if (this.persona === 'initiate') depth = 3;
-        else if (this.persona === 'tactician') depth = 6;
-        else if (this.persona === 'master') depth = 9;
+        const depth = 12;
+        const wtimeMs = Math.round(this.whiteTime * 1000);
+        const btimeMs = Math.round(this.blackTime * 1000);
+        const incMs = Math.round(this.increment * 1000);
 
         try {
             const resp = await fetch('/api/move', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fen, depth })
+                body: JSON.stringify({
+                    fen,
+                    depth,
+                    wtime: (this.timeControl === 'fixed_depth') ? 0 : wtimeMs,
+                    btime: (this.timeControl === 'fixed_depth') ? 0 : btimeMs,
+                    winc: incMs,
+                    binc: incMs
+                })
             });
             const data = await resp.json();
 
@@ -938,9 +1009,24 @@ class ChessApp {
     }
 
     updateClockDisplay() {
-        const fmt = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
-        this.topClockEl.textContent = fmt(this.blackTime);
-        this.bottomClockEl.textContent = fmt(this.whiteTime);
+        if (this.timeControl === 'fixed_depth') {
+            this.topClockEl.textContent = "--:--";
+            this.bottomClockEl.textContent = "--:--";
+            return;
+        }
+        const fmt = (s) => {
+            const m = Math.floor(s / 60);
+            const sec = Math.floor(s % 60);
+            return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        };
+        const isWhiteBottom = !this.isFlipped;
+        if (isWhiteBottom) {
+            this.topClockEl.textContent = fmt(this.blackTime);
+            this.bottomClockEl.textContent = fmt(this.whiteTime);
+        } else {
+            this.topClockEl.textContent = fmt(this.whiteTime);
+            this.bottomClockEl.textContent = fmt(this.blackTime);
+        }
     }
 }
 
