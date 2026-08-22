@@ -131,8 +131,91 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(json.dumps(res).encode('utf-8'))
+        elif self.path == "/api/analyze":
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            req = json.loads(post_data.decode('utf-8'))
+            fen = req.get("fen", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            res = bridge.get_move(fen, depth=req.get("depth", 9), movetime=req.get("movetime", 0))
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps(res).encode('utf-8'))
         else:
             self.send_error(404)
+
+    def do_GET(self):
+        if self.path == "/api/puzzles":
+            puzzles = [
+                {
+                    "id": 1,
+                    "title": "Kasparov's Immortal Attack",
+                    "event": "Kasparov vs Topalov, Wijk aan Zee 1999",
+                    "fen": "b2r3r/k4p1p/p2q1np1/NppP4/3p1Q2/P4PPB/1PP4P/1K1RR3 w - - 0 1",
+                    "turn": "w",
+                    "hint": "Sacrifice the rook to shatter the king's pawn shield!",
+                    "solution": "d1d4",
+                    "desc": "Find the immortal rook sacrifice that opens the fatal d-file ray."
+                },
+                {
+                    "id": 2,
+                    "title": "The Greek Gift Sacrifice",
+                    "event": "Classical Tactical Theme",
+                    "fen": "r1bq1rk1/ppp2ppp/2n1pn2/3p4/2PP4/2NBPN2/PP3PPP/R1BQK2R w KQ - 4 7",
+                    "turn": "w",
+                    "hint": "Bxh7+ crashes through the kingside fortress!",
+                    "solution": "d3h7",
+                    "desc": "Classic bishop sacrifice on h7 followed by Ng5+ and Qh5."
+                },
+                {
+                    "id": 3,
+                    "title": "Mikhail Tal's Knight Sorcery",
+                    "event": "Tal vs Larsen, Bled 1965",
+                    "fen": "r1b2rk1/pp1n1ppp/2p1pn2/q2p2B1/2PP4/2P1PN2/P1Q1BPPP/R3K2R w KQ - 3 10",
+                    "turn": "w",
+                    "hint": "Break through the center with e4!",
+                    "solution": "e1g1",
+                    "desc": "Prepare the central explosion and open tactical diagonal lines."
+                },
+                {
+                    "id": 4,
+                    "title": "Opera House Checkmate",
+                    "event": "Paul Morphy vs Duke of Brunswick, Paris 1858",
+                    "fen": "4kb1r/p2n1ppp/4q3/4p1B1/4P3/1Q6/PPP2PPP/2KR4 w k - 1 1",
+                    "turn": "w",
+                    "hint": "Queen sacrifice on b8 leads to back-rank mate with Rd8#!",
+                    "solution": "b3b8",
+                    "desc": "The most famous queen sacrifice in chess history."
+                },
+                {
+                    "id": 5,
+                    "title": "Fischer's Game of the Century",
+                    "event": "Donald Byrne vs Bobby Fischer, New York 1956",
+                    "fen": "r3r1k1/pp3pbp/1qp1b1p1/4B3/2P5/2N2N1P/PP1Q1PP1/R4RK1 b - - 0 16",
+                    "turn": "b",
+                    "hint": "Offer the queen with Be6 to build a lethal discovered attack windmill!",
+                    "solution": "e6c4",
+                    "desc": "Fischer's brilliant 13-year-old masterpiece."
+                },
+                {
+                    "id": 6,
+                    "title": "Smothered Mate (Philidor's Legacy)",
+                    "event": "Classical Tactical Motif",
+                    "fen": "6k1/5ppp/8/8/8/8/1Q4PP/6K1 w - - 0 1",
+                    "turn": "w",
+                    "hint": "Queen check on b8 forces back rank mate!",
+                    "solution": "b2b8",
+                    "desc": "Deliver the unstoppable back-rank checkmate."
+                }
+            ]
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps(puzzles).encode('utf-8'))
+        else:
+            super().do_GET()
 
     def do_OPTIONS(self):
         self.send_response(200)

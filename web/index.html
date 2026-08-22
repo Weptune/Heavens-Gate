@@ -1,13 +1,13 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heaven's Gate Grandmaster Chess AI</title>
+    <title>Heaven's Gate Grandmaster Chess AI - Master Edition</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body class="theme-slate">
 
@@ -19,9 +19,14 @@
             </div>
             <div class="brand-text">
                 <h1 class="brand-title">HEAVEN'S GATE</h1>
-                <span class="brand-sub">Spectral-Tropical Engine ~3420 Elo</span>
+                <span class="brand-sub">Spectral-Tropical Engine ~3450 Elo</span>
             </div>
-            <span class="version-badge">v10.0 Master</span>
+            <span class="version-badge">v1.0 Master</span>
+        </div>
+        <div class="nav-tabs">
+            <button class="nav-tab active" id="tab-play">⚔️ Play Match</button>
+            <button class="nav-tab" id="tab-puzzles">🧩 Tactical Puzzles</button>
+            <button class="nav-tab" id="tab-analysis">🔬 Engine Analysis</button>
         </div>
         <div class="nav-controls">
             <div class="nav-status" id="nav-status">
@@ -34,21 +39,28 @@
     <!-- Main Application Container -->
     <main class="app-layout">
         
-        <!-- Left Column: Chess Board & Primary Toolbar -->
+        <!-- Left Column: Chess Board & Primary Controls -->
         <section class="board-section">
             
-            <!-- Opponent Clock HUD Bar -->
+            <!-- Opponent HUD Bar -->
             <div class="player-hud opponent-hud">
-                <div class="hud-info">
-                    <span class="hud-name" id="top-player-name">Heaven's Gate AI</span>
-                    <span class="hud-sub">Spectral-Tropical Engine</span>
+                <div class="hud-left">
+                    <div class="avatar-box" id="top-avatar">👑</div>
+                    <div class="hud-info">
+                        <span class="hud-name" id="top-player-name">Heaven's Gate (Unchained)</span>
+                        <span class="hud-sub" id="top-player-sub">Tropical Physics AI ~3450 Elo</span>
+                    </div>
                 </div>
-                <div class="clock-box" id="top-clock">03:00</div>
+                <div class="hud-right">
+                    <div class="captured-box" id="top-captured"></div>
+                    <div class="clock-box" id="top-clock">03:00</div>
+                </div>
             </div>
 
+            <!-- Board Frame & Overlays -->
             <div class="board-frame">
                 <!-- Evaluation Bar -->
-                <div class="eval-bar" title="Position Evaluation Bar">
+                <div class="eval-bar" title="Real-Time Position Evaluation">
                     <div class="eval-fill" id="eval-fill"></div>
                     <span class="eval-badge" id="eval-badge">+0.0</span>
                 </div>
@@ -56,14 +68,15 @@
                 <!-- 8x8 Chessboard Container -->
                 <div class="board-wrapper">
                     <div class="board" id="board"></div>
+                    
+                    <!-- Threat & Attack Heatmap Canvas Overlay -->
+                    <canvas class="board-overlay-canvas hidden" id="heatmap-canvas"></canvas>
 
-                    <!-- Overlay Promotion Choice Modal -->
+                    <!-- Promotion Choice Modal -->
                     <div class="modal-overlay hidden" id="promotion-modal">
                         <div class="promotion-box">
-                            <h3>Promote Pawn</h3>
-                            <div class="promotion-choices" id="promotion-choices">
-                                <!-- Dynamic Promotion Pieces Populated Here -->
-                            </div>
+                            <h3>Choose Promotion Piece</h3>
+                            <div class="promotion-choices" id="promotion-choices"></div>
                         </div>
                     </div>
 
@@ -72,39 +85,66 @@
                         <div class="gameover-box">
                             <div class="gameover-icon" id="gameover-icon">🏆</div>
                             <h2 id="gameover-title">Checkmate!</h2>
-                            <p id="gameover-sub">Heaven's Gate won the match.</p>
-                            <button class="btn btn-primary btn-large" id="modal-restart-btn">Play Again</button>
+                            <p id="gameover-sub">Heaven's Gate delivered forced mate.</p>
+                            <div class="gameover-buttons">
+                                <button class="btn btn-primary btn-large" id="modal-restart-btn">Play Again</button>
+                                <button class="btn btn-secondary" id="modal-review-btn">Review Match</button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Player Clock HUD Bar -->
+            <!-- Player HUD Bar -->
             <div class="player-hud player-hud-bottom">
-                <div class="hud-info">
-                    <span class="hud-name" id="bottom-player-name">Player (Human)</span>
-                    <span class="hud-sub">Challenger</span>
+                <div class="hud-left">
+                    <div class="avatar-box" id="bottom-avatar">👤</div>
+                    <div class="hud-info">
+                        <span class="hud-name" id="bottom-player-name">Player (Human)</span>
+                        <span class="hud-sub" id="bottom-player-sub">Challenger</span>
+                    </div>
                 </div>
-                <div class="clock-box" id="bottom-clock">03:00</div>
+                <div class="hud-right">
+                    <div class="captured-box" id="bottom-captured"></div>
+                    <div class="clock-box" id="bottom-clock">03:00</div>
+                </div>
             </div>
 
-            <!-- Primary Interactive Toolbar -->
+            <!-- Primary Toolbar -->
             <div class="toolbar">
                 <button class="btn btn-primary" id="new-game-btn">⚡ New Game</button>
                 <button class="btn btn-secondary" id="flip-btn">🔄 Flip Board</button>
-                <button class="btn btn-secondary" id="undo-btn">↩️ Undo Move</button>
+                <button class="btn btn-secondary" id="undo-btn">↩️ Undo</button>
                 <button class="btn btn-accent" id="hint-btn">💡 Best Move</button>
+                <button class="btn btn-secondary" id="threat-toggle-btn">🔥 Threat Map</button>
             </div>
         </section>
 
-        <!-- Right Column: Telemetry HUD & Settings Control Panel -->
+        <!-- Right Column: Oracle Commentary & Control Panels -->
         <aside class="sidebar-section">
             
-            <!-- Real-Time Neural/Spectral Telemetry HUD -->
+            <!-- The Oracle: Dynamic Commentary & Opening Assistant -->
+            <div class="panel-card oracle-card">
+                <div class="panel-header">
+                    <span>🧙‍♂️ The Oracle (Live Commentary)</span>
+                    <span class="opening-pill" id="opening-badge">Standard Start</span>
+                </div>
+                <div class="oracle-body">
+                    <div class="oracle-quote" id="oracle-text">
+                        "The board is set. Demonstrate your mastery of space, tempo, and piece coordination."
+                    </div>
+                    <div class="move-grade-badge hidden" id="move-grade-badge">
+                        <span class="grade-icon">🌟</span>
+                        <span class="grade-text">Brilliant Move</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-Time Telemetry HUD -->
             <div class="panel-card telemetry-card">
                 <div class="panel-header">
                     <span>📡 Live Engine Telemetry</span>
-                    <span class="live-pill">LIVE</span>
+                    <span class="live-pill">AVX2 SIMD</span>
                 </div>
                 <div class="telemetry-grid">
                     <div class="tele-item">
@@ -116,8 +156,8 @@
                         <span class="tele-val" id="tele-nps">0 NPS</span>
                     </div>
                     <div class="tele-item">
-                        <span class="tele-label">Target Depth</span>
-                        <span class="tele-val" id="tele-depth">Depth 9</span>
+                        <span class="tele-label">Calculated Depth</span>
+                        <span class="tele-val" id="tele-depth">Depth 12</span>
                     </div>
                     <div class="tele-item">
                         <span class="tele-label">Principal Variation</span>
@@ -126,18 +166,45 @@
                 </div>
             </div>
 
-            <!-- Game Settings & Mode Configuration -->
-            <div class="panel-card">
+            <!-- Tactical Puzzles Panel (Active on Puzzles Tab) -->
+            <div class="panel-card puzzles-card hidden" id="puzzles-panel">
                 <div class="panel-header">
-                    <span>⚙️ Match Configuration</span>
+                    <span>🧩 Tactical Grandmaster Puzzles</span>
+                    <span class="puzzle-counter" id="puzzle-progress">1 / 6</span>
+                </div>
+                <div class="puzzle-content">
+                    <h4 id="puzzle-title">Kasparov's Immortal Attack</h4>
+                    <p class="puzzle-event" id="puzzle-event">Kasparov vs Topalov (1999)</p>
+                    <p class="puzzle-desc" id="puzzle-desc">Find the winning tactical sacrifice!</p>
+                    <div class="puzzle-actions">
+                        <button class="btn btn-accent" id="puzzle-hint-btn">💡 Show Hint</button>
+                        <button class="btn btn-secondary" id="puzzle-next-btn">Next Puzzle ➡️</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Match Settings & Opponent Persona -->
+            <div class="panel-card" id="settings-panel">
+                <div class="panel-header">
+                    <span>⚙️ Match Configuration & Personas</span>
                 </div>
                 <div class="settings-form">
                     <div class="form-group">
+                        <label for="persona-select">Opponent Persona & Skill:</label>
+                        <select id="persona-select" class="custom-select">
+                            <option value="initiate">🥉 The Initiate (~1200 Elo Casual)</option>
+                            <option value="tactician">🥈 The Tactician (~1800 Elo Club)</option>
+                            <option value="master">🥇 The Grandmaster (~2600 Elo Master)</option>
+                            <option value="unchained" selected>👑 Heaven's Gate Unchained (~3450 Elo Peak)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
                         <label for="mode-select">Play Mode:</label>
                         <select id="mode-select" class="custom-select">
-                            <option value="human_white">Play as White (vs Engine)</option>
-                            <option value="human_black">Play as Black (vs Engine)</option>
-                            <option value="ai_vs_ai">Watch Engine Self-Play (AI vs AI)</option>
+                            <option value="human_white" selected>Play as White (vs AI)</option>
+                            <option value="human_black">Play as Black (vs AI)</option>
+                            <option value="ai_vs_ai">Watch AI vs AI Self-Play</option>
                         </select>
                     </div>
 
@@ -149,24 +216,12 @@
                             <option value="blitz_3_0" selected>Blitz 3m (180s Bank)</option>
                             <option value="blitz_3_2">Blitz 3m + 2s Inc</option>
                             <option value="rapid_10_0">Rapid 10m (600s Bank)</option>
-                            <option value="movetime_1">Fixed 1.0s / Move</option>
-                            <option value="movetime_3">Fixed 3.0s / Move</option>
                             <option value="fixed_depth">Fixed Search Depth (No Clock)</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label for="depth-select">Engine Search Depth (when on Depth mode):</label>
-                        <select id="depth-select" class="custom-select">
-                            <option value="4">Depth 4 (~2800 Elo Blitz)</option>
-                            <option value="7">Depth 7 (~3100 Elo Rapid)</option>
-                            <option value="9" selected>Depth 9 (~3420 Elo Master)</option>
-                            <option value="12">Depth 12 (~3500 Elo Grandmaster)</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="theme-select">Board Aesthetic Theme:</label>
+                        <label for="theme-select">Board Aesthetic:</label>
                         <select id="theme-select" class="custom-select">
                             <option value="slate" selected>Lichess Slate Green</option>
                             <option value="wood">Classic Walnut Wood</option>
@@ -177,11 +232,14 @@
                 </div>
             </div>
 
-            <!-- Interactive Move History Log -->
+            <!-- Move History Log & PGN Export -->
             <div class="panel-card history-card">
                 <div class="panel-header">
                     <span>📜 Move History</span>
-                    <span class="move-count-badge" id="move-count">0 Moves</span>
+                    <div class="history-actions">
+                        <button class="btn-tiny" id="copy-pgn-btn" title="Copy PGN to clipboard">📋 PGN</button>
+                        <button class="btn-tiny" id="copy-fen-btn" title="Copy FEN to clipboard">📋 FEN</button>
+                    </div>
                 </div>
                 <div class="move-history-container" id="move-history">
                     <div class="empty-history-notice">Moves will appear here as the match progresses.</div>
