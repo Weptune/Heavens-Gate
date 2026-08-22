@@ -1,22 +1,22 @@
 /**
  * HEAVEN'S GATE CHESS ENGINE - WEB CLIENT (MASTER EDITION)
- * Active Precision Clock Timers + Manual Start Match Trigger + Smart Opening Time Management
+ * Professional Tournament UI + Cburnett Vector Pieces + Active Clocks
  */
 
 const SVG_PIECES = {
-    'P': `<svg viewBox="0 0 45 45" class="piece-svg"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="#fff" stroke="#000" stroke-width="1.5" stroke-linecap="round"/></svg>`,
-    'N': `<svg viewBox="0 0 45 45" class="piece-svg"><path d="M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18 C 21.5,14.5 12,14 12,14 C 12,14 11,21 17,22.5 C 15.5,22.5 11.5,21 11.5,15 C 11.5,10.5 17.5,9.5 22,10 z" fill="#fff" stroke="#000" stroke-width="1.5" stroke-linecap="round"/><path d="M 24,18 C 24.38,19.92 22.45,21.37 20.53,21 C 18.61,20.62 17.16,18.69 17.54,16.77 C 17.92,14.85 19.85,13.4 21.77,13.78 C 23.69,14.16 25.14,16.09 24.76,18 z" fill="#000"/></svg>`,
-    'B': `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="#fff"><path d="M9 36c1.2-2.5 3.5-3.5 6-3.5s4.8 1 6 3.5H9zM15 32c-2.5 0-3.5-1.5-3.5-3s.5-3.5 2-4.5c1.5-1 3.5-1 5 0s2 3 2 4.5-1 3-3.5 3zM15 23.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><circle cx="15" cy="11.5" r="2.5"/></g><path d="M15 9.5v-3M13.5 8h3"/></g></svg>`,
-    'R': `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="#fff" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 39h27v-3H9v3zM12 36h21v-4H12v4zM11 32h23l-2-16H13l-2 16zM9 16h27v-4h-4v2h-5v-2h-6v2h-5v-2H9v4z"/><path d="M14 29.5h17M14 16.5h17" stroke="#fff" stroke-linecap="butt"/></g></svg>`,
-    'Q': `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="#fff" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 36h29v-3H8v3zM11.5 33h22l-1.5-4h-19l-1.5 4zM9 29l4.5-16.5L20 27l2.5-20L25 27l6.5-14.5L36 29H9z"/><circle cx="9" cy="11" r="2"/><circle cx="13.5" cy="11.5" r="2"/><circle cx="22.5" cy="6" r="2"/><circle cx="31.5" cy="11.5" r="2"/><circle cx="36" cy="11" r="2"/></g></svg>`,
-    'K': `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="#fff"><path d="M22.5 11.63c-1.58 0-2.87 1.29-2.87 2.87 0 1.25.8 2.31 1.92 2.68V21.5h-5.5v2h5.5v3.5h-8v2h8V35h-11v4h25v-4h-11v-6h8v-2h-8V23.5h5.5v-2h-5.5v-4.32c1.12-.37 1.92-1.43 1.92-2.68 0-1.58-1.29-2.87-2.87-2.87z"/></g><path d="M22.5 6v4.5M20.25 8.25h4.5"/></g></svg>`,
+    'P': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" class="piece-svg"><path d="m22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38-1.95 1.12-3.28 3.21-3.28 5.62 0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="#fff" stroke="#000" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+    'N': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 10c10.5 1 16.5 8 16 29h-23c0-9 10-6.5 8-21-1.5-3.5-9-4-9-4s-1 7 5 8.5c-1.5 0-5.5-1.5-5.5-7.5s6-5.5 10.5-5z" fill="#fff"/><path d="m24 18c.38 1.92-1.55 3.37-3.47 3-1.92-.38-3.37-2.31-3-4.23.38-1.92 2.31-3.37 4.23-3 1.92.38 2.86 2.31 2.24 4.23z" fill="#000"/><path d="m9.5 25.5a.5.5 0 1 1-1 0 .5.5 0 1 1 1 0z" fill="#000"/><path d="m15 15.5a.5.5 0 1 1-1 0 .5.5 0 1 1 1 0z" fill="#000"/></g></svg>`,
+    'B': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="#fff"><path d="m9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.35.49-2.32.47-3-.5 1.35-1.46 3-2 3-2z"/><path d="m15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z"/><path d="m25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 1 1 5 0z"/></g><path d="m17.5 26h10M15 30h15m-7.5-14.5v5m-2.5-2.5h5"/></g></svg>`,
+    'R': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 39h27v-3h-27v3z" fill="#fff"/><path d="m12 36v-4h21v4h-21z" fill="#fff"/><path d="m11 32 1.5-16h20l1.5 16h-23z" fill="#fff"/><path d="m9 16h27v-4h-4v2h-5v-2h-6v2h-5v-2h-4v4z" fill="#fff"/><path d="m14 29.5v-13M31 29.5v-13M11 16h23M12 32h21"/></g></svg>`,
+    'Q': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m8 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.35.49-2.32.47-3-.5 1.35-1.46 3-2 3-2z" fill="#fff"/><path d="m12 33c2.5 2.5 18.5 2.5 21 0 1-1.5 0-2 0-2-1.5-1.5-3.5-1.5-3.5-1.5s-1.5 1.5-3 1.5-2-1.5-4-1.5-2.5 1.5-4 1.5-1.5-1.5-3-1.5-2 0-3.5 1.5c0 0-1 .5 0 2z" fill="#fff"/><path d="m9 26c0 2 1.5 2 2.5 4 2.5-1 4.5-.5 6-3 1.5 2.5 3.5 2 6 3 1-2 2.5-2 2.5-4-1.5-1.5-1.5-2.5-1.5-4.5 0-4-4.5-9-11.5-11.5-7 2.5-11.5 7.5-11.5 11.5 0 2 0 3-1.5 4.5z" fill="#fff"/><circle cx="6" cy="12" r="2" fill="#fff"/><circle cx="14" cy="9" r="2" fill="#fff"/><circle cx="22.5" cy="8" r="2" fill="#fff"/><circle cx="31" cy="9" r="2" fill="#fff"/><circle cx="39" cy="12" r="2" fill="#fff"/><path d="m11.5 30c3.5-1 18.5-1 22 0M12 33.5c6-1 15-1 21 0"/></g></svg>`,
+    'K': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22.5 11.63v4.37M20.25 13.5h4.5M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5" fill="#fff"/><path d="m11.5 37c5.5 3.5 16.5 3.5 22 0 0-5 0-6.5-3-8.5-4-1-6.5-1-8-4-1.5 3-4 3-8 4-3 2-3 3.5-3 8.5z" fill="#fff"/><path d="m11.5 30c5.5-3 16.5-3 22 0m-22 3.5c5.5-3 16.5-3 22 0m-22 3.5c5.5-3 16.5-3 22 0"/></g></svg>`,
 
-    'p': `<svg viewBox="0 0 45 45" class="piece-svg"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="#222" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>`,
-    'n': `<svg viewBox="0 0 45 45" class="piece-svg"><path d="M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18 C 21.5,14.5 12,14 12,14 C 12,14 11,21 17,22.5 C 15.5,22.5 11.5,21 11.5,15 C 11.5,10.5 17.5,9.5 22,10 z" fill="#222" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><path d="M 24,18 C 24.38,19.92 22.45,21.37 20.53,21 C 18.61,20.62 17.16,18.69 17.54,16.77 C 17.92,14.85 19.85,13.4 21.77,13.78 C 23.69,14.16 25.14,16.09 24.76,18 z" fill="#fff"/></svg>`,
-    'b': `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="#222"><path d="M9 36c1.2-2.5 3.5-3.5 6-3.5s4.8 1 6 3.5H9zM15 32c-2.5 0-3.5-1.5-3.5-3s.5-3.5 2-4.5c1.5-1 3.5-1 5 0s2 3 2 4.5-1 3-3.5 3zM15 23.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><circle cx="15" cy="11.5" r="2.5"/></g><path d="M15 9.5v-3M13.5 8h3" stroke="#fff"/></g></svg>`,
-    'r': `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="#222" fill-rule="evenodd" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 39h27v-3H9v3zM12 36h21v-4H12v4zM11 32h23l-2-16H13l-2 16zM9 16h27v-4h-4v2h-5v-2h-6v2h-5v-2H9v4z"/><path d="M14 29.5h17M14 16.5h17" stroke="#fff" stroke-linecap="butt"/></g></svg>`,
-    'q': `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="#222" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 36h29v-3H8v3zM11.5 33h22l-1.5-4h-19l-1.5 4zM9 29l4.5-16.5L20 27l2.5-20L25 27l6.5-14.5L36 29H9z"/><circle cx="9" cy="11" r="2"/><circle cx="13.5" cy="11.5" r="2"/><circle cx="22.5" cy="6" r="2"/><circle cx="31.5" cy="11.5" r="2"/><circle cx="36" cy="11" r="2"/></g></svg>`,
-    'k': `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="#222"><path d="M22.5 11.63c-1.58 0-2.87 1.29-2.87 2.87 0 1.25.8 2.31 1.92 2.68V21.5h-5.5v2h5.5v3.5h-8v2h8V35h-11v4h25v-4h-11v-6h8v-2h-8V23.5h5.5v-2h-5.5v-4.32c1.12-.37 1.92-1.43 1.92-2.68 0-1.58-1.29-2.87-2.87-2.87z"/></g><path d="M22.5 6v4.5M20.25 8.25h4.5" stroke="#fff"/></g></svg>`
+    'p': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" class="piece-svg"><path d="m22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38-1.95 1.12-3.28 3.21-3.28 5.62 0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="#000" stroke="#000" stroke-width="1.5" stroke-linecap="round"/><path d="m10.5 37.5c0-6 4-9.5 6.5-11.5 2-1 3-3 3-5 0-1.5-.5-2.5-1.5-3.5 1-.5 2.5-.5 3.5 0-1 1-1.5 2-1.5 3.5 0 2 1 4 3 5 2.5 2 6.5 5.5 6.5 11.5z" fill="#fff" fill-opacity=".15"/></svg>`,
+    'n': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 10c10.5 1 16.5 8 16 29h-23c0-9 10-6.5 8-21-1.5-3.5-9-4-9-4s-1 7 5 8.5c-1.5 0-5.5-1.5-5.5-7.5s6-5.5 10.5-5z" fill="#000"/><path d="m24 18c.38 1.92-1.55 3.37-3.47 3-1.92-.38-3.37-2.31-3-4.23.38-1.92 2.31-3.37 4.23-3 1.92.38 2.86 2.31 2.24 4.23z" fill="#fff"/><circle cx="9" cy="25.5" r=".5" fill="#fff"/><circle cx="15" cy="15.5" r=".5" fill="#fff"/><path d="m24.55 10.5c-.45 1.15-1.4 1.95-2.55 2.1-1.4.2-2.8-.55-3.4-1.85" stroke="#fff" stroke-width="1"/></g></svg>`,
+    'b': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="#000"><path d="m9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.35.49-2.32.47-3-.5 1.35-1.46 3-2 3-2z"/><path d="m15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z"/><path d="m25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 1 1 5 0z"/></g><path d="m17.5 26h10M15 30h15m-7.5-14.5v5m-2.5-2.5h5" stroke="#fff"/></g></svg>`,
+    'r': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 39h27v-3h-27v3z" fill="#000"/><path d="m12 36v-4h21v4h-21z" fill="#000"/><path d="m11 32 1.5-16h20l1.5 16h-23z" fill="#000"/><path d="m9 16h27v-4h-4v2h-5v-2h-6v2h-5v-2h-4v4z" fill="#000"/><path d="m14 29.5v-13M31 29.5v-13M11 16h23M12 32h21" stroke="#fff"/></g></svg>`,
+    'q': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m8 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.35.49-2.32.47-3-.5 1.35-1.46 3-2 3-2z" fill="#000"/><path d="m12 33c2.5 2.5 18.5 2.5 21 0 1-1.5 0-2 0-2-1.5-1.5-3.5-1.5-3.5-1.5s-1.5 1.5-3 1.5-2-1.5-4-1.5-2.5 1.5-4 1.5-1.5-1.5-3-1.5-2 0-3.5 1.5c0 0-1 .5 0 2z" fill="#000"/><path d="m9 26c0 2 1.5 2 2.5 4 2.5-1 4.5-.5 6-3 1.5 2.5 3.5 2 6 3 1-2 2.5-2 2.5-4-1.5-1.5-1.5-2.5-1.5-4.5 0-4-4.5-9-11.5-11.5-7 2.5-11.5 7.5-11.5 11.5 0 2 0 3-1.5 4.5z" fill="#000"/><circle cx="6" cy="12" r="2" fill="#000"/><circle cx="14" cy="9" r="2" fill="#000"/><circle cx="22.5" cy="8" r="2" fill="#000"/><circle cx="31" cy="9" r="2" fill="#000"/><circle cx="39" cy="12" r="2" fill="#000"/><path d="m11.5 30c3.5-1 18.5-1 22 0M12 33.5c6-1 15-1 21 0" stroke="#fff"/></g></svg>`,
+    'k': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22.5 11.63v4.37M20.25 13.5h4.5M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5" fill="#000"/><path d="m11.5 37c5.5 3.5 16.5 3.5 22 0 0-5 0-6.5-3-8.5-4-1-6.5-1-8-4-1.5 3-4 3-8 4-3 2-3 3.5-3 8.5z" fill="#000"/><path d="m11.5 30c5.5-3 16.5-3 22 0m-22 3.5c5.5-3 16.5-3 22 0m-22 3.5c5.5-3 16.5-3 22 0" stroke="#fff"/></g></svg>`
 };
 
 const OPENING_BOOK = {
@@ -27,7 +27,7 @@ const OPENING_BOOK = {
     "e2e4 c7c6": "Caro-Kann Defense",
     "d2d4 d7d5 c2c4": "Queen's Gambit",
     "d2d4 g8f6 c2c4 g7g6": "King's Indian Defense",
-    "d2d4 g8f6 c2c4 e7e6 b1c3 f8b4": "Nimzo-Indian Defense",
+    "d2d4 g8f6 c2c4 e7e6 b1c3 f8b4": "Nimzo-Indian",
     "c2c4": "English Opening",
     "g1f3": "Reti Opening"
 };
@@ -46,7 +46,7 @@ const INITIAL_BOARD = [
 class SoundFX {
     constructor() { this.ctx = null; }
     init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
-    playTone(freq, duration, type='sine', gainVal=0.3) {
+    playTone(freq, duration, type='sine', gainVal=0.25) {
         this.init();
         if (!this.ctx) return;
         const osc = this.ctx.createOscillator();
@@ -60,10 +60,10 @@ class SoundFX {
         osc.start();
         osc.stop(this.ctx.currentTime + duration);
     }
-    playMove() { this.playTone(380, 0.08, 'sine', 0.2); }
-    playCapture() { this.playTone(180, 0.12, 'triangle', 0.35); }
-    playCheck() { this.playTone(880, 0.16, 'sawtooth', 0.25); }
-    playGameOver() { this.playTone(523, 0.3, 'sine', 0.35); }
+    playMove() { this.playTone(360, 0.07, 'sine', 0.2); }
+    playCapture() { this.playTone(200, 0.1, 'triangle', 0.3); }
+    playCheck() { this.playTone(750, 0.15, 'sawtooth', 0.2); }
+    playGameOver() { this.playTone(440, 0.25, 'sine', 0.3); }
 }
 
 class ChessRulesEngine {
@@ -361,7 +361,7 @@ class ChessApp {
 
         document.getElementById('tab-play').addEventListener('click', () => this.switchTab('play'));
         document.getElementById('tab-puzzles').addEventListener('click', () => this.switchTab('puzzles'));
-        document.getElementById('tab-analysis').addEventListener('click', () => this.switchTab('analysis'));
+        document.getElementById('tab-telemetry').addEventListener('click', () => this.switchTab('telemetry'));
 
         document.getElementById('puzzle-hint-btn').addEventListener('click', () => this.showPuzzleHint());
         document.getElementById('puzzle-next-btn').addEventListener('click', () => this.nextPuzzle());
@@ -369,19 +369,35 @@ class ChessApp {
 
     switchTab(tab) {
         document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
-        document.getElementById(`tab-${tab}`).classList.add('active');
+        const tabEl = document.getElementById(`tab-${tab}`);
+        if (tabEl) tabEl.classList.add('active');
 
-        const puzzlesPanel = document.getElementById('puzzles-panel');
-        const settingsPanel = document.getElementById('settings-panel');
+        const cardCommentary = document.getElementById('card-commentary');
+        const cardHistory = document.getElementById('card-history');
+        const cardConfig = document.getElementById('card-config');
+        const cardPuzzles = document.getElementById('card-puzzles');
+        const cardTelemetry = document.getElementById('card-telemetry');
 
         if (tab === 'puzzles') {
             this.stopClock();
-            puzzlesPanel.classList.remove('hidden');
-            settingsPanel.classList.add('hidden');
+            cardCommentary.classList.add('hidden');
+            cardHistory.classList.add('hidden');
+            cardConfig.classList.add('hidden');
+            cardTelemetry.classList.add('hidden');
+            cardPuzzles.classList.remove('hidden');
             this.loadPuzzle(this.currentPuzzleIdx);
+        } else if (tab === 'telemetry') {
+            cardCommentary.classList.remove('hidden');
+            cardHistory.classList.remove('hidden');
+            cardConfig.classList.add('hidden');
+            cardPuzzles.classList.add('hidden');
+            cardTelemetry.classList.remove('hidden');
         } else {
-            puzzlesPanel.classList.add('hidden');
-            settingsPanel.classList.remove('hidden');
+            cardCommentary.classList.remove('hidden');
+            cardHistory.classList.remove('hidden');
+            cardConfig.classList.remove('hidden');
+            cardPuzzles.classList.add('hidden');
+            cardTelemetry.classList.add('hidden');
         }
     }
 
@@ -502,11 +518,11 @@ class ChessApp {
         this.resetClocks();
         this.renderBoard();
         this.updateEvalBar(0);
-        this.moveHistoryEl.innerHTML = '<div class="empty-history-notice">Moves will be recorded as the game proceeds.</div>';
+        this.moveHistoryEl.innerHTML = '<div class="empty-notice">No moves played yet.</div>';
         this.oracleTextEl.textContent = 'Click "Start Match" or make a move to begin.';
         this.openingBadgeEl.textContent = 'Standard Start';
         this.moveGradeEl.classList.add('hidden');
-        this.setStatus('Ready to Start', false);
+        this.setStatus('Ready', false);
         this.startBtn.textContent = 'Start Match';
     }
 
@@ -631,7 +647,6 @@ class ChessApp {
                 }
                 const uciStr = `${this.coordsToSquare(srcR, srcC)}${this.coordsToSquare(r, c)}`;
                 
-                // If game was not started, auto-activate match on first move
                 if (!this.isGameActive) {
                     this.startMatch();
                 }
@@ -781,7 +796,7 @@ class ChessApp {
             }
         } else if (inCheck) {
             this.sound.playCheck();
-            this.oracleTextEl.textContent = "Check. King under direct attack.";
+            this.oracleTextEl.textContent = "Check. King under attack.";
         }
     }
 
@@ -821,7 +836,7 @@ class ChessApp {
     async triggerEngineMove() {
         if (this.isThinking || this.isGameOver || !this.isGameActive) return;
         this.isThinking = true;
-        this.setStatus("Engine Calculating...", true);
+        this.setStatus("Calculating", true);
 
         const fen = this.getFEN();
         const depth = 12;
@@ -865,7 +880,7 @@ class ChessApp {
             console.error("Engine API error:", e);
         } finally {
             this.isThinking = false;
-            if (this.isGameActive) this.setStatus("Engine Ready", false);
+            if (this.isGameActive) this.setStatus("Ready", false);
         }
     }
 
@@ -888,18 +903,18 @@ class ChessApp {
 
         if (Math.abs(delta) > 300) {
             if ((this.turn === 'b' && delta < -300) || (this.turn === 'w' && delta > 300)) {
-                this.moveGradeEl.className = 'move-grade-badge brilliant';
-                this.moveGradeEl.innerHTML = `<span class="grade-text">Brilliant Move</span>`;
-                this.oracleTextEl.textContent = "Sharp tactical breakthrough. Position evaluates favorably.";
+                this.moveGradeEl.className = 'move-grade brilliant';
+                this.moveGradeEl.innerHTML = `<span class="grade-text">Brilliant</span>`;
+                this.oracleTextEl.textContent = "Tactical breakthrough. Advantage secured.";
             } else {
-                this.moveGradeEl.className = 'move-grade-badge blunder';
+                this.moveGradeEl.className = 'move-grade blunder';
                 this.moveGradeEl.innerHTML = `<span class="grade-text">Blunder</span>`;
-                this.oracleTextEl.textContent = "Inaccuracy detected. Advantage shifted to opponent.";
+                this.oracleTextEl.textContent = "Inaccuracy detected. Advantage conceded.";
             }
         } else if (Math.abs(cp) > 500) {
-            this.oracleTextEl.textContent = "Decisive advantage. Technical endgame conversion.";
+            this.oracleTextEl.textContent = "Decisive advantage. Technical conversion.";
         } else {
-            this.oracleTextEl.textContent = "Balanced position. Maintaining central pressure.";
+            this.oracleTextEl.textContent = "Balanced position. Solid piece coordination.";
         }
     }
 
@@ -913,7 +928,7 @@ class ChessApp {
         });
         const data = await resp.json();
         if (data.best_move) {
-            this.oracleTextEl.textContent = `Engine recommendation: ${data.best_move.substring(0, 2)} -> ${data.best_move.substring(2, 4)}`;
+            this.oracleTextEl.textContent = `Recommended move: ${data.best_move.substring(0, 2)} -> ${data.best_move.substring(2, 4)}`;
         }
     }
 
@@ -930,11 +945,11 @@ class ChessApp {
     drawThreatMap() {
         const canvas = this.heatmapCanvas;
         const ctx = canvas.getContext('2d');
-        canvas.width = 540;
-        canvas.height = 540;
-        ctx.clearRect(0, 0, 540, 540);
+        canvas.width = 460;
+        canvas.height = 460;
+        ctx.clearRect(0, 0, 460, 460);
 
-        const sqSize = 540 / 8;
+        const sqSize = 460 / 8;
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
                 const dr = this.isFlipped ? 7 - r : r;
@@ -944,13 +959,13 @@ class ChessApp {
                 const attackedByBlack = ChessRulesEngine.isSquareAttacked(r, c, 'b', this.board);
 
                 if (attackedByWhite && attackedByBlack) {
-                    ctx.fillStyle = 'rgba(168, 85, 247, 0.25)';
+                    ctx.fillStyle = 'rgba(168, 85, 247, 0.3)';
                     ctx.fillRect(dc * sqSize, dr * sqSize, sqSize, sqSize);
                 } else if (attackedByWhite) {
-                    ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+                    ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
                     ctx.fillRect(dc * sqSize, dr * sqSize, sqSize, sqSize);
                 } else if (attackedByBlack) {
-                    ctx.fillStyle = 'rgba(244, 63, 94, 0.2)';
+                    ctx.fillStyle = 'rgba(244, 63, 94, 0.25)';
                     ctx.fillRect(dc * sqSize, dr * sqSize, sqSize, sqSize);
                 }
             }
@@ -1022,13 +1037,13 @@ class ChessApp {
 
     copyFEN() {
         navigator.clipboard.writeText(this.getFEN());
-        this.setStatus("FEN copied to clipboard", false);
+        this.setStatus("FEN copied", false);
     }
 
     copyPGN() {
         const pgn = this.moveHistory.join(' ');
         navigator.clipboard.writeText(pgn);
-        this.setStatus("PGN copied to clipboard", false);
+        this.setStatus("PGN copied", false);
     }
 
     setStatus(text, thinking = false) {

@@ -3,231 +3,209 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heaven's Gate Chess Engine - Master Edition</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Heaven's Gate Chess Engine</title>
+    <link rel="stylesheet" href="style.css?v=5">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="theme-slate">
 
-    <!-- Header Navbar -->
+    <!-- Top Navbar -->
     <header class="navbar">
         <div class="brand">
-            <div class="brand-text">
-                <h1 class="brand-title">HEAVEN'S GATE</h1>
-                <span class="brand-sub">Spectral-Tropical Architecture</span>
-            </div>
+            <span class="brand-title">HEAVEN'S GATE</span>
             <span class="version-badge">v1.0 Master</span>
         </div>
         <div class="nav-tabs">
             <button class="nav-tab active" id="tab-play">Play</button>
             <button class="nav-tab" id="tab-puzzles">Puzzles</button>
-            <button class="nav-tab" id="tab-analysis">Analysis</button>
+            <button class="nav-tab" id="tab-telemetry">Telemetry</button>
         </div>
-        <div class="nav-controls">
-            <div class="nav-status" id="nav-status">
-                <span class="status-dot" id="status-dot"></span>
-                <span id="engine-status">Engine Ready</span>
-            </div>
+        <div class="nav-status">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="engine-status">Ready</span>
         </div>
     </header>
 
-    <!-- Main Application Container -->
+    <!-- Main Viewport Container -->
     <main class="app-layout">
         
         <!-- Left Column: Chess Board & Controls -->
-        <section class="board-section">
+        <section class="board-column">
             
-            <!-- Opponent HUD Bar -->
-            <div class="player-hud opponent-hud">
+            <!-- Top HUD (Black) -->
+            <div class="player-hud" id="top-hud">
                 <div class="hud-left">
-                    <div class="avatar-box" id="top-avatar">AI</div>
-                    <div class="hud-info">
-                        <span class="hud-name" id="top-player-name">Heaven's Gate</span>
-                        <span class="hud-sub" id="top-player-sub">Tropical Physics (~3450 Elo)</span>
+                    <div class="avatar" id="top-avatar">AI</div>
+                    <div class="player-details">
+                        <span class="player-name" id="top-player-name">Heaven's Gate</span>
+                        <span class="player-rating">Master (3450 Elo)</span>
                     </div>
                 </div>
-                <div class="hud-right">
-                    <div class="captured-box" id="top-captured"></div>
-                    <div class="clock-box" id="top-clock">03:00</div>
-                </div>
+                <div class="clock-display" id="top-clock">03:00</div>
             </div>
 
-            <!-- Board Frame & Overlays -->
-            <div class="board-frame">
-                <!-- Evaluation Bar -->
-                <div class="eval-bar" title="Position Evaluation">
+            <!-- Board Area with Eval Gauge -->
+            <div class="board-wrapper">
+                <div class="eval-gauge" title="Engine Evaluation">
                     <div class="eval-fill" id="eval-fill"></div>
-                    <span class="eval-badge" id="eval-badge">+0.0</span>
+                    <span class="eval-text" id="eval-badge">0.0</span>
                 </div>
 
-                <!-- 8x8 Chessboard Container -->
-                <div class="board-wrapper">
+                <div class="board-container">
                     <div class="board" id="board"></div>
-                    
-                    <!-- Threat Heatmap Canvas Overlay -->
-                    <canvas class="board-overlay-canvas hidden" id="heatmap-canvas"></canvas>
+                    <canvas class="overlay-canvas hidden" id="heatmap-canvas"></canvas>
 
-                    <!-- Promotion Choice Modal -->
-                    <div class="modal-overlay hidden" id="promotion-modal">
-                        <div class="promotion-box">
-                            <h3>Select Promotion Piece</h3>
-                            <div class="promotion-choices" id="promotion-choices"></div>
+                    <!-- Promotion Modal -->
+                    <div class="modal hidden" id="promotion-modal">
+                        <div class="modal-card">
+                            <h4>Promote Pawn</h4>
+                            <div class="promo-grid" id="promotion-choices"></div>
                         </div>
                     </div>
 
-                    <!-- Game Over Overlay -->
-                    <div class="modal-overlay hidden" id="gameover-modal">
-                        <div class="gameover-box">
-                            <h2 id="gameover-title">Checkmate</h2>
-                            <p id="gameover-sub">Match concluded.</p>
-                            <div class="gameover-buttons">
-                                <button class="btn btn-primary btn-large" id="modal-restart-btn">New Game</button>
-                                <button class="btn btn-secondary" id="modal-review-btn">Review</button>
+                    <!-- Game Over Modal -->
+                    <div class="modal hidden" id="gameover-modal">
+                        <div class="modal-card">
+                            <h3 id="gameover-title">Checkmate</h3>
+                            <p id="gameover-sub">White won the match.</p>
+                            <div class="modal-actions">
+                                <button class="btn btn-primary" id="modal-restart-btn">New Game</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Player HUD Bar -->
-            <div class="player-hud player-hud-bottom">
+            <!-- Bottom HUD (White) -->
+            <div class="player-hud" id="bottom-hud">
                 <div class="hud-left">
-                    <div class="avatar-box" id="bottom-avatar">YOU</div>
-                    <div class="hud-info">
-                        <span class="hud-name" id="bottom-player-name">Player</span>
-                        <span class="hud-sub" id="bottom-player-sub">Challenger</span>
+                    <div class="avatar" id="bottom-avatar">YOU</div>
+                    <div class="player-details">
+                        <span class="player-name" id="bottom-player-name">Player</span>
+                        <span class="player-rating">Challenger</span>
                     </div>
                 </div>
-                <div class="hud-right">
-                    <div class="captured-box" id="bottom-captured"></div>
-                    <div class="clock-box" id="bottom-clock">03:00</div>
-                </div>
+                <div class="clock-display" id="bottom-clock">03:00</div>
             </div>
 
-            <!-- Primary Toolbar -->
-            <div class="toolbar">
+            <!-- Quick Board Action Bar -->
+            <div class="action-bar">
                 <button class="btn btn-primary" id="start-game-btn">Start Match</button>
-                <button class="btn btn-secondary" id="flip-btn">Flip Board</button>
-                <button class="btn btn-secondary" id="undo-btn">Undo Move</button>
-                <button class="btn btn-accent" id="hint-btn">Engine Hint</button>
-                <button class="btn btn-secondary" id="threat-toggle-btn">Threat Map</button>
+                <button class="btn btn-secondary" id="flip-btn">Flip</button>
+                <button class="btn btn-secondary" id="undo-btn">Undo</button>
+                <button class="btn btn-secondary" id="hint-btn">Hint</button>
+                <button class="btn btn-secondary" id="threat-toggle-btn">Threats</button>
             </div>
         </section>
 
-        <!-- Right Column: Commentary & Telemetry Panels -->
-        <aside class="sidebar-section">
+        <!-- Right Column: Sidebar Panels -->
+        <aside class="sidebar-column">
             
-            <!-- Live Analysis Commentary -->
-            <div class="panel-card oracle-card">
-                <div class="panel-header">
-                    <span>Position Commentary</span>
-                    <span class="opening-pill" id="opening-badge">Standard Start</span>
+            <!-- Panel: Game Info & Commentary -->
+            <div class="sidebar-card" id="card-commentary">
+                <div class="card-header">
+                    <span>Position Analysis</span>
+                    <span class="card-tag" id="opening-badge">Standard Start</span>
                 </div>
-                <div class="oracle-body">
-                    <div class="oracle-quote" id="oracle-text">
-                        Game initialized. White to move.
-                    </div>
-                    <div class="move-grade-badge hidden" id="move-grade-badge">
+                <div class="card-body">
+                    <p class="commentary-text" id="oracle-text">Click "Start Match" or make a move to begin.</p>
+                    <div class="move-grade hidden" id="move-grade-badge">
                         <span class="grade-text">Best Move</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Real-Time Telemetry HUD -->
-            <div class="panel-card telemetry-card">
-                <div class="panel-header">
-                    <span>Search Telemetry</span>
-                    <span class="live-pill">AVX2 SIMD</span>
+            <!-- Panel: Move Notation Log -->
+            <div class="sidebar-card move-history-card" id="card-history">
+                <div class="card-header">
+                    <span>Notation</span>
+                    <div class="card-actions">
+                        <button class="btn-text" id="copy-pgn-btn">PGN</button>
+                        <button class="btn-text" id="copy-fen-btn">FEN</button>
+                    </div>
                 </div>
-                <div class="telemetry-grid">
-                    <div class="tele-item">
-                        <span class="tele-label">Nodes Searched</span>
-                        <span class="tele-val" id="tele-nodes">0</span>
-                    </div>
-                    <div class="tele-item">
-                        <span class="tele-label">Throughput</span>
-                        <span class="tele-val" id="tele-nps">0 NPS</span>
-                    </div>
-                    <div class="tele-item">
-                        <span class="tele-label">Depth</span>
-                        <span class="tele-val" id="tele-depth">Depth 12</span>
-                    </div>
-                    <div class="tele-item">
-                        <span class="tele-label">Principal Variation</span>
-                        <span class="tele-val pv-box" id="tele-pv">--</span>
-                    </div>
+                <div class="history-list" id="move-history">
+                    <div class="empty-notice">No moves played yet.</div>
                 </div>
             </div>
 
-            <!-- Tactical Puzzles Panel -->
-            <div class="panel-card puzzles-card hidden" id="puzzles-panel">
-                <div class="panel-header">
-                    <span>Tactical Exercises</span>
-                    <span class="puzzle-counter" id="puzzle-progress">1 / 6</span>
+            <!-- Panel: Match Configuration -->
+            <div class="sidebar-card" id="card-config">
+                <div class="card-header">
+                    <span>Settings</span>
                 </div>
-                <div class="puzzle-content">
-                    <h4 id="puzzle-title">Kasparov's Immortal Attack</h4>
-                    <p class="puzzle-event" id="puzzle-event">Kasparov vs Topalov (1999)</p>
-                    <p class="puzzle-desc" id="puzzle-desc">Find the winning tactical sequence.</p>
-                    <div class="puzzle-actions">
-                        <button class="btn btn-accent" id="puzzle-hint-btn">Hint</button>
-                        <button class="btn btn-secondary" id="puzzle-next-btn">Next Position</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Match Settings & Opponent Config -->
-            <div class="panel-card" id="settings-panel">
-                <div class="panel-header">
-                    <span>Match Configuration</span>
-                </div>
-                <div class="settings-form">
-                    <div class="form-group">
-                        <label for="mode-select">Play Mode:</label>
-                        <select id="mode-select" class="custom-select">
-                            <option value="human_white" selected>Play as White (vs Engine)</option>
-                            <option value="human_black">Play as Black (vs Engine)</option>
-                            <option value="ai_vs_ai">Spectate Engine Self-Play</option>
+                <div class="settings-grid">
+                    <div class="setting-row">
+                        <label for="mode-select">Side:</label>
+                        <select id="mode-select" class="select-input">
+                            <option value="human_white" selected>White vs Engine</option>
+                            <option value="human_black">Black vs Engine</option>
+                            <option value="ai_vs_ai">Spectate Engine</option>
                         </select>
                     </div>
-
-                    <div class="form-group">
-                        <label for="tc-select">Time Control:</label>
-                        <select id="tc-select" class="custom-select">
+                    <div class="setting-row">
+                        <label for="tc-select">Clock:</label>
+                        <select id="tc-select" class="select-input">
                             <option value="bullet_1_0">Bullet 1m</option>
                             <option value="bullet_1_1">Bullet 1m + 1s</option>
                             <option value="blitz_3_0" selected>Blitz 3m</option>
                             <option value="blitz_3_2">Blitz 3m + 2s</option>
                             <option value="rapid_10_0">Rapid 10m</option>
-                            <option value="fixed_depth">Fixed Search Depth (Untimed)</option>
+                            <option value="fixed_depth">Untimed (Fixed Depth)</option>
                         </select>
                     </div>
-
-                    <div class="form-group">
-                        <label for="theme-select">Board Palette:</label>
-                        <select id="theme-select" class="custom-select">
-                            <option value="slate" selected>Slate Gray</option>
+                    <div class="setting-row">
+                        <label for="theme-select">Theme:</label>
+                        <select id="theme-select" class="select-input">
+                            <option value="slate" selected>Lichess Slate</option>
                             <option value="wood">Classical Walnut</option>
-                            <option value="cyber">Cyber Midnight</option>
-                            <option value="glass">Dark Minimalist</option>
+                            <option value="cyber">Dark Charcoal</option>
                         </select>
                     </div>
                 </div>
             </div>
 
-            <!-- Move History Log & PGN Export -->
-            <div class="panel-card history-card">
-                <div class="panel-header">
-                    <span>Move History</span>
-                    <div class="history-actions">
-                        <button class="btn-tiny" id="copy-pgn-btn" title="Copy PGN">PGN</button>
-                        <button class="btn-tiny" id="copy-fen-btn" title="Copy FEN">FEN</button>
+            <!-- Panel: Tactical Challenges (hidden by default) -->
+            <div class="sidebar-card hidden" id="card-puzzles">
+                <div class="card-header">
+                    <span>Tactical Puzzles</span>
+                    <span class="card-tag" id="puzzle-progress">1 / 6</span>
+                </div>
+                <div class="card-body">
+                    <h4 id="puzzle-title">Kasparov's Immortal</h4>
+                    <p class="puzzle-sub" id="puzzle-event">Kasparov vs Topalov (1999)</p>
+                    <p class="puzzle-desc" id="puzzle-desc">Find the winning combination.</p>
+                    <div class="puzzle-btns">
+                        <button class="btn btn-secondary" id="puzzle-hint-btn">Hint</button>
+                        <button class="btn btn-primary" id="puzzle-next-btn">Next</button>
                     </div>
                 </div>
-                <div class="move-history-container" id="move-history">
-                    <div class="empty-history-notice">Moves will be recorded as the game proceeds.</div>
+            </div>
+
+            <!-- Panel: Search Telemetry (hidden by default) -->
+            <div class="sidebar-card hidden" id="card-telemetry">
+                <div class="card-header">
+                    <span>Engine Telemetry</span>
+                </div>
+                <div class="telemetry-table">
+                    <div class="tele-row">
+                        <span>Throughput:</span>
+                        <strong id="tele-nps">0 NPS</strong>
+                    </div>
+                    <div class="tele-row">
+                        <span>Nodes:</span>
+                        <strong id="tele-nodes">0</strong>
+                    </div>
+                    <div class="tele-row">
+                        <span>Search Depth:</span>
+                        <strong id="tele-depth">Depth 12</strong>
+                    </div>
+                    <div class="tele-row">
+                        <span>Principal Variation:</span>
+                        <span class="tele-pv-text" id="tele-pv">--</span>
+                    </div>
                 </div>
             </div>
 
@@ -235,6 +213,6 @@
 
     </main>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=5"></script>
 </body>
 </html>
