@@ -1,13 +1,13 @@
 /**
  * HEAVEN'S GATE CHESS ENGINE - WEB CLIENT (MASTER EDITION)
- * Active Precision Clock Timers + Smart Opening Time Management + UCI Engine Bridge
+ * Active Precision Clock Timers + Manual Start Match Trigger + Smart Opening Time Management
  */
 
 const SVG_PIECES = {
     'P': `<svg viewBox="0 0 45 45" class="piece-svg"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="#fff" stroke="#000" stroke-width="1.5" stroke-linecap="round"/></svg>`,
     'N': `<svg viewBox="0 0 45 45" class="piece-svg"><path d="M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18 C 21.5,14.5 12,14 12,14 C 12,14 11,21 17,22.5 C 15.5,22.5 11.5,21 11.5,15 C 11.5,10.5 17.5,9.5 22,10 z" fill="#fff" stroke="#000" stroke-width="1.5" stroke-linecap="round"/><path d="M 24,18 C 24.38,19.92 22.45,21.37 20.53,21 C 18.61,20.62 17.16,18.69 17.54,16.77 C 17.92,14.85 19.85,13.4 21.77,13.78 C 23.69,14.16 25.14,16.09 24.76,18 z" fill="#000"/></svg>`,
     'B': `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="#fff"><path d="M9 36c1.2-2.5 3.5-3.5 6-3.5s4.8 1 6 3.5H9zM15 32c-2.5 0-3.5-1.5-3.5-3s.5-3.5 2-4.5c1.5-1 3.5-1 5 0s2 3 2 4.5-1 3-3.5 3zM15 23.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><circle cx="15" cy="11.5" r="2.5"/></g><path d="M15 9.5v-3M13.5 8h3"/></g></svg>`,
-    'R': `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="#fff" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 39h27v-3H9v3zM12 36h21v-4H12v4zM11 32h23l-2-16H13l-2 16zM9 16h27v-4h-4v2h-5v-2h-6v2h-5v-2H9v4z"/><path d="M14 29.5h17M14 16.5h17" stroke-linecap="butt"/></g></svg>`,
+    'R': `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="#fff" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 39h27v-3H9v3zM12 36h21v-4H12v4zM11 32h23l-2-16H13l-2 16zM9 16h27v-4h-4v2h-5v-2h-6v2h-5v-2H9v4z"/><path d="M14 29.5h17M14 16.5h17" stroke="#fff" stroke-linecap="butt"/></g></svg>`,
     'Q': `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="#fff" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 36h29v-3H8v3zM11.5 33h22l-1.5-4h-19l-1.5 4zM9 29l4.5-16.5L20 27l2.5-20L25 27l6.5-14.5L36 29H9z"/><circle cx="9" cy="11" r="2"/><circle cx="13.5" cy="11.5" r="2"/><circle cx="22.5" cy="6" r="2"/><circle cx="31.5" cy="11.5" r="2"/><circle cx="36" cy="11" r="2"/></g></svg>`,
     'K': `<svg viewBox="0 0 45 45" class="piece-svg"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="#fff"><path d="M22.5 11.63c-1.58 0-2.87 1.29-2.87 2.87 0 1.25.8 2.31 1.92 2.68V21.5h-5.5v2h5.5v3.5h-8v2h8V35h-11v4h25v-4h-11v-6h8v-2h-8V23.5h5.5v-2h-5.5v-4.32c1.12-.37 1.92-1.43 1.92-2.68 0-1.58-1.29-2.87-2.87-2.87z"/></g><path d="M22.5 6v4.5M20.25 8.25h4.5"/></g></svg>`,
 
@@ -276,6 +276,7 @@ class ChessApp {
         this.isGameOver = false;
         this.isFlipped = false;
         this.showThreatMap = false;
+        this.isGameActive = false;
 
         this.sound = new SoundFX();
         this.playMode = 'human_white';
@@ -292,12 +293,13 @@ class ChessApp {
 
         this.initDOM();
         this.bindEvents();
-        this.startNewGame();
+        this.initIdleState();
         this.loadPuzzles();
     }
 
     initDOM() {
         this.boardEl = document.getElementById('board');
+        this.startBtn = document.getElementById('start-game-btn');
         this.evalFillEl = document.getElementById('eval-fill');
         this.evalBadgeEl = document.getElementById('eval-badge');
         this.teleNodesEl = document.getElementById('tele-nodes');
@@ -321,20 +323,28 @@ class ChessApp {
     }
 
     bindEvents() {
-        document.getElementById('new-game-btn').addEventListener('click', () => this.startNewGame());
+        this.startBtn.addEventListener('click', () => {
+            if (this.isGameActive) {
+                this.initIdleState();
+            } else {
+                this.startMatch();
+            }
+        });
+
         document.getElementById('flip-btn').addEventListener('click', () => this.flipBoard());
         document.getElementById('undo-btn').addEventListener('click', () => this.undoMove());
         document.getElementById('hint-btn').addEventListener('click', () => this.requestHint());
         document.getElementById('threat-toggle-btn').addEventListener('click', () => this.toggleThreatMap());
         document.getElementById('modal-restart-btn').addEventListener('click', () => {
             this.gameoverModal.classList.add('hidden');
-            this.startNewGame();
+            this.initIdleState();
+            this.startMatch();
         });
 
         document.getElementById('mode-select').addEventListener('change', (e) => {
             this.playMode = e.target.value;
             this.isFlipped = (this.playMode === 'human_black');
-            this.startNewGame();
+            this.initIdleState();
         });
 
         document.getElementById('tc-select').addEventListener('change', (e) => {
@@ -416,10 +426,12 @@ class ChessApp {
             clearInterval(this.clockInterval);
             this.clockInterval = null;
         }
+        this.topClockEl.classList.remove('active');
+        this.bottomClockEl.classList.remove('active');
     }
 
     tickClock() {
-        if (this.isGameOver || this.timeControl === 'fixed_depth') return;
+        if (!this.isGameActive || this.isGameOver || this.timeControl === 'fixed_depth') return;
         const now = performance.now();
         const elapsed = (now - this.lastClockTick) / 1000.0;
         this.lastClockTick = now;
@@ -445,7 +457,7 @@ class ChessApp {
     }
 
     updateActiveClockHUD() {
-        if (this.timeControl === 'fixed_depth') {
+        if (!this.isGameActive || this.timeControl === 'fixed_depth') {
             this.topClockEl.classList.remove('active');
             this.bottomClockEl.classList.remove('active');
             return;
@@ -470,7 +482,11 @@ class ChessApp {
         }
     }
 
-    startNewGame() {
+    initIdleState() {
+        this.stopClock();
+        this.isGameActive = false;
+        this.isGameOver = false;
+        this.isThinking = false;
         this.board = ChessRulesEngine.cloneBoard(INITIAL_BOARD);
         this.turn = 'w';
         this.castlingRights = { K: true, Q: true, k: true, q: true };
@@ -482,17 +498,24 @@ class ChessApp {
         this.selectedSquare = null;
         this.legalTargets = [];
         this.lastMove = null;
-        this.isThinking = false;
-        this.isGameOver = false;
 
         this.resetClocks();
         this.renderBoard();
         this.updateEvalBar(0);
         this.moveHistoryEl.innerHTML = '<div class="empty-history-notice">Moves will be recorded as the game proceeds.</div>';
-        this.oracleTextEl.textContent = 'Game initialized. White to move.';
+        this.oracleTextEl.textContent = 'Click "Start Match" or make a move to begin.';
         this.openingBadgeEl.textContent = 'Standard Start';
         this.moveGradeEl.classList.add('hidden');
-        this.setStatus('Engine Ready', false);
+        this.setStatus('Ready to Start', false);
+        this.startBtn.textContent = 'Start Match';
+    }
+
+    startMatch() {
+        this.isGameActive = true;
+        this.isGameOver = false;
+        this.startBtn.textContent = 'Reset Match';
+        this.setStatus('Match Active', false);
+        this.oracleTextEl.textContent = 'Match started. White to move.';
 
         if (this.timeControl !== 'fixed_depth') {
             this.startClock();
@@ -607,6 +630,12 @@ class ChessApp {
                     return;
                 }
                 const uciStr = `${this.coordsToSquare(srcR, srcC)}${this.coordsToSquare(r, c)}`;
+                
+                // If game was not started, auto-activate match on first move
+                if (!this.isGameActive) {
+                    this.startMatch();
+                }
+
                 this.executeMove(srcR, srcC, r, c, uciStr);
                 this.selectedSquare = null;
                 this.legalTargets = [];
@@ -634,6 +663,7 @@ class ChessApp {
             btn.addEventListener('click', () => {
                 this.promotionModal.classList.add('hidden');
                 const uciStr = `${this.coordsToSquare(srcR, srcC)}${this.coordsToSquare(tr, tc)}${p.toLowerCase()}`;
+                if (!this.isGameActive) this.startMatch();
                 this.executeMove(srcR, srcC, tr, tc, uciStr, p);
             });
             this.promotionChoicesEl.appendChild(btn);
@@ -678,7 +708,6 @@ class ChessApp {
         this.lastMove = { from: this.coordsToSquare(srcR, srcC), to: this.coordsToSquare(tr, tc) };
         this.uciHistory.push(uciStr);
 
-        // Add clock increment to the side that just moved
         if (this.increment > 0) {
             if (this.turn === 'w') this.whiteTime += this.increment;
             else this.blackTime += this.increment;
@@ -697,7 +726,7 @@ class ChessApp {
         this.checkGameEnd();
         this.updateOpening();
 
-        if (!this.isGameOver) {
+        if (!this.isGameOver && this.isGameActive) {
             if ((this.playMode === 'human_white' && this.turn === 'b') || (this.playMode === 'human_black' && this.turn === 'w')) {
                 this.triggerEngineMove();
             }
@@ -790,7 +819,7 @@ class ChessApp {
     }
 
     async triggerEngineMove() {
-        if (this.isThinking || this.isGameOver) return;
+        if (this.isThinking || this.isGameOver || !this.isGameActive) return;
         this.isThinking = true;
         this.setStatus("Engine Calculating...", true);
 
@@ -815,7 +844,7 @@ class ChessApp {
             });
             const data = await resp.json();
 
-            if (data.best_move) {
+            if (data.best_move && this.isGameActive) {
                 const src = data.best_move.substring(0, 2);
                 const dst = data.best_move.substring(2, 4);
                 const promo = data.best_move.length > 4 ? data.best_move[4] : null;
@@ -836,7 +865,7 @@ class ChessApp {
             console.error("Engine API error:", e);
         } finally {
             this.isThinking = false;
-            this.setStatus("Engine Ready", false);
+            if (this.isGameActive) this.setStatus("Engine Ready", false);
         }
     }
 
@@ -988,7 +1017,7 @@ class ChessApp {
 
     undoMove() {
         if (this.moveHistory.length === 0) return;
-        this.startNewGame();
+        this.initIdleState();
     }
 
     copyFEN() {
