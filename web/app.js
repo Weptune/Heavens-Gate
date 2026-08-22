@@ -1,6 +1,6 @@
 /**
- * HEAVEN'S GATE GRANDMASTER CHESS AI WEB CLIENT
- * Full Rules Engine + The Oracle Commentary + Threat Heatmap + Puzzle Challenge + SPSA Integration
+ * HEAVEN'S GATE CHESS ENGINE - WEB CLIENT
+ * Standard Chess Rules Engine + Professional Telemetry HUD + Analysis
  */
 
 const SVG_PIECES = {
@@ -20,8 +20,8 @@ const SVG_PIECES = {
 };
 
 const OPENING_BOOK = {
-    "e2e4 e7e5 g1f3 b8c6 f1c4": "Italian Game (Giuoco Piano)",
-    "e2e4 e7e5 g1f3 b8c6 f1b5": "Ruy Lopez (Spanish Opening)",
+    "e2e4 e7e5 g1f3 b8c6 f1c4": "Italian Game",
+    "e2e4 e7e5 g1f3 b8c6 f1b5": "Ruy Lopez",
     "e2e4 c7c5": "Sicilian Defense",
     "e2e4 e7e6": "French Defense",
     "e2e4 c7c6": "Caro-Kann Defense",
@@ -60,10 +60,10 @@ class SoundFX {
         osc.start();
         osc.stop(this.ctx.currentTime + duration);
     }
-    playMove() { this.playTone(380, 0.08, 'sine', 0.25); }
-    playCapture() { this.playTone(180, 0.12, 'triangle', 0.4); }
-    playCheck() { this.playTone(880, 0.18, 'sawtooth', 0.3); }
-    playGameOver() { this.playTone(523, 0.3, 'sine', 0.4); }
+    playMove() { this.playTone(380, 0.08, 'sine', 0.2); }
+    playCapture() { this.playTone(180, 0.12, 'triangle', 0.35); }
+    playCheck() { this.playTone(880, 0.16, 'sawtooth', 0.25); }
+    playGameOver() { this.playTone(523, 0.3, 'sine', 0.35); }
 }
 
 class ChessRulesEngine {
@@ -384,20 +384,20 @@ class ChessApp {
 
         if (this.persona === 'initiate') {
             topName.textContent = "The Initiate";
-            topSub.textContent = "Casual Bot ~1200 Elo";
-            topAvatar.textContent = "🥉";
+            topSub.textContent = "Level 1 (~1200 Elo)";
+            topAvatar.textContent = "BOT";
         } else if (this.persona === 'tactician') {
             topName.textContent = "The Tactician";
-            topSub.textContent = "Club Attacker ~1800 Elo";
-            topAvatar.textContent = "🥈";
+            topSub.textContent = "Level 2 (~1800 Elo)";
+            topAvatar.textContent = "BOT";
         } else if (this.persona === 'master') {
             topName.textContent = "The Grandmaster";
-            topSub.textContent = "Positional Master ~2600 Elo";
-            topAvatar.textContent = "🥇";
+            topSub.textContent = "Level 3 (~2600 Elo)";
+            topAvatar.textContent = "BOT";
         } else {
-            topName.textContent = "Heaven's Gate (Unchained)";
-            topSub.textContent = "SPSA-Tuned Tropical AI ~3450 Elo";
-            topAvatar.textContent = "👑";
+            topName.textContent = "Heaven's Gate";
+            topSub.textContent = "Master Edition (~3450 Elo)";
+            topAvatar.textContent = "AI";
         }
     }
 
@@ -436,8 +436,8 @@ class ChessApp {
         this.resetClocks();
         this.renderBoard();
         this.updateEvalBar(0);
-        this.moveHistoryEl.innerHTML = '<div class="empty-history-notice">Moves will appear here as the match progresses.</div>';
-        this.oracleTextEl.textContent = '"The board is set. Demonstrate your mastery of space, tempo, and piece coordination."';
+        this.moveHistoryEl.innerHTML = '<div class="empty-history-notice">Moves will be recorded as the game proceeds.</div>';
+        this.oracleTextEl.textContent = 'Game initialized. White to move.';
         this.openingBadgeEl.textContent = 'Standard Start';
         this.moveGradeEl.classList.add('hidden');
         this.setStatus('Engine Ready', false);
@@ -682,13 +682,13 @@ class ChessApp {
             if (inCheck) {
                 this.sound.playGameOver();
                 const winner = this.turn === 'w' ? "Black" : "White";
-                this.showGameOver("Checkmate!", `${winner} won the match.`);
+                this.showGameOver("Checkmate", `${winner} won the match.`);
             } else {
-                this.showGameOver("Stalemate!", "The game is drawn by stalemate.");
+                this.showGameOver("Stalemate", "Game drawn by stalemate.");
             }
         } else if (inCheck) {
             this.sound.playCheck();
-            this.oracleTextEl.textContent = `"Check! The king is under direct tactical fire."`;
+            this.oracleTextEl.textContent = "Check. King under direct attack.";
         }
     }
 
@@ -728,7 +728,7 @@ class ChessApp {
     async triggerEngineMove() {
         if (this.isThinking || this.isGameOver) return;
         this.isThinking = true;
-        this.setStatus("Engine Thinking...", true);
+        this.setStatus("Engine Calculating...", true);
 
         const fen = this.getFEN();
         let depth = 12;
@@ -789,17 +789,17 @@ class ChessApp {
         if (Math.abs(delta) > 300) {
             if ((this.turn === 'b' && delta < -300) || (this.turn === 'w' && delta > 300)) {
                 this.moveGradeEl.className = 'move-grade-badge brilliant';
-                this.moveGradeEl.innerHTML = `<span>🌟</span><span>Brilliant Move!</span>`;
-                this.oracleTextEl.textContent = `"Magnificent tactical find! The position explodes in your favor."`;
+                this.moveGradeEl.innerHTML = `<span class="grade-text">Brilliant Move</span>`;
+                this.oracleTextEl.textContent = "Sharp tactical breakthrough. Position evaluates favorably.";
             } else {
                 this.moveGradeEl.className = 'move-grade-badge blunder';
-                this.moveGradeEl.innerHTML = `<span>💥</span><span>Blunder!</span>`;
-                this.oracleTextEl.textContent = `"A critical tactical misstep. Heaven's Gate immediately pounces."`;
+                this.moveGradeEl.innerHTML = `<span class="grade-text">Blunder</span>`;
+                this.oracleTextEl.textContent = "Inaccuracy detected. Advantage shifted to opponent.";
             }
         } else if (Math.abs(cp) > 500) {
-            this.oracleTextEl.textContent = `"Decisive positional advantage locked in. Conversion is imminent."`;
+            this.oracleTextEl.textContent = "Decisive advantage. Technical endgame conversion.";
         } else {
-            this.oracleTextEl.textContent = `"Dynamic spectral balance. Control the central lines."`;
+            this.oracleTextEl.textContent = "Balanced position. Maintaining central pressure.";
         }
     }
 
@@ -813,7 +813,7 @@ class ChessApp {
         });
         const data = await resp.json();
         if (data.best_move) {
-            this.oracleTextEl.textContent = `💡 Hint: The Oracle recommends playing ${data.best_move.substring(0, 2)} ➔ ${data.best_move.substring(2, 4)}.`;
+            this.oracleTextEl.textContent = `Engine recommendation: ${data.best_move.substring(0, 2)} -> ${data.best_move.substring(2, 4)}`;
         }
     }
 
@@ -877,7 +877,7 @@ class ChessApp {
         document.getElementById('puzzle-progress').textContent = `${this.currentPuzzleIdx + 1} / ${this.puzzles.length}`;
 
         this.setBoardFromFEN(p.fen);
-        this.oracleTextEl.textContent = `🧩 ${p.title}: ${p.desc}`;
+        this.oracleTextEl.textContent = `${p.title}: ${p.desc}`;
     }
 
     setBoardFromFEN(fenStr) {
@@ -903,7 +903,7 @@ class ChessApp {
     showPuzzleHint() {
         if (!this.puzzles[this.currentPuzzleIdx]) return;
         const p = this.puzzles[this.currentPuzzleIdx];
-        this.oracleTextEl.textContent = `💡 Hint: ${p.hint}`;
+        this.oracleTextEl.textContent = `Hint: ${p.hint}`;
     }
 
     nextPuzzle() {
@@ -922,13 +922,13 @@ class ChessApp {
 
     copyFEN() {
         navigator.clipboard.writeText(this.getFEN());
-        this.setStatus("FEN Copied to Clipboard!", false);
+        this.setStatus("FEN copied to clipboard", false);
     }
 
     copyPGN() {
         const pgn = this.moveHistory.join(' ');
         navigator.clipboard.writeText(pgn);
-        this.setStatus("PGN Copied to Clipboard!", false);
+        this.setStatus("PGN copied to clipboard", false);
     }
 
     setStatus(text, thinking = false) {
