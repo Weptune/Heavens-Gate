@@ -367,10 +367,13 @@ html, body {
 .coord-rank { top: 2px; left: 3px; }
 .coord-file { bottom: 1px; right: 3px; }
 
-.piece-svg {
+.piece-img {
     width: 90%;
     height: 90%;
     pointer-events: none;
+    user-select: none;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
 }
 
 .overlay-canvas {
