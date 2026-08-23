@@ -1,6 +1,6 @@
 /**
- * HEAVEN'S GATE CHESS ENGINE - WEB CLIENT (MASTER EDITION)
- * Real Pre-Existing Chess Piece Image Assets + Interactive Puzzles + Clean Tab Navigation
+ * HEAVEN'S GATE CHESS ENGINE - WEB APPLICATION
+ * Bulletproof Tab Navigation + Real Piece Images + Isolated Game & Puzzle States
  */
 
 const PIECE_NAMES = {
@@ -30,6 +30,69 @@ const INITIAL_BOARD = [
     ['.', '.', '.', '.', '.', '.', '.', '.'],
     ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
     ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+];
+
+const DEFAULT_PUZZLES = [
+    {
+        id: 1,
+        title: "Kasparov's Immortal Attack",
+        event: "Kasparov vs Topalov, Wijk aan Zee 1999",
+        fen: "b2r3r/k4p1p/p2q1np1/NppP4/3p1Q2/P4PPB/1PP4P/1K1RR3 w - - 0 1",
+        turn: "w",
+        hint: "Sacrifice the rook to shatter the king's pawn shield!",
+        solution: "d1d4",
+        desc: "Find the immortal rook sacrifice that opens the fatal d-file ray."
+    },
+    {
+        id: 2,
+        title: "The Greek Gift Sacrifice",
+        event: "Classical Tactical Theme",
+        fen: "r1bq1rk1/ppp2ppp/2n1pn2/3p4/2PP4/2NBPN2/PP3PPP/R1BQK2R w KQ - 4 7",
+        turn: "w",
+        hint: "Bxh7+ crashes through the kingside fortress!",
+        solution: "d3h7",
+        desc: "Classic bishop sacrifice on h7 followed by Ng5+ and Qh5."
+    },
+    {
+        id: 3,
+        title: "Mikhail Tal's Knight Sorcery",
+        event: "Tal vs Larsen, Bled 1965",
+        fen: "r1b2rk1/pp1n1ppp/2p1pn2/q2p2B1/2PP4/2P1PN2/P1Q1BPPP/R3K2R w KQ - 3 10",
+        turn: "w",
+        hint: "Break through the center with e4!",
+        solution: "e1g1",
+        desc: "Prepare the central explosion and open tactical diagonal lines."
+    },
+    {
+        id: 4,
+        title: "Opera House Checkmate",
+        event: "Paul Morphy vs Duke of Brunswick, Paris 1858",
+        fen: "4kb1r/p2n1ppp/4q3/4p1B1/4P3/1Q6/PPP2PPP/2KR4 w k - 1 1",
+        turn: "w",
+        hint: "Queen sacrifice on b8 leads to back-rank mate with Rd8#!",
+        solution: "b3b8",
+        desc: "The most famous queen sacrifice in chess history."
+    },
+    {
+        id: 5,
+        title: "Fischer's Game of the Century",
+        event: "Donald Byrne vs Bobby Fischer, New York 1956",
+        fen: "r3r1k1/pp3pbp/1qp1b1p1/4B3/2P5/2N2N1P/PP1Q1PP1/R4RK1 b - - 0 16",
+        turn: "b",
+        hint: "Offer the queen with Be6 to build a lethal discovered attack windmill!",
+        solution: "e6c4",
+        desc: "Fischer's brilliant 13-year-old masterpiece."
+    },
+    {
+        id: 6,
+        title: "Smothered Mate (Philidor's Legacy)",
+        event: "Classical Tactical Motif",
+        fen: "6k1/5ppp/8/8/8/8/1Q4PP/6K1 w - - 0 1",
+        turn: "w",
+        hint: "Queen check on b8 forces back rank mate!",
+        solution: "b2b8",
+        desc: "Deliver the unstoppable back-rank checkmate."
+    }
 ];
 
 class SoundFX {
@@ -252,50 +315,56 @@ class ChessRulesEngine {
 
 class ChessApp {
     constructor() {
-        this.currentTab = 'play';
-        this.isPuzzleMode = false;
+        this.activeTab = 'play';
+        this.sound = new SoundFX();
+        this.pieceSet = 'cburnett';
 
-        // Match State
-        this.board = ChessRulesEngine.cloneBoard(INITIAL_BOARD);
-        this.turn = 'w';
-        this.castlingRights = { K: true, Q: true, k: true, q: true };
-        this.enPassantTarget = null;
-        this.halfMoveClock = 0;
-        this.fullMoveNumber = 1;
-        this.moveHistory = [];
-        this.uciHistory = [];
+        // Match Game State (100% Isolated from Puzzles)
+        this.gameState = {
+            board: ChessRulesEngine.cloneBoard(INITIAL_BOARD),
+            turn: 'w',
+            castlingRights: { K: true, Q: true, k: true, q: true },
+            enPassantTarget: null,
+            halfMoveClock: 0,
+            fullMoveNumber: 1,
+            moveHistory: [],
+            uciHistory: [],
+            lastMove: null,
+            isGameActive: false,
+            isGameOver: false,
+            isThinking: false,
+            isFlipped: false,
+            playMode: 'human_white',
+            timeControl: 'blitz_3_0',
+            whiteTime: 180.0,
+            blackTime: 180.0,
+            increment: 0.0,
+            lastEvalScore: 0
+        };
+
+        // Puzzle Game State (100% Isolated from Matches)
+        this.puzzleState = {
+            board: ChessRulesEngine.cloneBoard(INITIAL_BOARD),
+            turn: 'w',
+            castlingRights: { K: false, Q: false, k: false, q: false },
+            enPassantTarget: null,
+            lastMove: null,
+            isFlipped: false,
+            puzzleIdx: 0,
+            isSolved: false,
+            puzzles: DEFAULT_PUZZLES
+        };
+
         this.selectedSquare = null;
         this.legalTargets = [];
-        this.lastMove = null;
-        this.isThinking = false;
-        this.isGameOver = false;
-        this.isFlipped = false;
         this.showThreatMap = false;
-        this.isGameActive = false;
-
-        // Saved Match Cache for seamless switching
-        this.savedMatchState = null;
-
-        this.sound = new SoundFX();
-        this.playMode = 'human_white';
-        this.timeControl = 'blitz_3_0';
-        this.pieceSet = 'cburnett';
-        this.whiteTime = 180.0;
-        this.blackTime = 180.0;
-        this.increment = 0.0;
         this.clockInterval = null;
         this.lastClockTick = 0;
-        this.lastEvalScore = 0;
-
-        // Puzzle State
-        this.puzzles = [];
-        this.currentPuzzleIdx = 0;
-        this.puzzleSolved = false;
 
         this.initDOM();
         this.bindEvents();
-        this.initIdleState();
-        this.loadPuzzles();
+        this.initPlayMode();
+        this.fetchServerPuzzles();
     }
 
     initDOM() {
@@ -324,14 +393,18 @@ class ChessApp {
     }
 
     bindEvents() {
+        // Tab switching
+        document.getElementById('tab-play').addEventListener('click', () => this.switchTab('play'));
+        document.getElementById('tab-puzzles').addEventListener('click', () => this.switchTab('puzzles'));
+        document.getElementById('tab-telemetry').addEventListener('click', () => this.switchTab('telemetry'));
+
+        // Match Actions
         this.startBtn.addEventListener('click', () => {
-            if (this.isPuzzleMode) {
+            if (this.activeTab !== 'play') {
                 this.switchTab('play');
-                this.startMatch();
-                return;
             }
-            if (this.isGameActive) {
-                this.initIdleState();
+            if (this.gameState.isGameActive) {
+                this.initPlayMode();
             } else {
                 this.startMatch();
             }
@@ -343,18 +416,19 @@ class ChessApp {
         document.getElementById('threat-toggle-btn').addEventListener('click', () => this.toggleThreatMap());
         document.getElementById('modal-restart-btn').addEventListener('click', () => {
             this.gameoverModal.classList.add('hidden');
-            this.initIdleState();
+            this.initPlayMode();
             this.startMatch();
         });
 
+        // Settings
         document.getElementById('mode-select').addEventListener('change', (e) => {
-            this.playMode = e.target.value;
-            this.isFlipped = (this.playMode === 'human_black');
-            this.initIdleState();
+            this.gameState.playMode = e.target.value;
+            this.gameState.isFlipped = (this.gameState.playMode === 'human_black');
+            this.initPlayMode();
         });
 
         document.getElementById('tc-select').addEventListener('change', (e) => {
-            this.timeControl = e.target.value;
+            this.gameState.timeControl = e.target.value;
             this.resetClocks();
         });
 
@@ -373,23 +447,30 @@ class ChessApp {
         document.getElementById('copy-fen-btn').addEventListener('click', () => this.copyFEN());
         document.getElementById('copy-pgn-btn').addEventListener('click', () => this.copyPGN());
 
-        document.getElementById('tab-play').addEventListener('click', () => this.switchTab('play'));
-        document.getElementById('tab-puzzles').addEventListener('click', () => this.switchTab('puzzles'));
-        document.getElementById('tab-telemetry').addEventListener('click', () => this.switchTab('telemetry'));
-
+        // Puzzle Controls
         document.getElementById('puzzle-hint-btn').addEventListener('click', () => this.showPuzzleHint());
         document.getElementById('puzzle-next-btn').addEventListener('click', () => this.nextPuzzle());
     }
 
-    getPieceImg(p) {
-        const code = PIECE_NAMES[p];
-        if (!code) return '';
-        const folder = this.pieceSet === 'cburnett' ? '' : `${this.pieceSet}/`;
-        return `<img src="pieces/${folder}${code}.svg" class="piece-img" draggable="false" alt="${p}" />`;
+    async fetchServerPuzzles() {
+        try {
+            const resp = await fetch('/api/puzzles');
+            if (resp.ok) {
+                const data = await resp.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    this.puzzleState.puzzles = data;
+                }
+            }
+        } catch (e) {
+            console.log("Using default embedded puzzles.");
+        }
     }
 
     switchTab(tab) {
-        this.currentTab = tab;
+        this.activeTab = tab;
+        this.selectedSquare = null;
+        this.legalTargets = [];
+
         document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
         const tabEl = document.getElementById(`tab-${tab}`);
         if (tabEl) tabEl.classList.add('active');
@@ -400,35 +481,25 @@ class ChessApp {
         const cardPuzzles = document.getElementById('card-puzzles');
         const cardTelemetry = document.getElementById('card-telemetry');
 
-        if (tab === 'puzzles') {
-            // Save Match State
-            this.savedMatchState = {
-                board: ChessRulesEngine.cloneBoard(this.board),
-                turn: this.turn,
-                castlingRights: { ...this.castlingRights },
-                enPassantTarget: this.enPassantTarget,
-                halfMoveClock: this.halfMoveClock,
-                fullMoveNumber: this.fullMoveNumber,
-                moveHistory: [...this.moveHistory],
-                uciHistory: [...this.uciHistory],
-                whiteTime: this.whiteTime,
-                blackTime: this.blackTime,
-                isGameActive: this.isGameActive,
-                lastMove: this.lastMove,
-                lastEvalScore: this.lastEvalScore
-            };
-
-            this.isPuzzleMode = true;
+        if (tab === 'play') {
             this.stopClock();
+            cardCommentary.classList.remove('hidden');
+            cardHistory.classList.remove('hidden');
+            cardConfig.classList.remove('hidden');
+            cardPuzzles.classList.add('hidden');
+            cardTelemetry.classList.add('hidden');
 
+            this.renderPlayView();
+
+        } else if (tab === 'puzzles') {
+            this.stopClock();
             cardCommentary.classList.add('hidden');
             cardHistory.classList.add('hidden');
             cardConfig.classList.add('hidden');
             cardTelemetry.classList.add('hidden');
             cardPuzzles.classList.remove('hidden');
 
-            this.setStatus("Tactical Training", false);
-            this.loadPuzzle(this.currentPuzzleIdx);
+            this.renderPuzzleView();
 
         } else if (tab === 'telemetry') {
             cardCommentary.classList.remove('hidden');
@@ -437,202 +508,165 @@ class ChessApp {
             cardPuzzles.classList.add('hidden');
             cardTelemetry.classList.remove('hidden');
 
-            if (this.isPuzzleMode) {
-                this.restoreMatchState();
-            }
-        } else {
-            // tab === 'play'
-            cardCommentary.classList.remove('hidden');
-            cardHistory.classList.remove('hidden');
-            cardConfig.classList.remove('hidden');
-            cardPuzzles.classList.add('hidden');
-            cardTelemetry.classList.add('hidden');
-
-            this.restoreMatchState();
+            this.renderPlayView();
         }
     }
 
-    restoreMatchState() {
-        this.isPuzzleMode = false;
-        if (this.savedMatchState) {
-            this.board = ChessRulesEngine.cloneBoard(this.savedMatchState.board);
-            this.turn = this.savedMatchState.turn;
-            this.castlingRights = { ...this.savedMatchState.castlingRights };
-            this.enPassantTarget = this.savedMatchState.enPassantTarget;
-            this.halfMoveClock = this.savedMatchState.halfMoveClock;
-            this.fullMoveNumber = this.savedMatchState.fullMoveNumber;
-            this.moveHistory = [...this.savedMatchState.moveHistory];
-            this.uciHistory = [...this.savedMatchState.uciHistory];
-            this.whiteTime = this.savedMatchState.whiteTime;
-            this.blackTime = this.savedMatchState.blackTime;
-            this.isGameActive = this.savedMatchState.isGameActive;
-            this.lastMove = this.savedMatchState.lastMove;
-            this.lastEvalScore = this.savedMatchState.lastEvalScore;
-            this.isFlipped = (this.playMode === 'human_black');
-
-            this.renderBoard();
-            this.updateClockDisplay();
-            this.updateActiveClockHUD();
-            this.updateEvalBar(this.lastEvalScore);
-            this.updateOpening();
-
-            if (this.isGameActive) {
-                this.startBtn.textContent = 'Reset Match';
-                this.setStatus('Match Active', false);
-                this.oracleTextEl.textContent = `${this.turn === 'w' ? 'White' : 'Black'} to move.`;
-                if (this.timeControl !== 'fixed_depth') this.startClock();
-            } else {
-                this.startBtn.textContent = 'Start Match';
-                this.setStatus('Ready', false);
-                this.oracleTextEl.textContent = 'Click "Start Match" or make a move to begin.';
-            }
-        } else {
-            this.initIdleState();
-        }
-    }
-
-    resetClocks() {
-        this.stopClock();
-        this.increment = 0.0;
-
-        if (this.timeControl === 'bullet_1_0') {
-            this.whiteTime = 60.0;
-            this.blackTime = 60.0;
-        } else if (this.timeControl === 'bullet_1_1') {
-            this.whiteTime = 60.0;
-            this.blackTime = 60.0;
-            this.increment = 1.0;
-        } else if (this.timeControl === 'blitz_3_0') {
-            this.whiteTime = 180.0;
-            this.blackTime = 180.0;
-        } else if (this.timeControl === 'blitz_3_2') {
-            this.whiteTime = 180.0;
-            this.blackTime = 180.0;
-            this.increment = 2.0;
-        } else if (this.timeControl === 'rapid_10_0') {
-            this.whiteTime = 600.0;
-            this.blackTime = 600.0;
-        } else {
-            this.whiteTime = 0.0;
-            this.blackTime = 0.0;
-        }
+    renderPlayView() {
+        this.renderBoard();
         this.updateClockDisplay();
-    }
-
-    startClock() {
-        this.stopClock();
-        if (this.timeControl === 'fixed_depth' || this.isPuzzleMode) return;
-        this.lastClockTick = performance.now();
-        this.clockInterval = setInterval(() => this.tickClock(), 100);
         this.updateActiveClockHUD();
-    }
+        this.updateEvalBar(this.gameState.lastEvalScore);
+        this.updateOpening();
 
-    stopClock() {
-        if (this.clockInterval) {
-            clearInterval(this.clockInterval);
-            this.clockInterval = null;
-        }
-        this.topClockEl.classList.remove('active');
-        this.bottomClockEl.classList.remove('active');
-    }
-
-    tickClock() {
-        if (!this.isGameActive || this.isGameOver || this.timeControl === 'fixed_depth' || this.isPuzzleMode) return;
-        const now = performance.now();
-        const elapsed = (now - this.lastClockTick) / 1000.0;
-        this.lastClockTick = now;
-
-        if (this.turn === 'w') {
-            this.whiteTime = Math.max(0.0, this.whiteTime - elapsed);
-            if (this.whiteTime <= 0.0) {
-                this.isGameOver = true;
-                this.stopClock();
-                this.sound.playGameOver();
-                this.showGameOver("Time Out", "Black won on time.");
-            }
+        if (this.gameState.isGameActive) {
+            this.startBtn.textContent = 'Reset Match';
+            this.setStatus(this.gameState.isThinking ? 'Calculating' : 'Match Active', this.gameState.isThinking);
+            this.oracleTextEl.textContent = `${this.gameState.turn === 'w' ? 'White' : 'Black'} to move.`;
+            if (this.gameState.timeControl !== 'fixed_depth') this.startClock();
         } else {
-            this.blackTime = Math.max(0.0, this.blackTime - elapsed);
-            if (this.blackTime <= 0.0) {
-                this.isGameOver = true;
-                this.stopClock();
-                this.sound.playGameOver();
-                this.showGameOver("Time Out", "White won on time.");
-            }
-        }
-        this.updateClockDisplay();
-    }
-
-    updateActiveClockHUD() {
-        if (!this.isGameActive || this.timeControl === 'fixed_depth' || this.isPuzzleMode) {
-            this.topClockEl.classList.remove('active');
-            this.bottomClockEl.classList.remove('active');
-            return;
-        }
-        const isWhiteBottom = !this.isFlipped;
-        if (this.turn === 'w') {
-            if (isWhiteBottom) {
-                this.bottomClockEl.classList.add('active');
-                this.topClockEl.classList.remove('active');
-            } else {
-                this.topClockEl.classList.add('active');
-                this.bottomClockEl.classList.remove('active');
-            }
-        } else {
-            if (isWhiteBottom) {
-                this.topClockEl.classList.add('active');
-                this.bottomClockEl.classList.remove('active');
-            } else {
-                this.bottomClockEl.classList.add('active');
-                this.topClockEl.classList.remove('active');
-            }
+            this.startBtn.textContent = 'Start Match';
+            this.setStatus('Ready', false);
+            this.oracleTextEl.textContent = 'Click "Start Match" or make a move to begin.';
         }
     }
 
-    initIdleState() {
+    renderPuzzleView() {
+        this.setStatus('Tactical Training', false);
+        this.loadPuzzle(this.puzzleState.puzzleIdx);
+    }
+
+    initPlayMode() {
         this.stopClock();
-        this.isPuzzleMode = false;
-        this.isGameActive = false;
-        this.isGameOver = false;
-        this.isThinking = false;
-        this.board = ChessRulesEngine.cloneBoard(INITIAL_BOARD);
-        this.turn = 'w';
-        this.castlingRights = { K: true, Q: true, k: true, q: true };
-        this.enPassantTarget = null;
-        this.halfMoveClock = 0;
-        this.fullMoveNumber = 1;
-        this.moveHistory = [];
-        this.uciHistory = [];
+        this.gameState.board = ChessRulesEngine.cloneBoard(INITIAL_BOARD);
+        this.gameState.turn = 'w';
+        this.gameState.castlingRights = { K: true, Q: true, k: true, q: true };
+        this.gameState.enPassantTarget = null;
+        this.gameState.halfMoveClock = 0;
+        this.gameState.fullMoveNumber = 1;
+        this.gameState.moveHistory = [];
+        this.gameState.uciHistory = [];
+        this.gameState.lastMove = null;
+        this.gameState.isGameActive = false;
+        this.gameState.isGameOver = false;
+        this.gameState.isThinking = false;
+        this.gameState.isFlipped = (this.gameState.playMode === 'human_black');
+        this.gameState.lastEvalScore = 0;
+
         this.selectedSquare = null;
         this.legalTargets = [];
-        this.lastMove = null;
-        this.isFlipped = (this.playMode === 'human_black');
 
         this.resetClocks();
-        this.renderBoard();
-        this.updateEvalBar(0);
         this.moveHistoryEl.innerHTML = '<div class="empty-notice">No moves played yet.</div>';
-        this.oracleTextEl.textContent = 'Click "Start Match" or make a move to begin.';
         this.openingBadgeEl.textContent = 'Standard Start';
         this.moveGradeEl.classList.add('hidden');
-        this.setStatus('Ready', false);
-        this.startBtn.textContent = 'Start Match';
+
+        if (this.activeTab === 'play' || this.activeTab === 'telemetry') {
+            this.renderPlayView();
+        }
     }
 
     startMatch() {
-        this.isPuzzleMode = false;
-        this.isGameActive = true;
-        this.isGameOver = false;
+        this.gameState.isGameActive = true;
+        this.gameState.isGameOver = false;
         this.startBtn.textContent = 'Reset Match';
         this.setStatus('Match Active', false);
         this.oracleTextEl.textContent = 'Match started. White to move.';
 
-        if (this.timeControl !== 'fixed_depth') {
+        if (this.gameState.timeControl !== 'fixed_depth') {
             this.startClock();
         }
 
-        if (this.playMode === 'human_black' && this.turn === 'w') {
+        if (this.gameState.playMode === 'human_black' && this.gameState.turn === 'w') {
             this.triggerEngineMove();
         }
+    }
+
+    loadPuzzle(idx) {
+        const pList = this.puzzleState.puzzles;
+        if (!pList || pList.length === 0) return;
+
+        this.puzzleState.puzzleIdx = idx % pList.length;
+        this.puzzleState.isSolved = false;
+        const p = pList[this.puzzleState.puzzleIdx];
+
+        document.getElementById('puzzle-title').textContent = p.title;
+        document.getElementById('puzzle-event').textContent = p.event;
+        document.getElementById('puzzle-desc').textContent = p.desc;
+        document.getElementById('puzzle-progress').textContent = `${this.puzzleState.puzzleIdx + 1} / ${pList.length}`;
+
+        // Parse Puzzle FEN into puzzleState
+        const parts = p.fen.split(' ');
+        const ranks = parts[0].split('/');
+        const newBoard = [];
+        for (let r = 0; r < 8; r++) {
+            const row = [];
+            for (let i = 0; i < ranks[r].length; i++) {
+                const ch = ranks[r][i];
+                if (ch >= '1' && ch <= '8') {
+                    for (let k = 0; k < parseInt(ch); k++) row.push('.');
+                } else {
+                    row.push(ch);
+                }
+            }
+            newBoard.push(row);
+        }
+
+        this.puzzleState.board = newBoard;
+        this.puzzleState.turn = parts[1] || 'w';
+        this.puzzleState.castlingRights = {
+            K: parts[2] ? parts[2].includes('K') : false,
+            Q: parts[2] ? parts[2].includes('Q') : false,
+            k: parts[2] ? parts[2].includes('k') : false,
+            q: parts[2] ? parts[2].includes('q') : false
+        };
+        this.puzzleState.enPassantTarget = (parts[3] && parts[3] !== '-') ? this.squareToCoords(parts[3]) : null;
+        this.puzzleState.lastMove = null;
+        this.puzzleState.isFlipped = (this.puzzleState.turn === 'b');
+
+        this.selectedSquare = null;
+        this.legalTargets = [];
+        this.renderBoard();
+    }
+
+    showPuzzleHint() {
+        const p = this.puzzleState.puzzles[this.puzzleState.puzzleIdx];
+        if (p) document.getElementById('puzzle-desc').textContent = `Hint: ${p.hint}`;
+    }
+
+    nextPuzzle() {
+        this.loadPuzzle(this.puzzleState.puzzleIdx + 1);
+    }
+
+    getCurrentBoard() {
+        return this.activeTab === 'puzzles' ? this.puzzleState.board : this.gameState.board;
+    }
+
+    getCurrentTurn() {
+        return this.activeTab === 'puzzles' ? this.puzzleState.turn : this.gameState.turn;
+    }
+
+    getCurrentCastling() {
+        return this.activeTab === 'puzzles' ? this.puzzleState.castlingRights : this.gameState.castlingRights;
+    }
+
+    getCurrentEPTarget() {
+        return this.activeTab === 'puzzles' ? this.puzzleState.enPassantTarget : this.gameState.enPassantTarget;
+    }
+
+    getCurrentLastMove() {
+        return this.activeTab === 'puzzles' ? this.puzzleState.lastMove : this.gameState.lastMove;
+    }
+
+    getIsFlipped() {
+        return this.activeTab === 'puzzles' ? this.puzzleState.isFlipped : this.gameState.isFlipped;
+    }
+
+    getPieceImg(p) {
+        const code = PIECE_NAMES[p];
+        if (!code) return '';
+        const folder = this.pieceSet === 'cburnett' ? '' : `${this.pieceSet}/`;
+        return `<img src="pieces/${folder}${code}.svg" class="piece-img" draggable="false" alt="${p}" />`;
     }
 
     coordsToSquare(r, c) { return `${String.fromCharCode(97 + c)}${8 - r}`; }
@@ -642,13 +676,18 @@ class ChessApp {
         if (!this.boardEl) return;
         this.boardEl.innerHTML = '';
 
-        const inCheck = ChessRulesEngine.isInCheck(this.turn, this.board);
-        const kingPos = inCheck ? ChessRulesEngine.findKing(this.turn, this.board) : null;
+        const board = this.getCurrentBoard();
+        const turn = this.getCurrentTurn();
+        const lastMove = this.getCurrentLastMove();
+        const isFlipped = this.getIsFlipped();
+
+        const inCheck = ChessRulesEngine.isInCheck(turn, board);
+        const kingPos = inCheck ? ChessRulesEngine.findKing(turn, board) : null;
 
         for (let rowIdx = 0; rowIdx < 8; rowIdx++) {
             for (let colIdx = 0; colIdx < 8; colIdx++) {
-                const r = this.isFlipped ? 7 - rowIdx : rowIdx;
-                const c = this.isFlipped ? 7 - colIdx : colIdx;
+                const r = isFlipped ? 7 - rowIdx : rowIdx;
+                const c = isFlipped ? 7 - colIdx : colIdx;
 
                 const sqEl = document.createElement('div');
                 const isLight = (r + c) % 2 === 0;
@@ -658,7 +697,7 @@ class ChessApp {
                 if (this.selectedSquare && this.selectedSquare[0] === r && this.selectedSquare[1] === c) {
                     sqEl.classList.add('selected');
                 }
-                if (this.lastMove && (this.lastMove.from === sqName || this.lastMove.to === sqName)) {
+                if (lastMove && (lastMove.from === sqName || lastMove.to === sqName)) {
                     sqEl.classList.add('last-move');
                 }
                 if (kingPos && kingPos[0] === r && kingPos[1] === c) {
@@ -667,7 +706,7 @@ class ChessApp {
 
                 const isTarget = this.legalTargets.some(([tr, tc]) => tr === r && tc === c);
                 if (isTarget) {
-                    const isCapture = (this.board[r][c] !== '.') || (this.enPassantTarget && this.enPassantTarget[0] === r && this.enPassantTarget[1] === c);
+                    const isCapture = (board[r][c] !== '.') || (this.getCurrentEPTarget() && this.getCurrentEPTarget()[0] === r && this.getCurrentEPTarget()[1] === c);
                     const targetEl = document.createElement('div');
                     targetEl.className = isCapture ? 'target-capture' : 'target-dot';
                     sqEl.appendChild(targetEl);
@@ -686,7 +725,7 @@ class ChessApp {
                     sqEl.appendChild(fileLabel);
                 }
 
-                const p = this.board[r][c];
+                const p = board[r][c];
                 if (p !== '.') {
                     sqEl.innerHTML += this.getPieceImg(p);
                 }
@@ -700,15 +739,19 @@ class ChessApp {
     }
 
     handleSquareClick(r, c) {
-        if (this.isThinking || this.isGameOver) return;
-
-        if (!this.isPuzzleMode) {
-            if (this.playMode === 'human_white' && this.turn !== 'w') return;
-            if (this.playMode === 'human_black' && this.turn !== 'b') return;
+        if (this.activeTab === 'puzzles') {
+            this.handlePuzzleClick(r, c);
+            return;
         }
 
-        const piece = this.board[r][c];
-        const isMyPiece = (this.turn === 'w' && ChessRulesEngine.isWhite(piece)) || (this.turn === 'b' && ChessRulesEngine.isBlack(piece));
+        if (this.gameState.isThinking || this.gameState.isGameOver) return;
+        if (this.gameState.playMode === 'human_white' && this.gameState.turn !== 'w') return;
+        if (this.gameState.playMode === 'human_black' && this.gameState.turn !== 'b') return;
+
+        const board = this.gameState.board;
+        const turn = this.gameState.turn;
+        const piece = board[r][c];
+        const isMyPiece = (turn === 'w' && ChessRulesEngine.isWhite(piece)) || (turn === 'b' && ChessRulesEngine.isBlack(piece));
 
         if (this.selectedSquare) {
             const [srcR, srcC] = this.selectedSquare;
@@ -723,25 +766,20 @@ class ChessApp {
 
             if (isMyPiece) {
                 this.selectedSquare = [r, c];
-                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, this.board, this.turn, this.castlingRights, this.enPassantTarget);
+                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, board, turn, this.gameState.castlingRights, this.gameState.enPassantTarget);
                 this.renderBoard();
                 return;
             }
 
             if (isTarget) {
-                const srcPiece = this.board[srcR][srcC];
+                const srcPiece = board[srcR][srcC];
                 if ((srcPiece === 'P' && r === 0) || (srcPiece === 'p' && r === 7)) {
                     this.promptPromotion(srcR, srcC, r, c);
                     return;
                 }
                 const uciStr = `${this.coordsToSquare(srcR, srcC)}${this.coordsToSquare(r, c)}`;
-
-                if (this.isPuzzleMode) {
-                    this.executePuzzleMove(srcR, srcC, r, c, uciStr);
-                } else {
-                    if (!this.isGameActive) this.startMatch();
-                    this.executeMove(srcR, srcC, r, c, uciStr);
-                }
+                if (!this.gameState.isGameActive) this.startMatch();
+                this.executeMove(srcR, srcC, r, c, uciStr);
                 this.selectedSquare = null;
                 this.legalTargets = [];
             } else {
@@ -752,47 +790,82 @@ class ChessApp {
         } else {
             if (isMyPiece) {
                 this.selectedSquare = [r, c];
-                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, this.board, this.turn, this.castlingRights, this.enPassantTarget);
+                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, board, turn, this.gameState.castlingRights, this.gameState.enPassantTarget);
                 this.renderBoard();
             }
         }
     }
 
-    executePuzzleMove(srcR, srcC, tr, tc, uciStr, promoPiece = null) {
-        const p = this.puzzles[this.currentPuzzleIdx];
-        if (!p) return;
+    handlePuzzleClick(r, c) {
+        if (this.puzzleState.isSolved) return;
+        const board = this.puzzleState.board;
+        const turn = this.puzzleState.turn;
+        const piece = board[r][c];
+        const isMyPiece = (turn === 'w' && ChessRulesEngine.isWhite(piece)) || (turn === 'b' && ChessRulesEngine.isBlack(piece));
 
-        if (uciStr === p.solution) {
-            // Correct Move
-            this.executeMoveRaw(srcR, srcC, tr, tc, promoPiece);
-            this.sound.playSuccess();
-            this.puzzleSolved = true;
-            document.getElementById('puzzle-desc').textContent = "Brilliant! You found the winning solution.";
-            this.setStatus("Puzzle Solved", false);
+        if (this.selectedSquare) {
+            const [srcR, srcC] = this.selectedSquare;
+            const isTarget = this.legalTargets.some(([tr, tc]) => tr === r && tc === c);
+
+            if (srcR === r && srcC === c) {
+                this.selectedSquare = null;
+                this.legalTargets = [];
+                this.renderBoard();
+                return;
+            }
+
+            if (isMyPiece) {
+                this.selectedSquare = [r, c];
+                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, board, turn, this.puzzleState.castlingRights, this.puzzleState.enPassantTarget);
+                this.renderBoard();
+                return;
+            }
+
+            if (isTarget) {
+                const uciStr = `${this.coordsToSquare(srcR, srcC)}${this.coordsToSquare(r, c)}`;
+                const p = this.puzzleState.puzzles[this.puzzleState.puzzleIdx];
+
+                if (uciStr === p.solution) {
+                    // Correct Solution
+                    board[r][c] = board[srcR][srcC];
+                    board[srcR][srcC] = '.';
+                    this.puzzleState.lastMove = { from: this.coordsToSquare(srcR, srcC), to: this.coordsToSquare(r, c) };
+                    this.puzzleState.isSolved = true;
+                    this.sound.playSuccess();
+                    document.getElementById('puzzle-desc').textContent = "Brilliant! You found the winning tactic.";
+                    this.setStatus("Puzzle Solved", false);
+                } else {
+                    // Incorrect move
+                    board[r][c] = board[srcR][srcC];
+                    board[srcR][srcC] = '.';
+                    this.puzzleState.lastMove = { from: this.coordsToSquare(srcR, srcC), to: this.coordsToSquare(r, c) };
+                    this.sound.playError();
+                    document.getElementById('puzzle-desc').textContent = "Incorrect move. Try again!";
+                    setTimeout(() => {
+                        this.loadPuzzle(this.puzzleState.puzzleIdx);
+                    }, 700);
+                }
+
+                this.selectedSquare = null;
+                this.legalTargets = [];
+                this.renderBoard();
+            } else {
+                this.selectedSquare = null;
+                this.legalTargets = [];
+                this.renderBoard();
+            }
         } else {
-            // Incorrect Move
-            this.executeMoveRaw(srcR, srcC, tr, tc, promoPiece);
-            this.sound.playError();
-            document.getElementById('puzzle-desc').textContent = "Incorrect move. Try again!";
-            setTimeout(() => {
-                this.setBoardFromFEN(p.fen);
-                document.getElementById('puzzle-desc').textContent = p.desc;
-            }, 700);
+            if (isMyPiece) {
+                this.selectedSquare = [r, c];
+                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, board, turn, this.puzzleState.castlingRights, this.puzzleState.enPassantTarget);
+                this.renderBoard();
+            }
         }
-    }
-
-    executeMoveRaw(srcR, srcC, tr, tc, promoPiece = null) {
-        const piece = this.board[srcR][srcC];
-        this.board[tr][tc] = promoPiece || piece;
-        this.board[srcR][srcC] = '.';
-        this.lastMove = { from: this.coordsToSquare(srcR, srcC), to: this.coordsToSquare(tr, tc) };
-        this.turn = this.turn === 'w' ? 'b' : 'w';
-        this.renderBoard();
     }
 
     promptPromotion(srcR, srcC, tr, tc) {
         this.promotionChoicesEl.innerHTML = '';
-        const choices = this.turn === 'w' ? ['Q', 'R', 'B', 'N'] : ['q', 'r', 'b', 'n'];
+        const choices = this.gameState.turn === 'w' ? ['Q', 'R', 'B', 'N'] : ['q', 'r', 'b', 'n'];
         for (const p of choices) {
             const btn = document.createElement('div');
             btn.className = 'promo-choice';
@@ -800,12 +873,8 @@ class ChessApp {
             btn.addEventListener('click', () => {
                 this.promotionModal.classList.add('hidden');
                 const uciStr = `${this.coordsToSquare(srcR, srcC)}${this.coordsToSquare(tr, tc)}${p.toLowerCase()}`;
-                if (this.isPuzzleMode) {
-                    this.executePuzzleMove(srcR, srcC, tr, tc, uciStr, p);
-                } else {
-                    if (!this.isGameActive) this.startMatch();
-                    this.executeMove(srcR, srcC, tr, tc, uciStr, p);
-                }
+                if (!this.gameState.isGameActive) this.startMatch();
+                this.executeMove(srcR, srcC, tr, tc, uciStr, p);
             });
             this.promotionChoicesEl.appendChild(btn);
         }
@@ -813,53 +882,54 @@ class ChessApp {
     }
 
     executeMove(srcR, srcC, tr, tc, uciStr, promoPiece = null) {
-        const piece = this.board[srcR][srcC];
-        const target = this.board[tr][tc];
-        const isCapture = target !== '.' || (piece.toUpperCase() === 'P' && this.enPassantTarget && tr === this.enPassantTarget[0] && tc === this.enPassantTarget[1]);
+        const board = this.gameState.board;
+        const piece = board[srcR][srcC];
+        const target = board[tr][tc];
+        const isCapture = target !== '.' || (piece.toUpperCase() === 'P' && this.gameState.enPassantTarget && tr === this.gameState.enPassantTarget[0] && tc === this.gameState.enPassantTarget[1]);
 
-        if (piece.toUpperCase() === 'P' && this.enPassantTarget && tr === this.enPassantTarget[0] && tc === this.enPassantTarget[1]) {
-            const capR = this.turn === 'w' ? tr + 1 : tr - 1;
-            this.board[capR][tc] = '.';
+        if (piece.toUpperCase() === 'P' && this.gameState.enPassantTarget && tr === this.gameState.enPassantTarget[0] && tc === this.gameState.enPassantTarget[1]) {
+            const capR = this.gameState.turn === 'w' ? tr + 1 : tr - 1;
+            board[capR][tc] = '.';
         }
 
-        this.board[tr][tc] = promoPiece || piece;
-        this.board[srcR][srcC] = '.';
+        board[tr][tc] = promoPiece || piece;
+        board[srcR][srcC] = '.';
 
         if (piece === 'K' && srcR === 7 && srcC === 4) {
-            if (tc === 6) { this.board[7][5] = 'R'; this.board[7][7] = '.'; }
-            if (tc === 2) { this.board[7][3] = 'R'; this.board[7][0] = '.'; }
+            if (tc === 6) { board[7][5] = 'R'; board[7][7] = '.'; }
+            if (tc === 2) { board[7][3] = 'R'; board[7][0] = '.'; }
         } else if (piece === 'k' && srcR === 0 && srcC === 4) {
-            if (tc === 6) { this.board[0][5] = 'r'; this.board[0][7] = '.'; }
-            if (tc === 2) { this.board[0][3] = 'r'; this.board[0][0] = '.'; }
+            if (tc === 6) { board[0][5] = 'r'; board[0][7] = '.'; }
+            if (tc === 2) { board[0][3] = 'r'; board[0][0] = '.'; }
         }
 
-        if (piece === 'K') { this.castlingRights.K = false; this.castlingRights.Q = false; }
-        if (piece === 'k') { this.castlingRights.k = false; this.castlingRights.q = false; }
-        if (piece === 'R' && srcR === 7 && srcC === 7) this.castlingRights.K = false;
-        if (piece === 'R' && srcR === 7 && srcC === 0) this.castlingRights.Q = false;
-        if (piece === 'r' && srcR === 0 && srcC === 7) this.castlingRights.k = false;
-        if (piece === 'r' && srcR === 0 && srcC === 0) this.castlingRights.q = false;
+        if (piece === 'K') { this.gameState.castlingRights.K = false; this.gameState.castlingRights.Q = false; }
+        if (piece === 'k') { this.gameState.castlingRights.k = false; this.gameState.castlingRights.q = false; }
+        if (piece === 'R' && srcR === 7 && srcC === 7) this.gameState.castlingRights.K = false;
+        if (piece === 'R' && srcR === 7 && srcC === 0) this.gameState.castlingRights.Q = false;
+        if (piece === 'r' && srcR === 0 && srcC === 7) this.gameState.castlingRights.k = false;
+        if (piece === 'r' && srcR === 0 && srcC === 0) this.gameState.castlingRights.q = false;
 
         if (piece.toUpperCase() === 'P' && Math.abs(tr - srcR) === 2) {
-            this.enPassantTarget = [(srcR + tr) / 2, srcC];
+            this.gameState.enPassantTarget = [(srcR + tr) / 2, srcC];
         } else {
-            this.enPassantTarget = null;
+            this.gameState.enPassantTarget = null;
         }
 
-        this.lastMove = { from: this.coordsToSquare(srcR, srcC), to: this.coordsToSquare(tr, tc) };
-        this.uciHistory.push(uciStr);
+        this.gameState.lastMove = { from: this.coordsToSquare(srcR, srcC), to: this.coordsToSquare(tr, tc) };
+        this.gameState.uciHistory.push(uciStr);
 
-        if (this.increment > 0) {
-            if (this.turn === 'w') this.whiteTime += this.increment;
-            else this.blackTime += this.increment;
+        if (this.gameState.increment > 0) {
+            if (this.gameState.turn === 'w') this.gameState.whiteTime += this.gameState.increment;
+            else this.gameState.blackTime += this.gameState.increment;
             this.updateClockDisplay();
         }
 
         if (isCapture) this.sound.playCapture();
         else this.sound.playMove();
 
-        this.turn = this.turn === 'w' ? 'b' : 'w';
-        if (this.turn === 'w') this.fullMoveNumber++;
+        this.gameState.turn = this.gameState.turn === 'w' ? 'b' : 'w';
+        if (this.gameState.turn === 'w') this.gameState.fullMoveNumber++;
 
         this.updateActiveClockHUD();
         this.renderBoard();
@@ -867,28 +937,28 @@ class ChessApp {
         this.checkGameEnd();
         this.updateOpening();
 
-        if (!this.isGameOver && this.isGameActive) {
-            if ((this.playMode === 'human_white' && this.turn === 'b') || (this.playMode === 'human_black' && this.turn === 'w')) {
+        if (!this.gameState.isGameOver && this.gameState.isGameActive) {
+            if ((this.gameState.playMode === 'human_white' && this.gameState.turn === 'b') || (this.gameState.playMode === 'human_black' && this.gameState.turn === 'w')) {
                 this.triggerEngineMove();
             }
         }
     }
 
     appendMoveHistory(uciStr, piece, isCapture) {
-        if (this.moveHistory.length === 0) {
+        if (this.gameState.moveHistory.length === 0) {
             this.moveHistoryEl.innerHTML = '';
         }
-        this.moveHistory.push(uciStr);
+        this.gameState.moveHistory.push(uciStr);
 
-        const isWhite = this.turn === 'b';
+        const isWhite = this.gameState.turn === 'b';
         if (isWhite) {
             const row = document.createElement('div');
             row.className = 'history-row';
-            row.id = `hist-row-${this.fullMoveNumber}`;
-            row.innerHTML = `<span class="history-num">${this.fullMoveNumber}.</span><span class="history-move">${uciStr}</span><span class="history-move"></span>`;
+            row.id = `hist-row-${this.gameState.fullMoveNumber}`;
+            row.innerHTML = `<span class="history-num">${this.gameState.fullMoveNumber}.</span><span class="history-move">${uciStr}</span><span class="history-move"></span>`;
             this.moveHistoryEl.appendChild(row);
         } else {
-            const row = document.getElementById(`hist-row-${this.fullMoveNumber}`);
+            const row = document.getElementById(`hist-row-${this.gameState.fullMoveNumber}`);
             if (row) {
                 row.children[2].textContent = uciStr;
             }
@@ -897,7 +967,7 @@ class ChessApp {
     }
 
     updateOpening() {
-        const uciLine = this.uciHistory.slice(0, 6).join(' ');
+        const uciLine = this.gameState.uciHistory.slice(0, 6).join(' ');
         for (const [seq, name] of Object.entries(OPENING_BOOK)) {
             if (uciLine.startsWith(seq)) {
                 this.openingBadgeEl.textContent = name;
@@ -907,15 +977,15 @@ class ChessApp {
     }
 
     checkGameEnd() {
-        const legalMoves = ChessRulesEngine.getAllLegalMoves(this.turn, this.board, this.castlingRights, this.enPassantTarget);
-        const inCheck = ChessRulesEngine.isInCheck(this.turn, this.board);
+        const legalMoves = ChessRulesEngine.getAllLegalMoves(this.gameState.turn, this.gameState.board, this.gameState.castlingRights, this.gameState.enPassantTarget);
+        const inCheck = ChessRulesEngine.isInCheck(this.gameState.turn, this.gameState.board);
 
         if (legalMoves.length === 0) {
-            this.isGameOver = true;
+            this.gameState.isGameOver = true;
             this.stopClock();
             if (inCheck) {
                 this.sound.playGameOver();
-                const winner = this.turn === 'w' ? "Black" : "White";
+                const winner = this.gameState.turn === 'w' ? "Black" : "White";
                 this.showGameOver("Checkmate", `${winner} won the match.`);
             } else {
                 this.showGameOver("Stalemate", "Game drawn by stalemate.");
@@ -933,11 +1003,16 @@ class ChessApp {
     }
 
     getFEN() {
+        const board = this.getCurrentBoard();
+        const turn = this.getCurrentTurn();
+        const castling = this.getCurrentCastling();
+        const ep = this.getCurrentEPTarget();
+
         let fen = '';
         for (let r = 0; r < 8; r++) {
             let empty = 0;
             for (let c = 0; c < 8; c++) {
-                const p = this.board[r][c];
+                const p = board[r][c];
                 if (p === '.') empty++;
                 else {
                     if (empty > 0) { fen += empty; empty = 0; }
@@ -947,28 +1022,28 @@ class ChessApp {
             if (empty > 0) fen += empty;
             if (r < 7) fen += '/';
         }
-        fen += ` ${this.turn} `;
-        let castling = '';
-        if (this.castlingRights.K) castling += 'K';
-        if (this.castlingRights.Q) castling += 'Q';
-        if (this.castlingRights.k) castling += 'k';
-        if (this.castlingRights.q) castling += 'q';
-        fen += (castling || '-') + ' ';
-        fen += (this.enPassantTarget ? this.coordsToSquare(this.enPassantTarget[0], this.enPassantTarget[1]) : '-') + ' ';
-        fen += `${this.halfMoveClock} ${this.fullMoveNumber}`;
+        fen += ` ${turn} `;
+        let cStr = '';
+        if (castling.K) cStr += 'K';
+        if (castling.Q) cStr += 'Q';
+        if (castling.k) cStr += 'k';
+        if (castling.q) cStr += 'q';
+        fen += (cStr || '-') + ' ';
+        fen += (ep ? this.coordsToSquare(ep[0], ep[1]) : '-') + ' ';
+        fen += `${this.gameState.halfMoveClock} ${this.gameState.fullMoveNumber}`;
         return fen;
     }
 
     async triggerEngineMove() {
-        if (this.isThinking || this.isGameOver || !this.isGameActive || this.isPuzzleMode) return;
-        this.isThinking = true;
+        if (this.gameState.isThinking || this.gameState.isGameOver || !this.gameState.isGameActive || this.activeTab !== 'play') return;
+        this.gameState.isThinking = true;
         this.setStatus("Calculating", true);
 
         const fen = this.getFEN();
         const depth = 12;
-        const wtimeMs = Math.round(this.whiteTime * 1000);
-        const btimeMs = Math.round(this.blackTime * 1000);
-        const incMs = Math.round(this.increment * 1000);
+        const wtimeMs = Math.round(this.gameState.whiteTime * 1000);
+        const btimeMs = Math.round(this.gameState.blackTime * 1000);
+        const incMs = Math.round(this.gameState.increment * 1000);
 
         try {
             const resp = await fetch('/api/move', {
@@ -977,15 +1052,15 @@ class ChessApp {
                 body: JSON.stringify({
                     fen,
                     depth,
-                    wtime: (this.timeControl === 'fixed_depth') ? 0 : wtimeMs,
-                    btime: (this.timeControl === 'fixed_depth') ? 0 : btimeMs,
+                    wtime: (this.gameState.timeControl === 'fixed_depth') ? 0 : wtimeMs,
+                    btime: (this.gameState.timeControl === 'fixed_depth') ? 0 : btimeMs,
                     winc: incMs,
                     binc: incMs
                 })
             });
             const data = await resp.json();
 
-            if (data.best_move && this.isGameActive && !this.isPuzzleMode) {
+            if (data.best_move && this.gameState.isGameActive && this.activeTab === 'play') {
                 const src = data.best_move.substring(0, 2);
                 const dst = data.best_move.substring(2, 4);
                 const promo = data.best_move.length > 4 ? data.best_move[4] : null;
@@ -1005,8 +1080,10 @@ class ChessApp {
         } catch (e) {
             console.error("Engine API error:", e);
         } finally {
-            this.isThinking = false;
-            if (this.isGameActive) this.setStatus("Ready", false);
+            this.gameState.isThinking = false;
+            if (this.gameState.isGameActive && this.activeTab === 'play') {
+                this.setStatus("Match Active", false);
+            }
         }
     }
 
@@ -1022,13 +1099,13 @@ class ChessApp {
 
     updateOracle(scoreCp, pv) {
         const cp = scoreCp;
-        const delta = cp - this.lastEvalScore;
-        this.lastEvalScore = cp;
+        const delta = cp - this.gameState.lastEvalScore;
+        this.gameState.lastEvalScore = cp;
 
         this.moveGradeEl.classList.remove('hidden', 'brilliant', 'best', 'good', 'inaccuracy', 'blunder');
 
         if (Math.abs(delta) > 300) {
-            if ((this.turn === 'b' && delta < -300) || (this.turn === 'w' && delta > 300)) {
+            if ((this.gameState.turn === 'b' && delta < -300) || (this.gameState.turn === 'w' && delta > 300)) {
                 this.moveGradeEl.className = 'move-grade brilliant';
                 this.moveGradeEl.innerHTML = `<span class="grade-text">Brilliant</span>`;
                 this.oracleTextEl.textContent = "Tactical breakthrough. Advantage secured.";
@@ -1045,7 +1122,11 @@ class ChessApp {
     }
 
     async requestHint() {
-        if (this.isThinking || this.isGameOver) return;
+        if (this.activeTab === 'puzzles') {
+            this.showPuzzleHint();
+            return;
+        }
+        if (this.gameState.isThinking || this.gameState.isGameOver) return;
         const fen = this.getFEN();
         const resp = await fetch('/api/analyze', {
             method: 'POST',
@@ -1075,14 +1156,17 @@ class ChessApp {
         canvas.height = 460;
         ctx.clearRect(0, 0, 460, 460);
 
+        const board = this.getCurrentBoard();
+        const isFlipped = this.getIsFlipped();
         const sqSize = 460 / 8;
+
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
-                const dr = this.isFlipped ? 7 - r : r;
-                const dc = this.isFlipped ? 7 - c : c;
+                const dr = isFlipped ? 7 - r : r;
+                const dc = isFlipped ? 7 - c : c;
 
-                const attackedByWhite = ChessRulesEngine.isSquareAttacked(r, c, 'w', this.board);
-                const attackedByBlack = ChessRulesEngine.isSquareAttacked(r, c, 'b', this.board);
+                const attackedByWhite = ChessRulesEngine.isSquareAttacked(r, c, 'w', board);
+                const attackedByBlack = ChessRulesEngine.isSquareAttacked(r, c, 'b', board);
 
                 if (attackedByWhite && attackedByBlack) {
                     ctx.fillStyle = 'rgba(168, 85, 247, 0.3)';
@@ -1098,85 +1182,22 @@ class ChessApp {
         }
     }
 
-    async loadPuzzles() {
-        try {
-            const resp = await fetch('/api/puzzles');
-            this.puzzles = await resp.json();
-        } catch (e) {
-            console.error("Failed to load puzzles:", e);
-        }
-    }
-
-    loadPuzzle(idx) {
-        if (!this.puzzles || this.puzzles.length === 0) return;
-        this.currentPuzzleIdx = idx % this.puzzles.length;
-        this.puzzleSolved = false;
-        const p = this.puzzles[this.currentPuzzleIdx];
-
-        document.getElementById('puzzle-title').textContent = p.title;
-        document.getElementById('puzzle-event').textContent = p.event;
-        document.getElementById('puzzle-desc').textContent = p.desc;
-        document.getElementById('puzzle-progress').textContent = `${this.currentPuzzleIdx + 1} / ${this.puzzles.length}`;
-
-        this.setBoardFromFEN(p.fen);
-        this.isFlipped = (p.turn === 'b');
-        this.renderBoard();
-        this.oracleTextEl.textContent = `${p.title}: ${p.desc}`;
-    }
-
-    setBoardFromFEN(fenStr) {
-        const parts = fenStr.split(' ');
-        const ranks = parts[0].split('/');
-        this.board = [];
-        for (let r = 0; r < 8; r++) {
-            const row = [];
-            for (let i = 0; i < ranks[r].length; i++) {
-                const ch = ranks[r][i];
-                if (ch >= '1' && ch <= '8') {
-                    for (let k = 0; k < parseInt(ch); k++) row.push('.');
-                } else {
-                    row.push(ch);
-                }
-            }
-            this.board.push(row);
-        }
-        this.turn = parts[1] || 'w';
-        this.castlingRights = {
-            K: parts[2] ? parts[2].includes('K') : false,
-            Q: parts[2] ? parts[2].includes('Q') : false,
-            k: parts[2] ? parts[2].includes('k') : false,
-            q: parts[2] ? parts[2].includes('q') : false
-        };
-        this.enPassantTarget = (parts[3] && parts[3] !== '-') ? this.squareToCoords(parts[3]) : null;
-        this.lastMove = null;
-        this.selectedSquare = null;
-        this.legalTargets = [];
-        this.renderBoard();
-    }
-
-    showPuzzleHint() {
-        if (!this.puzzles[this.currentPuzzleIdx]) return;
-        const p = this.puzzles[this.currentPuzzleIdx];
-        document.getElementById('puzzle-desc').textContent = `Hint: ${p.hint}`;
-    }
-
-    nextPuzzle() {
-        this.loadPuzzle(this.currentPuzzleIdx + 1);
-    }
-
     flipBoard() {
-        this.isFlipped = !this.isFlipped;
+        if (this.activeTab === 'puzzles') {
+            this.puzzleState.isFlipped = !this.puzzleState.isFlipped;
+        } else {
+            this.gameState.isFlipped = !this.gameState.isFlipped;
+        }
         this.renderBoard();
     }
 
     undoMove() {
-        if (this.isPuzzleMode) {
-            const p = this.puzzles[this.currentPuzzleIdx];
-            if (p) this.setBoardFromFEN(p.fen);
+        if (this.activeTab === 'puzzles') {
+            this.loadPuzzle(this.puzzleState.puzzleIdx);
             return;
         }
-        if (this.moveHistory.length === 0) return;
-        this.initIdleState();
+        if (this.gameState.moveHistory.length === 0) return;
+        this.initPlayMode();
     }
 
     copyFEN() {
@@ -1185,7 +1206,7 @@ class ChessApp {
     }
 
     copyPGN() {
-        const pgn = this.moveHistory.join(' ');
+        const pgn = this.gameState.moveHistory.join(' ');
         navigator.clipboard.writeText(pgn);
         this.setStatus("PGN copied", false);
     }
@@ -1196,8 +1217,105 @@ class ChessApp {
         else this.statusDotEl.classList.remove('thinking');
     }
 
+    resetClocks() {
+        this.stopClock();
+        this.gameState.increment = 0.0;
+
+        if (this.gameState.timeControl === 'bullet_1_0') {
+            this.gameState.whiteTime = 60.0;
+            this.gameState.blackTime = 60.0;
+        } else if (this.gameState.timeControl === 'bullet_1_1') {
+            this.gameState.whiteTime = 60.0;
+            this.gameState.blackTime = 60.0;
+            this.gameState.increment = 1.0;
+        } else if (this.gameState.timeControl === 'blitz_3_0') {
+            this.gameState.whiteTime = 180.0;
+            this.gameState.blackTime = 180.0;
+        } else if (this.gameState.timeControl === 'blitz_3_2') {
+            this.gameState.whiteTime = 180.0;
+            this.gameState.blackTime = 180.0;
+            this.gameState.increment = 2.0;
+        } else if (this.gameState.timeControl === 'rapid_10_0') {
+            this.gameState.whiteTime = 600.0;
+            this.gameState.blackTime = 600.0;
+        } else {
+            this.gameState.whiteTime = 0.0;
+            this.gameState.blackTime = 0.0;
+        }
+        this.updateClockDisplay();
+    }
+
+    startClock() {
+        this.stopClock();
+        if (this.gameState.timeControl === 'fixed_depth' || this.activeTab !== 'play') return;
+        this.lastClockTick = performance.now();
+        this.clockInterval = setInterval(() => this.tickClock(), 100);
+        this.updateActiveClockHUD();
+    }
+
+    stopClock() {
+        if (this.clockInterval) {
+            clearInterval(this.clockInterval);
+            this.clockInterval = null;
+        }
+        this.topClockEl.classList.remove('active');
+        this.bottomClockEl.classList.remove('active');
+    }
+
+    tickClock() {
+        if (!this.gameState.isGameActive || this.gameState.isGameOver || this.gameState.timeControl === 'fixed_depth' || this.activeTab !== 'play') return;
+        const now = performance.now();
+        const elapsed = (now - this.lastClockTick) / 1000.0;
+        this.lastClockTick = now;
+
+        if (this.gameState.turn === 'w') {
+            this.gameState.whiteTime = Math.max(0.0, this.gameState.whiteTime - elapsed);
+            if (this.gameState.whiteTime <= 0.0) {
+                this.gameState.isGameOver = true;
+                this.stopClock();
+                this.sound.playGameOver();
+                this.showGameOver("Time Out", "Black won on time.");
+            }
+        } else {
+            this.gameState.blackTime = Math.max(0.0, this.gameState.blackTime - elapsed);
+            if (this.gameState.blackTime <= 0.0) {
+                this.gameState.isGameOver = true;
+                this.stopClock();
+                this.sound.playGameOver();
+                this.showGameOver("Time Out", "White won on time.");
+            }
+        }
+        this.updateClockDisplay();
+    }
+
+    updateActiveClockHUD() {
+        if (!this.gameState.isGameActive || this.gameState.timeControl === 'fixed_depth' || this.activeTab !== 'play') {
+            this.topClockEl.classList.remove('active');
+            this.bottomClockEl.classList.remove('active');
+            return;
+        }
+        const isWhiteBottom = !this.gameState.isFlipped;
+        if (this.gameState.turn === 'w') {
+            if (isWhiteBottom) {
+                this.bottomClockEl.classList.add('active');
+                this.topClockEl.classList.remove('active');
+            } else {
+                this.topClockEl.classList.add('active');
+                this.bottomClockEl.classList.remove('active');
+            }
+        } else {
+            if (isWhiteBottom) {
+                this.topClockEl.classList.add('active');
+                this.bottomClockEl.classList.remove('active');
+            } else {
+                this.bottomClockEl.classList.add('active');
+                this.topClockEl.classList.remove('active');
+            }
+        }
+    }
+
     updateClockDisplay() {
-        if (this.timeControl === 'fixed_depth') {
+        if (this.gameState.timeControl === 'fixed_depth' || this.activeTab !== 'play') {
             this.topClockEl.textContent = "--:--";
             this.bottomClockEl.textContent = "--:--";
             return;
@@ -1207,13 +1325,13 @@ class ChessApp {
             const sec = Math.floor(s % 60);
             return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
         };
-        const isWhiteBottom = !this.isFlipped;
+        const isWhiteBottom = !this.gameState.isFlipped;
         if (isWhiteBottom) {
-            this.topClockEl.textContent = fmt(this.blackTime);
-            this.bottomClockEl.textContent = fmt(this.whiteTime);
+            this.topClockEl.textContent = fmt(this.gameState.blackTime);
+            this.bottomClockEl.textContent = fmt(this.gameState.whiteTime);
         } else {
-            this.topClockEl.textContent = fmt(this.whiteTime);
-            this.bottomClockEl.textContent = fmt(this.blackTime);
+            this.topClockEl.textContent = fmt(this.gameState.whiteTime);
+            this.bottomClockEl.textContent = fmt(this.gameState.blackTime);
         }
     }
 }
