@@ -1,48 +1,81 @@
 /* ==========================================================================
-   HEAVEN'S GATE CHESS - CLEAN ARCHITECTURAL DESIGN (LICHESS / CHESS.COM QUALITY)
+   HEAVEN'S GATE CHESS - AUTHENTIC CLASSICAL WALNUT WOOD THEME
    ========================================================================== */
 
 :root {
-    --bg-page: #161512;
-    --bg-panel: #262421;
-    --bg-subpanel: #1e1c18;
-    --bg-active: #363431;
+    --bg-page: #191410;
+    --bg-panel: #281f18;
+    --bg-subpanel: #1d1610;
+    --bg-active: #3a2e24;
     
-    --border: #363431;
-    --border-subtle: #2d2b28;
+    --border: #3d2d20;
+    --border-subtle: #2d2016;
     
-    --text-main: #bababa;
-    --text-bright: #ffffff;
-    --text-dim: #787672;
+    --text-main: #d7ccc8;
+    --text-bright: #fff8e7;
+    --text-dim: #9e8d83;
     
-    --btn-primary: #3692e7;
-    --btn-primary-hover: #2b7bc6;
+    --btn-primary: #8d4f2b;
+    --btn-primary-hover: #a35d34;
     
-    --square-light: #dee3e6;
-    --square-dark: #8ca2ad;
-    --square-selected: #a8d5e5;
-    --square-last-move: #ced26b;
-    --square-check: #cc3333;
+    --square-light: #f0d9b5;
+    --square-dark: #b58863;
+    --square-selected: #e2be6c;
+    --square-last-move: #d8b776;
+    --square-check: #c24b4b;
     
     --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --mono: 'Fira Code', monospace;
 }
 
+body.theme-wood {
+    --bg-page: #191410;
+    --bg-panel: #281f18;
+    --bg-subpanel: #1d1610;
+    --bg-active: #3a2e24;
+    --border: #3d2d20;
+    --border-subtle: #2d2016;
+    --text-main: #d7ccc8;
+    --text-bright: #fff8e7;
+    --text-dim: #9e8d83;
+    --btn-primary: #8d4f2b;
+    --btn-primary-hover: #a35d34;
+    --square-light: #f0d9b5;
+    --square-dark: #b58863;
+    --square-selected: #e2be6c;
+    --square-last-move: #d8b776;
+}
+
 body.theme-slate {
+    --bg-page: #161512;
+    --bg-panel: #262421;
+    --bg-subpanel: #1e1c18;
+    --bg-active: #363431;
+    --border: #363431;
+    --border-subtle: #2d2b28;
+    --text-main: #bababa;
+    --text-bright: #ffffff;
+    --text-dim: #787672;
+    --btn-primary: #3692e7;
+    --btn-primary-hover: #2b7bc6;
     --square-light: #dee3e6;
     --square-dark: #8ca2ad;
     --square-selected: #a8d5e5;
     --square-last-move: #cddb9b;
 }
 
-body.theme-wood {
-    --square-light: #f0d9b5;
-    --square-dark: #b58863;
-    --square-selected: #f6d061;
-    --square-last-move: #ced26b;
-}
-
 body.theme-cyber {
+    --bg-page: #0f172a;
+    --bg-panel: #1e293b;
+    --bg-subpanel: #0b1120;
+    --bg-active: #334155;
+    --border: #334155;
+    --border-subtle: #1e293b;
+    --text-main: #94a3b8;
+    --text-bright: #f8fafc;
+    --text-dim: #64748b;
+    --btn-primary: #0284c7;
+    --btn-primary-hover: #0369a1;
     --square-light: #475569;
     --square-dark: #1e293b;
     --square-selected: #38bdf8;
@@ -69,7 +102,7 @@ html, body {
 /* Header */
 .navbar {
     height: 44px;
-    background-color: #1e1c18;
+    background-color: var(--bg-subpanel);
     border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
@@ -94,7 +127,7 @@ html, body {
     font-size: 10px;
     font-family: var(--mono);
     color: var(--text-dim);
-    background: #141311;
+    background: var(--bg-page);
     padding: 2px 6px;
     border-radius: 3px;
     border: 1px solid var(--border-subtle);
@@ -103,7 +136,7 @@ html, body {
 .nav-tabs {
     display: flex;
     gap: 2px;
-    background: #141311;
+    background: var(--bg-page);
     padding: 2px;
     border-radius: 4px;
     border: 1px solid var(--border-subtle);
@@ -139,10 +172,10 @@ html, body {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #629924;
+    background: #7ca836;
 }
 
-.status-dot.thinking { background: #e58f2a; }
+.status-dot.thinking { background: #d97706; }
 
 /* Main Viewport Layout */
 .app-layout {
@@ -224,12 +257,12 @@ html, body {
 }
 
 .clock-display.active {
-    background: #193549;
-    border-color: #3692e7;
-    color: #ffffff;
+    background: #3e2617;
+    border-color: #d4a373;
+    color: #fff8e7;
 }
 
-/* Board Wrapper */
+/* Board Wrapper with Wood Surround */
 .board-wrapper {
     display: flex;
     gap: 6px;
@@ -239,19 +272,20 @@ html, body {
 .eval-gauge {
     width: 14px;
     height: 460px;
-    background: #363431;
+    background: var(--bg-panel);
     border-radius: 2px;
     overflow: hidden;
     position: relative;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
+    border: 1px solid var(--border);
 }
 
 .eval-fill {
     width: 100%;
     height: 50%;
-    background: #ffffff;
+    background: #fff8e7;
     transition: height 0.25s ease;
 }
 
@@ -263,8 +297,8 @@ html, body {
     font-size: 8px;
     font-family: var(--mono);
     font-weight: 700;
-    color: #000;
-    background: rgba(255,255,255,0.85);
+    color: #191410;
+    background: rgba(255,248,231,0.9);
     padding: 1px 2px;
     border-radius: 2px;
     pointer-events: none;
@@ -274,9 +308,10 @@ html, body {
     position: relative;
     width: 460px;
     height: 460px;
-    border-radius: 2px;
+    border-radius: 3px;
     overflow: hidden;
-    border: 1px solid #141311;
+    border: 6px solid #2b1d13;
+    box-shadow: inset 0 0 0 1px #442f20;
 }
 
 .board {
@@ -306,7 +341,7 @@ html, body {
     width: 15px;
     height: 15px;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.22);
+    background: rgba(43, 29, 19, 0.25);
     pointer-events: none;
 }
 
@@ -315,7 +350,7 @@ html, body {
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    border: 4px solid rgba(0, 0, 0, 0.22);
+    border: 4px solid rgba(43, 29, 19, 0.25);
     pointer-events: none;
 }
 
@@ -323,9 +358,10 @@ html, body {
     position: absolute;
     font-size: 9px;
     font-weight: 700;
-    opacity: 0.6;
+    opacity: 0.65;
     pointer-events: none;
     font-family: var(--mono);
+    color: #3b281b;
 }
 
 .coord-rank { top: 2px; left: 3px; }
@@ -375,7 +411,7 @@ html, body {
 .btn-primary {
     background: var(--btn-primary);
     border-color: var(--btn-primary);
-    color: #fff;
+    color: #fff8e7;
     font-weight: 600;
 }
 
@@ -452,8 +488,8 @@ html, body {
     margin-top: 4px;
 }
 
-.move-grade.blunder { background: #a82424; color: #fff; }
-.move-grade.brilliant { background: #2374b8; color: #fff; }
+.move-grade.blunder { background: #8b2525; color: #fff8e7; }
+.move-grade.brilliant { background: #245c8b; color: #fff8e7; }
 
 /* Move History Card */
 .move-history-card {
