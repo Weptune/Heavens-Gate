@@ -12,6 +12,7 @@
 #include "../benchmark/metrics.hpp"
 #include <chrono>
 #include <vector>
+#include <atomic>
 
 namespace heavensgate {
 
@@ -53,9 +54,11 @@ public:
     const TranspositionTable& tt() const { return *tt_ptr_; }
     PolyGlotBook& polyglot_book() { return polyglot_book_; }
     const PolyGlotBook& polyglot_book() const { return polyglot_book_; }
-    void stop() { time_stop_flag_ = true; }
+    void stop() { time_stop_flag_.store(true, std::memory_order_relaxed); }
     void set_threads(int threads) { num_threads_ = std::max(1, threads); }
     int threads() const { return num_threads_; }
+    void set_uci_output(bool enabled) noexcept { uci_output_ = enabled; }
+    bool uci_output() const noexcept { return uci_output_; }
 
 private:
     int quiescence_search(Board& board, int alpha, int beta, int ply);
@@ -63,12 +66,12 @@ private:
     int negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move = Move(), Move prev_move = Move(), Move prev2_move = Move(), TreeNodeJSON* json_node = nullptr, int prev_eval = -ScoreInfinity);
 
     bool is_time_up() {
-        if (time_stop_flag_) return true;
+        if (time_stop_flag_.load(std::memory_order_relaxed)) return true;
         if (max_time_ms_ > 0.0) {
             auto now = std::chrono::high_resolution_clock::now();
             double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
             if (elapsed >= max_time_ms_) {
-                time_stop_flag_ = true;
+                time_stop_flag_.store(true, std::memory_order_relaxed);
                 return true;
             }
         }
@@ -85,6 +88,7 @@ private:
     std::array<std::array<int, 4096>, 2> corr_history_{};
     std::array<std::array<int, 4096>, 2> non_pawn_corr_history_{};
     int num_threads_{6};
+    bool uci_output_{false};
 
 public:
     void clear() noexcept {
@@ -96,11 +100,12 @@ public:
         corr_history_.fill({});
         non_pawn_corr_history_.fill({});
         node_count_ = 0;
+        time_stop_flag_.store(false, std::memory_order_relaxed);
     }
 
     std::chrono::high_resolution_clock::time_point search_start_time_;
     double max_time_ms_ = 0.0;
-    bool time_stop_flag_ = false;
+    std::atomic<bool> time_stop_flag_{false};
     uint64_t q_nodes_ = 0;
     uint64_t node_count_ = 0;
 };

@@ -26,9 +26,12 @@ set(ENGINE_SOURCES
     src/evaluation/eval.cpp
     src/search/move_picker.cpp
     src/search/tt.cpp
+    src/search/search_params.cpp
     src/search/search.cpp
+    src/search/syzygy.cpp
     src/visualization/exporter.cpp
     src/benchmark/metrics.cpp
+    src/benchmark/sts.cpp
     src/uci/uci.cpp
 )
 
@@ -51,10 +54,20 @@ add_executable(heavensgate_tests
 )
 target_include_directories(heavensgate_tests PRIVATE src tests)
 
+find_package(OpenMP)
+
 if(MSVC)
-    target_compile_options(heavensgate PRIVATE /W4 /O2 /permissive-)
-    target_compile_options(heavensgate_tests PRIVATE /W4 /O2 /permissive-)
+    target_compile_options(heavensgate PRIVATE /W4 /O2 /permissive- /arch:AVX2)
+    target_compile_options(heavensgate_tests PRIVATE /W4 /O2 /permissive- /arch:AVX2)
 else()
-    target_compile_options(heavensgate PRIVATE -Wall -Wextra -O3)
-    target_compile_options(heavensgate_tests PRIVATE -Wall -Wextra -O3)
+    target_compile_options(heavensgate PRIVATE -Wall -Wextra -O3 -march=native -mavx2 -mfma)
+    target_compile_options(heavensgate_tests PRIVATE -Wall -Wextra -O3 -march=native -mavx2 -mfma)
 endif()
+
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(heavensgate PRIVATE OpenMP::OpenMP_CXX)
+    target_link_libraries(heavensgate_tests PRIVATE OpenMP::OpenMP_CXX)
+endif()
+
+enable_testing()
+add_test(NAME AllTests COMMAND heavensgate_tests)

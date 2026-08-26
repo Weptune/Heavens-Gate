@@ -50,6 +50,7 @@ public:
     size_t probes() const noexcept { return probes_; }
     double hit_rate() const noexcept { return probes_ > 0 ? (100.0 * hits_) / probes_ : 0.0; }
     size_t capacity() const noexcept { return size_; }
+    int hashfull() const noexcept;
 };
 
 } // namespace heavensgate

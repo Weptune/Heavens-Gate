@@ -44,8 +44,24 @@ TTEntry* TranspositionTable::probe(uint64_t key) noexcept {
 void TranspositionTable::prefetch(uint64_t key) const noexcept {
     if (size_ > 0) {
         size_t idx = static_cast<size_t>(key & mask_);
+#if defined(_MSC_VER)
+        _mm_prefetch(reinterpret_cast<const char*>(&table_[idx]), _MM_HINT_T0);
+#elif defined(__GNUC__) || defined(__clang__)
         __builtin_prefetch(&table_[idx], 0, 3);
+#endif
     }
+}
+
+int TranspositionTable::hashfull() const noexcept {
+    if (size_ == 0) return 0;
+    size_t sample_size = std::min<size_t>(1000, size_);
+    size_t occupied = 0;
+    for (size_t i = 0; i < sample_size; ++i) {
+        if (table_[i].bound != TTBound::None && table_[i].generation == generation_) {
+            occupied++;
+        }
+    }
+    return static_cast<int>((occupied * 1000) / sample_size);
 }
 
 void TranspositionTable::store(uint64_t key, Move move, int score, int depth, TTBound bound, int ply) noexcept {

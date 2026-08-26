@@ -13,6 +13,10 @@
 namespace heavensgate {
 
 int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) {
+    if (ply >= 64) {
+        return Evaluator::evaluate_fast(board);
+    }
+
     metrics_tracker_.add_nodes(1);
     q_nodes_++;
     node_count_++;
@@ -158,8 +162,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     if (time_stop_flag_ || ((node_count_ & 2047) == 0 && is_time_up())) return 0;
 
     if (ply > 0 && board.is_repetition(2)) {
-        // Anti-Repetition Contempt: Return a mild negative draw penalty (-50 cp) so search engine NEVER chooses a move that repeats a position!
-        return -50;
+        return ScoreDraw;
     }
 
     Color us = board.side_to_move();
@@ -290,12 +293,21 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     // 3.5 ProbCut (Probability-Based Cutoffs)
     if (depth >= 5 && !in_chk && std::abs(beta) < ScoreMate - 1000 && board.has_non_pawn_material(us)) {
-        int prob_beta = beta + 300;
+        int prob_beta = beta + 200;
         int prob_depth = depth - 4;
-        int prob_score = negamax_alphabeta(board, prob_depth, ply + 1, prob_beta - 1, prob_beta, use_move_ordering, use_tt, Move(), Move(), Move(), nullptr, static_eval);
-        if (prob_score >= prob_beta) {
-            metrics_tracker_.add_cut();
-            return prob_beta;
+        MoveList tactical_moves;
+        MoveGenerator::generate_capture_moves(board, tactical_moves);
+        move_picker_.score_and_sort_moves(board, tactical_moves, ply);
+
+        for (const auto& tm : tactical_moves) {
+            if (!MovePicker::see_ge(board, tm, prob_beta - static_eval)) continue;
+            board.make_move(tm);
+            int prob_score = -negamax_alphabeta(board, prob_depth, ply + 1, -prob_beta, -prob_beta + 1, use_move_ordering, use_tt, Move(), tm, Move(), nullptr, static_eval);
+            board.unmake_move(tm);
+            if (prob_score >= prob_beta) {
+                metrics_tracker_.add_cut();
+                return prob_beta;
+            }
         }
     }
 
@@ -317,7 +329,6 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     int best_score = -ScoreInfinity;
     Move best_move = moves[0];
-    int quiet_cuts = 0;
     int quiets_searched = 0;
     bool is_non_pv = (beta - alpha == 1);
 
@@ -334,8 +345,13 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
 
         // Futility Pruning: Skip quiet moves at low depth if static eval is far below alpha
-        if (can_futility_prune && i >= 1 && is_quiet && !MoveGenerator::in_check(board, us)) {
-            continue;
+        if (can_futility_prune && i >= 1 && is_quiet) {
+            board.make_move(m);
+            bool gives_chk = MoveGenerator::in_check(board, ~us);
+            board.unmake_move(m);
+            if (!gives_chk) {
+                continue;
+            }
         }
 
         // SEE Bad Capture Pruning: Skip losing captures at shallow depth (depth <= 4)
@@ -417,11 +433,6 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 }
                 if (static_cast<bool>(prev2_move)) {
                     move_picker_.add_continuation_history_2(board, prev2_move, m, depth);
-                }
-                quiet_cuts++;
-                // Multi-Cut Pruning (MC): If M >= 3 quiet moves fail high at non-PV node, prune subtree immediately!
-                if (is_non_pv && depth >= 4 && quiet_cuts >= 3) {
-                    return beta;
                 }
             }
             if (use_tt) {
@@ -750,9 +761,36 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                     final_result.tt_hits = tt().hits();
                     final_result.q_nodes = q_nodes_;
 
+                    if (uci_output_) {
+                        auto now = std::chrono::high_resolution_clock::now();
+                        uint64_t elapsed_ms = std::max<uint64_t>(1, std::chrono::duration_cast<std::chrono::milliseconds>(now - search_start_time_).count());
+                        uint64_t total_nodes = node_count_ + q_nodes_;
+                        uint64_t nps = (total_nodes * 1000) / elapsed_ms;
+
+                        std::cout << "info depth " << d
+                                  << " score ";
+                        if (std::abs(current_best_score) >= ScoreMate - 1000) {
+                            int mate_plies = ScoreMate - std::abs(current_best_score);
+                            int mate_moves = (mate_plies + 1) / 2;
+                            if (current_best_score < 0) mate_moves = -mate_moves;
+                            std::cout << "mate " << mate_moves;
+                        } else {
+                            std::cout << "cp " << current_best_score;
+                        }
+                        std::cout << " nodes " << total_nodes
+                                  << " nps " << nps
+                                  << " time " << elapsed_ms
+                                  << " hashfull " << tt().hashfull()
+                                  << " pv";
+                        for (const auto& pv_m : final_result.pv) {
+                            std::cout << " " << move_to_uci(pv_m);
+                        }
+                        std::cout << std::endl;
+                    }
+
                     if (is_time_up()) break;
                 }
-                time_stop_flag_ = true;
+                time_stop_flag_.store(true, std::memory_order_relaxed);
             } else {
                 // Helper thread (private board and engine instance sharing master TT)
                 Board helper_board = board;
@@ -869,6 +907,33 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
             final_result.completed_depth = d;
             final_result.tt_hits = tt().hits();
             final_result.q_nodes = q_nodes_;
+
+            if (uci_output_) {
+                auto now = std::chrono::high_resolution_clock::now();
+                uint64_t elapsed_ms = std::max<uint64_t>(1, std::chrono::duration_cast<std::chrono::milliseconds>(now - search_start_time_).count());
+                uint64_t total_nodes = node_count_ + q_nodes_;
+                uint64_t nps = (total_nodes * 1000) / elapsed_ms;
+
+                std::cout << "info depth " << d
+                          << " score ";
+                if (std::abs(current_best_score) >= ScoreMate - 1000) {
+                    int mate_plies = ScoreMate - std::abs(current_best_score);
+                    int mate_moves = (mate_plies + 1) / 2;
+                    if (current_best_score < 0) mate_moves = -mate_moves;
+                    std::cout << "mate " << mate_moves;
+                } else {
+                    std::cout << "cp " << current_best_score;
+                }
+                std::cout << " nodes " << total_nodes
+                          << " nps " << nps
+                          << " time " << elapsed_ms
+                          << " hashfull " << tt().hashfull()
+                          << " pv";
+                for (const auto& pv_m : final_result.pv) {
+                    std::cout << " " << move_to_uci(pv_m);
+                }
+                std::cout << std::endl;
+            }
 
             if (is_time_up()) break;
         }
