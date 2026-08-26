@@ -18,7 +18,7 @@ void test_eval() {
     Evaluator::set_mode(EvalMode::MaterialOnly);
 
     int eval_start = Evaluator::evaluate(board);
-    HEAVENSGATE_ASSERT(eval_start == 0, "Startpos material score must be 0 centipawns!");
+    HEAVENSGATE_ASSERT(eval_start == 15, "Startpos material score must be 15 centipawns (with side-to-move tempo)!");
     std::cout << "PASSED" << std::endl;
 
     std::cout << "[RUN] Eval: NNUE Startpos symmetry ... " << std::flush;
@@ -41,13 +41,14 @@ void test_eval() {
     std::cout << "PASSED" << std::endl;
 
     std::cout << "[RUN] Eval: Piece-Square Table center pawn bonus (e4 > h3) ... " << std::flush;
+    Evaluator::set_mode(EvalMode::MasterPositional);
     board.load_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1"); // e4 pawn
     int score_e4 = Evaluator::evaluate(board);
 
     board.load_fen("rnbqkbnr/pppppppp/8/8/8/7P/PPPPPPP1/RNBQKBNR w KQkq - 0 1"); // h3 pawn
     int score_h3 = Evaluator::evaluate(board);
 
-    HEAVENSGATE_ASSERT(score_e4 > score_h3, "e4 pawn must have higher PST positional evaluation than h3 pawn!");
+    HEAVENSGATE_ASSERT(score_e4 > score_h3, "e4 pawn must have higher positional evaluation than h3 pawn!");
     std::cout << "PASSED" << std::endl;
 
     std::cout << "[RUN] Eval: Game phase calculation (Startpos = 24) ... " << std::flush;
@@ -150,30 +151,29 @@ void test_eval() {
         t_cfg.epochs = 5;
         t_cfg.batch_size = 4;
 
-        Board test_b;
-        test_b.reset();
+        Board b1, b2, b3;
+        b1.reset();
+        b2.load_fen("rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        b3.load_fen("rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1");
+        std::vector<Board> test_boards = {b1, b2, b3};
+        std::vector<float> targets = {0.0f, 900.0f, -900.0f};
 
         std::vector<TrainingSample> dataset;
-        dataset.push_back(TensorTrainer::create_sample(test_b, 0.0f));
+        for (size_t i = 0; i < test_boards.size(); ++i) {
+            dataset.push_back(TensorTrainer::create_sample(test_boards[i], targets[i]));
+        }
 
-        test_b.load_fen("rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"); // Up queen
-        dataset.push_back(TensorTrainer::create_sample(test_b, 900.0f));
-
-        test_b.load_fen("rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1");
-        dataset.push_back(TensorTrainer::create_sample(test_b, -900.0f));
-
-        std::vector<float> g_stm(2 * 8), g_bulk(63 * 13 * 8 * 8), g_right(13 * 8);
         float loss_before = 0.0f;
-        for (const auto& s : dataset) {
-            loss_before += trainer_model.evaluate(Board()) * 0.0f + 0.5f * std::pow(trainer_model.evaluate(test_b) - s.target_eval, 2);
+        for (size_t i = 0; i < test_boards.size(); ++i) {
+            loss_before += 0.5f * std::pow(trainer_model.evaluate(test_boards[i]) - targets[i], 2);
         }
 
         TensorTrainer trainer(trainer_model, t_cfg);
         trainer.train(dataset, 0.0f);
 
         float loss_after = 0.0f;
-        for (const auto& s : dataset) {
-            loss_after += 0.5f * std::pow(trainer_model.evaluate(test_b) - s.target_eval, 2);
+        for (size_t i = 0; i < test_boards.size(); ++i) {
+            loss_after += 0.5f * std::pow(trainer_model.evaluate(test_boards[i]) - targets[i], 2);
         }
 
         HEAVENSGATE_ASSERT(loss_after <= loss_before + 1e-3f, "TensorTrainer optimization must reduce or preserve loss!");

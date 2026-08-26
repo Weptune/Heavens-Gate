@@ -110,6 +110,35 @@ static bool test_quiescence_search_horizon_fix() {
     return res.best_move == Move(Square::d5, Square::f7, MoveType::Capture);
 }
 
+static bool test_repetition_draw_score() {
+    MoveGenerator::init();
+    Board board;
+    FEN::parse(FEN::StartPOS, board);
+
+    Move m1(Square::g1, Square::f3, MoveType::Quiet);
+    Move m2(Square::g8, Square::f6, MoveType::Quiet);
+    Move m3(Square::f3, Square::g1, MoveType::Quiet);
+    Move m4(Square::f6, Square::g8, MoveType::Quiet);
+
+    board.make_move(m1); board.make_move(m2); board.make_move(m3); board.make_move(m4);
+    board.make_move(m1); board.make_move(m2); board.make_move(m3); board.make_move(m4);
+
+    return board.is_repetition(2);
+}
+
+static bool test_iterative_deepening_mate_in_2() {
+    MoveGenerator::init();
+    Board board;
+    // Legal's Mate in 2 position: 1. Nf6+ gxf6 2. Bxf7#
+    std::string fen = "r2qkb1r/pp2nppp/3p4/2pNN3/2BnP3/8/PPPP1PPP/R1BQK2R w KQkq - 0 1";
+    FEN::parse(fen, board);
+
+    SearchEngine engine;
+    SearchResult res = engine.search_iterative_deepening(board, 4, 0.0);
+
+    return res.best_score > 20000;
+}
+
 } // namespace heavensgate::test
 
 namespace heavensgate {
@@ -145,6 +174,14 @@ void test_search() {
 
     std::cout << "[RUN] Quiescence Search: Eliminates Horizon Effect (rejects Qxd5 queen blunder) ... " << std::flush;
     HEAVENSGATE_ASSERT(test::test_quiescence_search_horizon_fix(), "Quiescence search failed!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Search: 2-Fold Repetition Detection ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_repetition_draw_score(), "2-Fold repetition detection failed!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Search: Iterative Deepening Mate-in-2 ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_iterative_deepening_mate_in_2(), "Iterative deepening mate-in-2 failed!");
     std::cout << "PASSED" << std::endl;
 }
 
