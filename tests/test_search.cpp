@@ -139,6 +139,32 @@ static bool test_iterative_deepening_mate_in_2() {
     return res.best_score > 20000;
 }
 
+static bool test_capture_history() {
+    MovePicker mp;
+    Piece attacker = Piece::WhiteKnight;
+    Square to = Square::e5;
+    PieceType victim = PieceType::Pawn;
+
+    int initial_score = mp.get_capture_history(attacker, to, victim);
+    mp.add_capture_history(attacker, to, victim, 4);
+    int updated_score = mp.get_capture_history(attacker, to, victim);
+
+    return (initial_score == 0) && (updated_score == 16);
+}
+
+static bool test_singular_extension_search() {
+    MoveGenerator::init();
+    Board board;
+    // Tactical position with a singular winning sacrifice: 1. Bxh7+ Kxh7 2. Ng5+
+    std::string fen = "r1bq1rk1/ppp2ppp/2n1pn2/3p4/2PP4/2NBPN2/PP3PPP/R1BQK2R w KQ - 0 7";
+    FEN::parse(fen, board);
+
+    SearchEngine engine;
+    SearchResult res = engine.search_iterative_deepening(board, 7, 0.0);
+
+    return static_cast<bool>(res.best_move) && res.completed_depth >= 7;
+}
+
 } // namespace heavensgate::test
 
 namespace heavensgate {
@@ -182,6 +208,14 @@ void test_search() {
 
     std::cout << "[RUN] Search: Iterative Deepening Mate-in-2 ... " << std::flush;
     HEAVENSGATE_ASSERT(test::test_iterative_deepening_mate_in_2(), "Iterative deepening mate-in-2 failed!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Search: Capture History Table Recording ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_capture_history(), "Capture history failed to record or retrieve score!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Search: Singular Extensions Deep Search (Depth 7) ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_singular_extension_search(), "Singular extension search failed at depth 7!");
     std::cout << "PASSED" << std::endl;
 }
 

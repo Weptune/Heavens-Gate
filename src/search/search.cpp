@@ -12,6 +12,23 @@
 
 namespace heavensgate {
 
+// Precomputed logarithmic LMR reduction lookup table
+static int lmr_table[64][64];
+
+static struct LMRTableInit {
+    LMRTableInit() {
+        for (int d = 0; d < 64; ++d) {
+            for (int m = 0; m < 64; ++m) {
+                if (d == 0 || m == 0) {
+                    lmr_table[d][m] = 0;
+                } else {
+                    lmr_table[d][m] = 1 + static_cast<int>(std::log(d) * std::log(m) / 2.2);
+                }
+            }
+        }
+    }
+} g_lmr_table_init;
+
 int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) {
     if (ply >= 64) {
         return Evaluator::evaluate_fast(board);
@@ -155,7 +172,7 @@ int SearchEngine::negamax_minimax(Board& board, int depth, int ply, TreeNodeJSON
     return best_score;
 }
 
-int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move, Move prev_move, Move prev2_move, TreeNodeJSON* json_node, int prev_eval) {
+int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move, Move prev_move, Move prev2_move, TreeNodeJSON* json_node, int prev_eval, Move excluded_move) {
     metrics_tracker_.add_nodes(1);
     node_count_++;
 
@@ -175,18 +192,21 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     int orig_alpha = alpha;
     Move tt_move = pv_move;
+    int tt_score = -ScoreInfinity;
+    TTEntry* tt_entry = nullptr;
+    bool is_non_pv = (beta - alpha == 1);
 
     // 1. Transposition Table Probing
     if (use_tt) {
         tt().prefetch(board.zobrist_key());
-        TTEntry* tt_entry = tt().probe(board.zobrist_key());
+        tt_entry = tt().probe(board.zobrist_key());
         if (tt_entry) {
             if (static_cast<bool>(tt_entry->move)) {
                 tt_move = tt_entry->move;
             }
 
-            if (tt_entry->depth >= depth) {
-                int tt_score = tt_entry->score;
+            if (!excluded_move && tt_entry->depth >= depth) {
+                tt_score = tt_entry->score;
                 if (tt_score > ScoreMate - 1000) tt_score -= ply;
                 else if (tt_score < -ScoreMate + 1000) tt_score += ply;
 
@@ -198,6 +218,10 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 } else if (tt_entry->bound == TTBound::Upper && tt_score <= alpha) {
                     return tt_score;
                 }
+            } else if (tt_entry->depth >= depth - 3) {
+                tt_score = tt_entry->score;
+                if (tt_score > ScoreMate - 1000) tt_score -= ply;
+                else if (tt_score < -ScoreMate + 1000) tt_score += ply;
             }
         }
     }
@@ -238,15 +262,20 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     uint64_t b_pawns = board.pieces(Piece::BlackPawn);
     size_t pawn_hash = static_cast<size_t>((w_pawns ^ (b_pawns * 0x9e3779b97f4a7c15ULL)) % 4096);
 
-    uint64_t w_non_pawns = board.pieces(Color::White) ^ w_pawns;
-    uint64_t b_non_pawns = board.pieces(Color::Black) ^ b_pawns;
-    size_t non_pawn_hash = static_cast<size_t>((w_non_pawns ^ (b_non_pawns * 0x9e3779b97f4a7c15ULL)) % 4096);
+    uint64_t w_minors = board.pieces(Piece::WhiteKnight) | board.pieces(Piece::WhiteBishop);
+    uint64_t b_minors = board.pieces(Piece::BlackKnight) | board.pieces(Piece::BlackBishop);
+    size_t non_pawn_hash = static_cast<size_t>((w_minors ^ (b_minors * 0x9e3779b97f4a7c15ULL)) % 4096);
+
+    uint64_t w_majors = board.pieces(Piece::WhiteRook) | board.pieces(Piece::WhiteQueen);
+    uint64_t b_majors = board.pieces(Piece::BlackRook) | board.pieces(Piece::BlackQueen);
+    size_t major_hash = static_cast<size_t>((w_majors ^ (b_majors * 0x9e3779b97f4a7c15ULL)) % 4096);
 
     if (!in_chk && std::abs(beta) < ScoreMate - 1000) {
         raw_static_eval = Evaluator::evaluate_fast(board);
         int pawn_corr = corr_history_[c_idx][pawn_hash];
         int non_pawn_corr = non_pawn_corr_history_[c_idx][non_pawn_hash];
-        int total_corr = std::max(-1024, std::min(1024, (pawn_corr + non_pawn_corr) / 256));
+        int major_corr = major_corr_history_[c_idx][major_hash];
+        int total_corr = std::clamp((pawn_corr + non_pawn_corr + major_corr) / 256, -1024, 1024);
         static_eval = raw_static_eval + total_corr;
 
         if (ply >= 2 && prev_eval != -ScoreInfinity) {
@@ -254,7 +283,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
 
         // Reverse Futility Pruning (Static Null Move Pruning)
-        if (depth <= 3) {
+        if (depth <= 3 && !excluded_move) {
             int margin = g_search_params.rfp_margin * depth;
             if (static_eval - margin >= beta) {
                 metrics_tracker_.add_cut();
@@ -263,13 +292,13 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
 
         // Forward Futility Pruning flag (checked per-move in the loop below)
-        if (depth <= 2 && static_eval + g_search_params.futility_margin * depth <= alpha) {
+        if (depth <= 2 && !excluded_move && static_eval + g_search_params.futility_margin * depth <= alpha) {
             can_futility_prune = true;
         }
     }
 
     // 3. Adaptive Null Move Pruning (NMP) (R=2 for shallow depth, R=3 for depth >= 6, R=4 if static_eval >= beta + nmp_eval_margin, +1 if !improving)
-    if (depth >= 3 && !in_chk && board.has_non_pawn_material(us)) {
+    if (depth >= 3 && !in_chk && !excluded_move && board.has_non_pawn_material(us)) {
         int R = (depth >= 6) ? 3 : 2;
         if (static_eval - beta >= g_search_params.nmp_eval_margin) {
             R += 1;
@@ -292,7 +321,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     }
 
     // 3.5 ProbCut (Probability-Based Cutoffs)
-    if (depth >= 5 && !in_chk && std::abs(beta) < ScoreMate - 1000 && board.has_non_pawn_material(us)) {
+    if (depth >= 5 && !in_chk && !excluded_move && std::abs(beta) < ScoreMate - 1000 && board.has_non_pawn_material(us)) {
         int prob_beta = beta + 200;
         int prob_depth = depth - 4;
         MoveList tactical_moves;
@@ -308,6 +337,33 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 metrics_tracker_.add_cut();
                 return prob_beta;
             }
+        }
+    }
+
+    // 3.8 Singular Extensions (SE)
+    // If TT move is promising at depth >= 7, check if all alternative moves fail low by at least singular_margin.
+    int singular_extension = 0;
+    if (depth >= 7 && !in_chk && !excluded_move && tt_entry && tt_entry->bound != TTBound::Upper &&
+        tt_entry->depth >= depth - 3 && std::abs(tt_score) < ScoreMate - 1000 && static_cast<bool>(tt_move)) {
+        int singular_margin = 2 * depth;
+        int singular_beta = tt_score - singular_margin;
+        int singular_depth = (depth - 1) / 2;
+
+        int singular_score = negamax_alphabeta(board, singular_depth, ply, singular_beta - 1, singular_beta,
+                                               use_move_ordering, use_tt, Move(), prev_move, prev2_move, nullptr, static_eval, tt_move);
+
+        if (singular_score < singular_beta) {
+            singular_extension = 1;
+            // Double extension on PV nodes if failed low by a substantial margin
+            if (!is_non_pv && singular_score < singular_beta - 25) {
+                singular_extension = 2;
+            }
+        } else if (singular_beta >= beta) {
+            // Multi-cut: another move exceeded singular_beta >= beta -> immediate cutoff!
+            return singular_beta;
+        } else if (tt_score >= beta) {
+            // Negative extension if TT move was not singular
+            singular_extension = -1;
         }
     }
 
@@ -330,10 +386,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     int best_score = -ScoreInfinity;
     Move best_move = moves[0];
     int quiets_searched = 0;
-    bool is_non_pv = (beta - alpha == 1);
 
     for (size_t i = 0; i < moves.size(); ++i) {
         Move m = moves[i];
+        if (m == excluded_move) continue;
+
         bool is_quiet = !m.is_capture() && !m.is_promotion();
 
         // Late Move Pruning (LMP): At shallow depth non-PV nodes, prune quiet moves after threshold
@@ -385,11 +442,12 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         int score = 0;
 
         if (i == 0) {
-            score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, prev_move, child_node, static_eval);
+            int search_depth = depth - 1 + singular_extension;
+            score = -negamax_alphabeta(board, search_depth, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, prev_move, child_node, static_eval);
         } else {
             // History-Based Late Move Reductions (LMR) for quiet moves (extra reduction when !improving)
             if (i >= 3 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk) {
-                int reduction = 1 + static_cast<int>(std::log(depth) * std::log(i + 1) / g_search_params.lmr_divisor);
+                int reduction = lmr_table[std::min(depth, 63)][std::min(i + 1, static_cast<size_t>(63))];
                 int history_val = move_picker_.get_history_score(us, m);
                 int cont_val = move_picker_.get_continuation_history(board, prev_move, m);
                 int cont2_val = move_picker_.get_continuation_history_2(board, prev2_move, m);
@@ -398,7 +456,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 if (total_hist > g_search_params.lmr_hist_bonus) reduction = std::max(1, reduction - 1);
                 if (total_hist < g_search_params.lmr_hist_malus && i >= 6) reduction += 1;
                 if (!improving) reduction += 1;
-                reduction = std::min(reduction, depth - 2);
+                if (!is_non_pv) reduction = std::max(0, reduction - 1);
+                reduction = std::clamp(reduction, 0, depth - 2);
                 int reduced_depth = std::max(1, depth - 1 - reduction);
 
                 score = -negamax_alphabeta(board, reduced_depth, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), m, prev_move, child_node, static_eval);
@@ -424,25 +483,34 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         if (score >= beta) {
             metrics_tracker_.add_cut();
-            if (use_move_ordering && !m.is_capture()) {
-                move_picker_.add_killer_move(ply, m);
-                move_picker_.add_history_score(board.side_to_move(), m, depth);
-                if (static_cast<bool>(prev_move)) {
-                    move_picker_.add_countermove(prev_move, m);
-                    move_picker_.add_continuation_history(board, prev_move, m, depth);
-                }
-                if (static_cast<bool>(prev2_move)) {
-                    move_picker_.add_continuation_history_2(board, prev2_move, m, depth);
+            if (use_move_ordering) {
+                if (m.is_capture()) {
+                    Piece attacker = board.piece_at(m.from());
+                    Piece victim   = board.piece_at(m.to());
+                    move_picker_.add_capture_history(attacker, m.to(), piece_type_of(victim), depth);
+                } else {
+                    move_picker_.add_killer_move(ply, m);
+                    move_picker_.add_history_score(board.side_to_move(), m, depth);
+                    if (static_cast<bool>(prev_move)) {
+                        move_picker_.add_countermove(prev_move, m);
+                        move_picker_.add_continuation_history(board, prev_move, m, depth);
+                    }
+                    if (static_cast<bool>(prev2_move)) {
+                        move_picker_.add_continuation_history_2(board, prev2_move, m, depth);
+                    }
                 }
             }
-            if (use_tt) {
+            if (use_tt && !excluded_move) {
                 tt().store(board.zobrist_key(), m, score, depth, TTBound::Lower, ply);
             }
-            if (!in_chk && raw_static_eval != 0 && std::abs(score) < ScoreMate - 1000) {
+            if (!in_chk && raw_static_eval != 0 && std::abs(score) < ScoreMate - 1000 && !excluded_move) {
                 int err = score - raw_static_eval;
-                err = std::max(-1024, std::min(1024, err));
-                corr_history_[c_idx][pawn_hash] = std::max(-1024, std::min(1024, corr_history_[c_idx][pawn_hash] + err / 16));
-                non_pawn_corr_history_[c_idx][non_pawn_hash] = std::max(-1024, std::min(1024, non_pawn_corr_history_[c_idx][non_pawn_hash] + err / 16));
+                err = std::clamp(err, -1024, 1024);
+                int bonus = (err * depth) / 8;
+                bonus = std::clamp(bonus, -256, 256);
+                corr_history_[c_idx][pawn_hash] = std::clamp(corr_history_[c_idx][pawn_hash] + bonus, -1024, 1024);
+                non_pawn_corr_history_[c_idx][non_pawn_hash] = std::clamp(non_pawn_corr_history_[c_idx][non_pawn_hash] + bonus, -1024, 1024);
+                major_corr_history_[c_idx][major_hash] = std::clamp(major_corr_history_[c_idx][major_hash] + bonus, -1024, 1024);
             }
             if (child_node) {
                 child_node->is_pruned = true;
@@ -456,13 +524,17 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
     }
 
-    if (!in_chk && raw_static_eval != 0 && std::abs(best_score) < ScoreMate - 1000) {
+    if (!in_chk && raw_static_eval != 0 && std::abs(best_score) < ScoreMate - 1000 && !excluded_move) {
         int err = best_score - raw_static_eval;
-        err = std::max(-1024, std::min(1024, err));
-        corr_history_[c_idx][pawn_hash] = std::max(-1024, std::min(1024, corr_history_[c_idx][pawn_hash] + err / 16));
+        err = std::clamp(err, -1024, 1024);
+        int bonus = (err * depth) / 8;
+        bonus = std::clamp(bonus, -256, 256);
+        corr_history_[c_idx][pawn_hash] = std::clamp(corr_history_[c_idx][pawn_hash] + bonus, -1024, 1024);
+        non_pawn_corr_history_[c_idx][non_pawn_hash] = std::clamp(non_pawn_corr_history_[c_idx][non_pawn_hash] + bonus, -1024, 1024);
+        major_corr_history_[c_idx][major_hash] = std::clamp(major_corr_history_[c_idx][major_hash] + bonus, -1024, 1024);
     }
 
-    if (use_tt && !time_stop_flag_) {
+    if (use_tt && !time_stop_flag_ && !excluded_move) {
         TTBound bound = (best_score <= orig_alpha) ? TTBound::Upper : TTBound::Exact;
         tt().store(board.zobrist_key(), best_move, best_score, depth, bound, ply);
     }
@@ -788,6 +860,14 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                         std::cout << std::endl;
                     }
 
+                    if (max_time_ms > 0.0 && d >= 8 && stable_move_count >= 4) {
+                        auto now = std::chrono::high_resolution_clock::now();
+                        double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
+                        if (elapsed >= max_time_ms * 0.60) {
+                            break;
+                        }
+                    }
+
                     if (is_time_up()) break;
                 }
                 time_stop_flag_.store(true, std::memory_order_relaxed);
@@ -933,6 +1013,14 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                     std::cout << " " << move_to_uci(pv_m);
                 }
                 std::cout << std::endl;
+            }
+
+            if (max_time_ms > 0.0 && d >= 8 && stable_move_count >= 4) {
+                auto now = std::chrono::high_resolution_clock::now();
+                double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
+                if (elapsed >= max_time_ms * 0.60) {
+                    break;
+                }
             }
 
             if (is_time_up()) break;

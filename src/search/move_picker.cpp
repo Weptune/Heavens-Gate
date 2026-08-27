@@ -45,6 +45,7 @@ void MovePicker::clear() noexcept {
     if (cont_tables_) {
         cont_tables_->cont_history.fill({});
         cont_tables_->cont_history_2.fill({});
+        cont_tables_->capture_history.fill({});
     }
 }
 
@@ -71,6 +72,11 @@ void MovePicker::age_history() noexcept {
                 for (auto& a3 : a2) {
                     for (auto& val : a3) val /= 2;
                 }
+            }
+        }
+        for (auto& a1 : cont_tables_->capture_history) {
+            for (auto& a2 : a1) {
+                for (auto& val : a2) val /= 2;
             }
         }
     }
@@ -200,6 +206,36 @@ int MovePicker::get_continuation_history_2(const Board& board, Move prev2_move, 
     return 0;
 }
 
+void MovePicker::add_capture_history(Piece attacker, Square to, PieceType victim, int depth) noexcept {
+    if (!cont_tables_) return;
+    size_t att_idx = static_cast<size_t>(attacker);
+    size_t to_idx  = static_cast<size_t>(to);
+    size_t vic_idx = static_cast<size_t>(victim);
+
+    if (att_idx < 14 && to_idx < 64 && vic_idx < 6) {
+        cont_tables_->capture_history[att_idx][to_idx][vic_idx] += depth * depth;
+        if (cont_tables_->capture_history[att_idx][to_idx][vic_idx] > 10000) {
+            for (auto& a1 : cont_tables_->capture_history) {
+                for (auto& a2 : a1) {
+                    for (auto& val : a2) val /= 2;
+                }
+            }
+        }
+    }
+}
+
+int MovePicker::get_capture_history(Piece attacker, Square to, PieceType victim) const noexcept {
+    if (!cont_tables_) return 0;
+    size_t att_idx = static_cast<size_t>(attacker);
+    size_t to_idx  = static_cast<size_t>(to);
+    size_t vic_idx = static_cast<size_t>(victim);
+
+    if (att_idx < 14 && to_idx < 64 && vic_idx < 6) {
+        return cont_tables_->capture_history[att_idx][to_idx][vic_idx];
+    }
+    return 0;
+}
+
 void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move tt_move, Move prev_move, Move prev2_move) const noexcept {
     std::vector<int> scores(moves.size(), 0);
 
@@ -250,7 +286,8 @@ void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int p
             }
 
             bool is_good_see = see_ge(board, m, 0);
-            scores[i] = (is_good_see ? 1000000 : -100000) + (victim_val * 10 - attacker_val);
+            int cap_hist = get_capture_history(attacker, m.to(), piece_type_of(victim));
+            scores[i] = (is_good_see ? 1000000 : -100000) + (victim_val * 10 - attacker_val) + cap_hist;
         } else if (m.type() == MoveType::KingCastle || m.type() == MoveType::QueenCastle) {
             scores[i] = 850000;
         } else if (m == killer1) {
