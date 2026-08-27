@@ -237,7 +237,7 @@ int MovePicker::get_capture_history(Piece attacker, Square to, PieceType victim)
 }
 
 void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move tt_move, Move prev_move, Move prev2_move) const noexcept {
-    std::vector<int> scores(moves.size(), 0);
+    std::array<int, 256> scores{};
 
     Move killer1 = (ply < 128) ? killer_moves_[static_cast<size_t>(ply)][0] : Move();
     Move killer2 = (ply < 128) ? killer_moves_[static_cast<size_t>(ply)][1] : Move();

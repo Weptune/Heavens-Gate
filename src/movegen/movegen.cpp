@@ -169,28 +169,108 @@ void MoveGenerator::generate_legal_moves(const Board& board, MoveList& moves) {
 
     // Filter out illegal moves that leave king in check
     MoveList legal_moves;
-    Board temp_board = board;
+    Board& mut_board = const_cast<Board&>(board);
     for (size_t i = 0; i < moves.size(); ++i) {
-        temp_board.make_move(moves[i]);
-        if (!in_check(temp_board, us)) {
+        mut_board.make_move(moves[i]);
+        if (!in_check(mut_board, us)) {
             legal_moves.push_back(moves[i]);
         }
-        temp_board.unmake_move(moves[i]);
+        mut_board.unmake_move(moves[i]);
     }
 
     moves = legal_moves;
 }
 
 void MoveGenerator::generate_capture_moves(const Board& board, MoveList& moves) {
-    MoveList all_moves;
-    generate_legal_moves(board, all_moves);
-
     moves.clear();
-    for (const auto& m : all_moves) {
-        if (m.is_capture() || m.is_promotion()) {
-            moves.push_back(m);
+    Color us = board.side_to_move();
+    Color them = ~us;
+
+    Bitboard them_pieces = board.pieces(them);
+    Bitboard empty_sqs   = ~board.occupied();
+
+    // 1. Pawns (Captures, En Passant, Promotions)
+    Piece pawn = make_piece(us, PieceType::Pawn);
+    Bitboard pawns = board.pieces(pawn);
+
+    Rank promo_rank = (us == Color::White) ? Rank::Rank8 : Rank::Rank1;
+
+    while (pawns) {
+        Square from = pop_lsb(pawns);
+        Bitboard from_bb = square_bb(from);
+
+        // Promotion pushes (Tactical queen/under-promotions to 8th/1st rank)
+        Bitboard push_bb = (us == Color::White) ? (shift<Direction::North>(from_bb) & empty_sqs)
+                                                : (shift<Direction::South>(from_bb) & empty_sqs);
+        if (push_bb) {
+            Square to = lsb(push_bb);
+            if (rank_of(to) == promo_rank) {
+                moves.push_back(Move(from, to, MoveType::PromoQueen));
+                moves.push_back(Move(from, to, MoveType::PromoRook));
+                moves.push_back(Move(from, to, MoveType::PromoKnight));
+                moves.push_back(Move(from, to, MoveType::PromoBishop));
+            }
+        }
+
+        // Pawn Captures (and Promo-Captures)
+        Bitboard atk_bb = AttackMasks::pawn_attacks(us, from);
+        Bitboard cap_bb = atk_bb & them_pieces;
+
+        while (cap_bb) {
+            Square to = pop_lsb(cap_bb);
+            if (rank_of(to) == promo_rank) {
+                moves.push_back(Move(from, to, MoveType::PromoCaptureQueen));
+                moves.push_back(Move(from, to, MoveType::PromoCaptureRook));
+                moves.push_back(Move(from, to, MoveType::PromoCaptureKnight));
+                moves.push_back(Move(from, to, MoveType::PromoCaptureBishop));
+            } else {
+                moves.push_back(Move(from, to, MoveType::Capture));
+            }
+        }
+
+        // En Passant
+        Square ep_sq = board.en_passant_sq();
+        if (ep_sq != Square::None) {
+            Bitboard ep_atk = AttackMasks::pawn_attacks(us, from) & square_bb(ep_sq);
+            if (ep_atk) {
+                moves.push_back(Move(from, ep_sq, MoveType::EnPassant));
+            }
         }
     }
+
+    // Helper for piece captures
+    auto gen_piece_captures = [&](PieceType pt, auto attack_fn) {
+        Piece p = make_piece(us, pt);
+        Bitboard bb = board.pieces(p);
+        while (bb) {
+            Square from = pop_lsb(bb);
+            Bitboard cap_atks = attack_fn(from, board.occupied()) & them_pieces;
+
+            while (cap_atks) {
+                Square to = pop_lsb(cap_atks);
+                moves.push_back(Move(from, to, MoveType::Capture));
+            }
+        }
+    };
+
+    gen_piece_captures(PieceType::Knight, [](Square s, Bitboard) { return AttackMasks::knight_attacks(s); });
+    gen_piece_captures(PieceType::Bishop, [](Square s, Bitboard occ) { return AttackMasks::bishop_attacks(s, occ); });
+    gen_piece_captures(PieceType::Rook,   [](Square s, Bitboard occ) { return AttackMasks::rook_attacks(s, occ); });
+    gen_piece_captures(PieceType::Queen,  [](Square s, Bitboard occ) { return AttackMasks::queen_attacks(s, occ); });
+    gen_piece_captures(PieceType::King,   [](Square s, Bitboard) { return AttackMasks::king_attacks(s); });
+
+    // Filter out illegal captures that leave king in check
+    MoveList legal_captures;
+    Board& mut_board = const_cast<Board&>(board);
+    for (size_t i = 0; i < moves.size(); ++i) {
+        mut_board.make_move(moves[i]);
+        if (!in_check(mut_board, us)) {
+            legal_captures.push_back(moves[i]);
+        }
+        mut_board.unmake_move(moves[i]);
+    }
+
+    moves = legal_captures;
 }
 
 } // namespace heavensgate

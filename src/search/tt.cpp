@@ -34,7 +34,8 @@ TTEntry* TranspositionTable::probe(uint64_t key) noexcept {
     size_t idx = static_cast<size_t>(key & mask_);
     TTEntry& entry = table_[idx];
 
-    if (entry.key == key && entry.bound != TTBound::None) {
+    uint64_t d = entry.data_word();
+    if ((entry.key ^ d) == key && entry.bound != TTBound::None) {
         hits_++;
         return &entry;
     }
@@ -74,16 +75,20 @@ void TranspositionTable::store(uint64_t key, Move move, int score, int depth, TT
     size_t idx = static_cast<size_t>(key & mask_);
     TTEntry& entry = table_[idx];
 
+    uint64_t old_data = entry.data_word();
+    uint64_t old_key = entry.key ^ old_data;
+    bool key_matches = (old_key == key);
+
     // Replacement Policy: Replace if slot is empty, key matches, entry is from older search generation, or new depth >= old depth
-    if (entry.bound == TTBound::None || entry.key == key || entry.generation != generation_ || depth >= entry.depth) {
+    if (entry.bound == TTBound::None || key_matches || entry.generation != generation_ || depth >= entry.depth) {
         TTEntry new_entry;
-        new_entry.key = key;
-        new_entry.move = static_cast<bool>(move) ? move : (entry.key == key ? entry.move : Move());
+        new_entry.move = static_cast<bool>(move) ? move : (key_matches ? entry.move : Move());
         new_entry.score = static_cast<int16_t>(score);
         new_entry.depth = static_cast<uint8_t>(depth);
         new_entry.bound = bound;
         new_entry.generation = generation_;
         new_entry.pad = 0;
+        new_entry.key = key ^ new_entry.data_word();
 
         entry = new_entry; // 16-byte aligned struct assignment
     }

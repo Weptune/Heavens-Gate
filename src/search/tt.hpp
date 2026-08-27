@@ -21,6 +21,15 @@ struct alignas(16) TTEntry {
     TTBound bound{TTBound::None};
     uint8_t generation{0};
     uint8_t pad{0};
+
+    uint64_t data_word() const noexcept {
+        uint64_t d = 0;
+        // 8 bytes: Move (2B), score (2B), depth (1B), bound (1B), generation (1B), pad (1B)
+        const char* src = reinterpret_cast<const char*>(&move);
+        char* dst = reinterpret_cast<char*>(&d);
+        for (int i = 0; i < 8; ++i) dst[i] = src[i];
+        return d;
+    }
 };
 
 class TranspositionTable {
