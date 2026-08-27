@@ -15,17 +15,22 @@ namespace heavensgate {
 // Precomputed logarithmic LMR reduction lookup table
 static int lmr_table[64][64];
 
-static struct LMRTableInit {
-    LMRTableInit() {
-        for (int d = 0; d < 64; ++d) {
-            for (int m = 0; m < 64; ++m) {
-                if (d == 0 || m == 0) {
-                    lmr_table[d][m] = 0;
-                } else {
-                    lmr_table[d][m] = 1 + static_cast<int>(std::log(d) * std::log(m) / 2.2);
-                }
+void SearchEngine::init_lmr_table(float divisor) {
+    if (divisor <= 0.1f) divisor = 3.20f;
+    for (int d = 0; d < 64; ++d) {
+        for (int m = 0; m < 64; ++m) {
+            if (d == 0 || m == 0) {
+                lmr_table[d][m] = 0;
+            } else {
+                lmr_table[d][m] = 1 + static_cast<int>(std::log(d) * std::log(m) / divisor);
             }
         }
+    }
+}
+
+static struct LMRTableInit {
+    LMRTableInit() {
+        SearchEngine::init_lmr_table(3.20f);
     }
 } g_lmr_table_init;
 
@@ -227,9 +232,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     }
 
     // 1.2 Internal Iterative Reduction (IIR)
-    // If no TT move is found at depth >= 4, move ordering is suboptimal.
-    // Reduce search depth by 1 ply to prevent search tree bloat.
-    if (use_tt && !static_cast<bool>(tt_move) && depth >= 4 && !in_chk) {
+    // If no TT move is found at depth >= 5 at non-PV nodes, reduce search depth by 1 ply to prevent search tree bloat.
+    if (is_non_pv && use_tt && !static_cast<bool>(tt_move) && depth >= 5 && !in_chk) {
         depth--;
     }
 
@@ -708,7 +712,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
         if (static_cast<bool>(book_move)) {
             SearchResult res;
             res.best_move = book_move;
-            res.best_score = 15; // Standard opening tempo
+            res.best_score = Evaluator::evaluate_fast(board);
             res.depth = 1;
             res.completed_depth = 1;
             res.pv = {book_move};
@@ -860,10 +864,10 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                         std::cout << std::endl;
                     }
 
-                    if (max_time_ms > 0.0 && d >= 8 && stable_move_count >= 4) {
+                    if (max_time_ms > 0.0 && d >= 10 && stable_move_count >= 5) {
                         auto now = std::chrono::high_resolution_clock::now();
                         double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
-                        if (elapsed >= max_time_ms * 0.60) {
+                        if (elapsed >= max_time_ms * 0.85) {
                             break;
                         }
                     }
@@ -1015,10 +1019,10 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                 std::cout << std::endl;
             }
 
-            if (max_time_ms > 0.0 && d >= 8 && stable_move_count >= 4) {
+            if (max_time_ms > 0.0 && d >= 10 && stable_move_count >= 5) {
                 auto now = std::chrono::high_resolution_clock::now();
                 double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
-                if (elapsed >= max_time_ms * 0.60) {
+                if (elapsed >= max_time_ms * 0.85) {
                     break;
                 }
             }

@@ -1,6 +1,7 @@
-﻿import re
+import sys
+import re
 
-pgn_path = r'c:\Users\abhin\heavensgate\tournament_results_batch1.pgn'
+pgn_path = sys.argv[1] if len(sys.argv) > 1 else r'c:\Users\abhin\heavensgate\tournament_results_batch1.pgn'
 
 with open(pgn_path, 'r', encoding='utf-8', errors='ignore') as f:
     text = f.read()

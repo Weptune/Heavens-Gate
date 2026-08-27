@@ -58,6 +58,7 @@ public:
     void set_threads(int threads) { num_threads_ = std::max(1, threads); }
     int threads() const { return num_threads_; }
     void set_uci_output(bool enabled) noexcept { uci_output_ = enabled; }
+    static void init_lmr_table(float divisor = 3.20f);
     bool uci_output() const noexcept { return uci_output_; }
 
 private:

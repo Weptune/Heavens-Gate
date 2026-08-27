@@ -22,18 +22,20 @@ class EngineBridge:
             return
         
         try:
+            engine_abs_path = os.path.abspath(self.engine_path)
+            engine_dir = os.path.dirname(engine_abs_path)
             self.process = subprocess.Popen(
-                [self.engine_path, "uci"],
+                [engine_abs_path, "uci"],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
                 bufsize=1,
-                cwd=os.path.dirname(self.engine_path)
+                cwd=engine_dir
             )
             self._send_command("uci")
             self._send_command("isready")
-            print(f"[ENGINE BRIDGE] Successfully launched Heaven's Gate UCI Process (PID {self.process.pid}) in {os.path.dirname(self.engine_path)}")
+            print(f"[ENGINE BRIDGE] Successfully launched Heaven's Gate UCI Process (PID {self.process.pid}) in {engine_dir}")
         except Exception as e:
             print(f"[ERROR] Failed to start engine process: {e}")
 

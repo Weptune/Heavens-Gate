@@ -188,7 +188,7 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
 
             bool current_is_master = (board.side_to_move() == Color::White) ? a_is_white : !a_is_white;
             int active_clock_ms = (board.side_to_move() == Color::White) ? white_clock_ms : black_clock_ms;
-            double time_alloc = is_fixed_movetime ? fixed_movetime_ms : (is_time_control ? std::min((active_clock_ms / 35.0) + (inc_ms * 0.8), active_clock_ms * 0.8) : 0.0);
+            double time_alloc = is_fixed_movetime ? fixed_movetime_ms : (is_time_control ? std::max(200.0, std::min((active_clock_ms / 35.0) + (inc_ms * 0.8), active_clock_ms * 0.8)) : 0.0);
 
             auto move_start = std::chrono::high_resolution_clock::now();
             SearchResult res;

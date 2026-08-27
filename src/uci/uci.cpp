@@ -170,6 +170,7 @@ void UCI::loop() {
                 engine.tt().resize(std::stoul(val));
             } else if (name == "LMR_Divisor" && !val.empty()) {
                 g_search_params.lmr_divisor = std::stof(val);
+                SearchEngine::init_lmr_table(g_search_params.lmr_divisor);
             } else if (name == "LMR_HistBonus" && !val.empty()) {
                 g_search_params.lmr_hist_bonus = std::stoi(val);
             } else if (name == "LMR_HistMalus" && !val.empty()) {

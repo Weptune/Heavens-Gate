@@ -1,5 +1,6 @@
 #include "test.hpp"
 #include "../src/search/search.hpp"
+#include "../src/search/syzygy.hpp"
 #include "../src/core/fen.hpp"
 #include "../src/core/zobrist.hpp"
 #include <iostream>
@@ -165,6 +166,58 @@ static bool test_singular_extension_search() {
     return static_cast<bool>(res.best_move) && res.completed_depth >= 7;
 }
 
+static bool test_endgame_patterns() {
+    MoveGenerator::init();
+    SyzygyTablebase::instance().init();
+
+    // 1. KBNK Win
+    {
+        Board b;
+        FEN::parse("8/8/8/8/8/5K1k/4B1N1/8 w - - 0 1", b);
+        int score = SyzygyTablebase::instance().probe_wdl(b, 0);
+        std::cout << "[KBNK: score=" << score << "] " << std::flush;
+        if (score < 20000) return false;
+    }
+
+    // 2. KNNK Draw
+    {
+        Board b;
+        FEN::parse("8/8/8/8/8/5K1k/4N1N1/8 w - - 0 1", b);
+        int score = SyzygyTablebase::instance().probe_wdl(b, 0);
+        std::cout << "[KNNK: score=" << score << "] " << std::flush;
+        if (score != 0) return false;
+    }
+
+    // 3. Wrong-color Bishop + Rook Pawn Fortress (A8 is light, bishop on Dark square C3, Black king in corner A8)
+    {
+        Board b;
+        FEN::parse("k7/8/P7/8/8/2B5/8/K7 w - - 0 1", b);
+        int score = SyzygyTablebase::instance().probe_wdl(b, 0);
+        std::cout << "[Fortress: score=" << score << "] " << std::flush;
+        if (score != 0) return false;
+    }
+
+    // 4. Lucena Position (Pawn on 7th, strong King on 8th, defending King cut off)
+    {
+        Board b;
+        FEN::parse("3K4/3P4/8/8/8/6k1/r7/1R6 w - - 0 1", b);
+        int score = SyzygyTablebase::instance().probe_wdl(b, 0);
+        std::cout << "[Lucena: score=" << score << "] " << std::flush;
+        if (score < 20000) return false;
+    }
+
+    // 5. Philidor Position (Defending king on 8th rank, defending rook on 6th rank)
+    {
+        Board b;
+        FEN::parse("4k3/8/4r3/3KP3/8/8/8/1R6 w - - 0 1", b);
+        int score = SyzygyTablebase::instance().probe_wdl(b, 0);
+        std::cout << "[Philidor: score=" << score << "] " << std::flush;
+        if (score != 0) return false;
+    }
+
+    return true;
+}
+
 } // namespace heavensgate::test
 
 namespace heavensgate {
@@ -216,6 +269,10 @@ void test_search() {
 
     std::cout << "[RUN] Search: Singular Extensions Deep Search (Depth 7) ... " << std::flush;
     HEAVENSGATE_ASSERT(test::test_singular_extension_search(), "Singular extension search failed at depth 7!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Search: Phase 4 Endgame Patterns (KBNK, KNNK, Fortress, Lucena, Philidor) ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_endgame_patterns(), "Phase 4 endgame pattern verification failed!");
     std::cout << "PASSED" << std::endl;
 }
 

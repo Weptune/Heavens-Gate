@@ -25,7 +25,7 @@ struct TBCacheEntry {
 class SyzygyTablebase {
 public:
     static constexpr int NO_SCORE = -999999;
-    static constexpr int MAX_TB_PIECES = 5; // Probe for 5 or fewer pieces
+    static constexpr int MAX_TB_PIECES = 6; // Probe for 6 or fewer pieces
 
     static SyzygyTablebase& instance() {
         static SyzygyTablebase inst;
@@ -43,20 +43,26 @@ public:
     int wdl_to_score(WDLScore wdl, int ply) const;
 
 private:
-    SyzygyTablebase() : enabled_(false), max_pieces_(5) {}
+    SyzygyTablebase() : enabled_(false), max_pieces_(6) {}
 
     bool enabled_;
     int max_pieces_;
-    static constexpr size_t CACHE_SIZE = 8192;
+    static constexpr size_t CACHE_SIZE = 16384;
     std::array<TBCacheEntry, CACHE_SIZE> cache_{};
 
-    // Internal 3-4-5 piece WDL evaluator
+    // Internal 3-4-5-6 piece WDL evaluator
     WDLScore evaluate_endgame_wdl(const Board& board);
 
-    // Specific endgame solvers for 3 & 4 piece positions (KPK, KRK, KQK, KPPK)
+    // Specific endgame solvers for 3, 4, 5, 6 piece positions
     WDLScore solve_kpk(const Board& board, Color strong_side);
     WDLScore solve_krk(const Board& board, Color strong_side);
     WDLScore solve_kqk(const Board& board, Color strong_side);
+    WDLScore solve_kbnk(const Board& board, Color strong_side);
+    WDLScore solve_kbbk(const Board& board, Color strong_side);
+    WDLScore solve_knnk(const Board& board, Color strong_side);
+    WDLScore solve_krp_kr(const Board& board, Color strong_side);
+    WDLScore solve_wrong_color_bishop_pawn(const Board& board, Color strong_side);
+    WDLScore solve_opposite_colored_bishops_1p(const Board& board, Color strong_side);
 };
 
 } // namespace heavensgate
