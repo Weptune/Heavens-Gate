@@ -327,6 +327,42 @@ class ChessRulesEngine {
         }
         return moves;
     }
+
+    static isInsufficientMaterial(board) {
+        let whitePieces = [];
+        let blackPieces = [];
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = board[r][c];
+                if (p === '.') continue;
+                const isW = (p >= 'A' && p <= 'Z');
+                const type = p.toUpperCase();
+                if (type === 'P' || type === 'R' || type === 'Q') return false;
+                if (type !== 'K') {
+                    if (isW) whitePieces.push({ type, r, c });
+                    else blackPieces.push({ type, r, c });
+                }
+            }
+        }
+
+        // K vs K
+        if (whitePieces.length === 0 && blackPieces.length === 0) return true;
+
+        // K+B vs K or K+N vs K
+        if (whitePieces.length === 1 && blackPieces.length === 0) return true;
+        if (blackPieces.length === 1 && whitePieces.length === 0) return true;
+
+        // K+B vs K+B with same-color square bishops
+        if (whitePieces.length === 1 && blackPieces.length === 1 &&
+            whitePieces[0].type === 'B' && blackPieces[0].type === 'B') {
+            const wSqColor = (whitePieces[0].r + whitePieces[0].c) % 2;
+            const bSqColor = (blackPieces[0].r + blackPieces[0].c) % 2;
+            if (wSqColor === bSqColor) return true;
+        }
+
+        return false;
+    }
 }
 
 class ChessApp {
@@ -463,10 +499,26 @@ class ChessApp {
         document.getElementById('undo-btn').addEventListener('click', () => this.undoMove());
         document.getElementById('hint-btn').addEventListener('click', () => this.requestHint());
         document.getElementById('threat-toggle-btn').addEventListener('click', () => this.toggleThreatMap());
+        document.getElementById('draw-btn').addEventListener('click', () => this.offerDraw());
+        document.getElementById('resign-btn').addEventListener('click', () => this.resignMatch());
         document.getElementById('modal-restart-btn').addEventListener('click', () => {
             this.gameoverModal.classList.add('hidden');
             this.initPlayMode();
             this.startMatch();
+        });
+
+        // Global Keyboard Shortcuts
+        window.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+            const key = e.key.toLowerCase();
+            if (key === 'f') this.flipBoard();
+            else if (key === 'u' || (e.ctrlKey && key === 'z')) this.undoMove();
+            else if (key === 'h') this.requestHint();
+            else if (key === 't') this.toggleThreatMap();
+            else if (key === 'escape') {
+                this.promotionModal.classList.add('hidden');
+                this.gameoverModal.classList.add('hidden');
+            }
         });
 
         // Settings
@@ -1096,6 +1148,18 @@ class ChessApp {
                     if (c === 2) { board[0][3] = 'r'; board[0][0] = '.'; }
                 }
 
+                if (srcPiece === 'K') { this.telemetryState.castlingRights.K = false; this.telemetryState.castlingRights.Q = false; }
+                if (srcPiece === 'k') { this.telemetryState.castlingRights.k = false; this.telemetryState.castlingRights.q = false; }
+                if (srcPiece === 'R' && srcR === 7 && srcC === 7) this.telemetryState.castlingRights.K = false;
+                if (srcPiece === 'R' && srcR === 7 && srcC === 0) this.telemetryState.castlingRights.Q = false;
+                if (srcPiece === 'r' && srcR === 0 && srcC === 7) this.telemetryState.castlingRights.k = false;
+                if (srcPiece === 'r' && srcR === 0 && srcC === 0) this.telemetryState.castlingRights.q = false;
+
+                if (r === 7 && c === 7) this.telemetryState.castlingRights.K = false;
+                if (r === 7 && c === 0) this.telemetryState.castlingRights.Q = false;
+                if (r === 0 && c === 7) this.telemetryState.castlingRights.k = false;
+                if (r === 0 && c === 0) this.telemetryState.castlingRights.q = false;
+
                 if (srcPiece.toUpperCase() === 'P' && Math.abs(r - srcR) === 2) {
                     this.telemetryState.enPassantTarget = [(srcR + r) / 2, srcC];
                 } else {
@@ -1178,6 +1242,12 @@ class ChessApp {
         if (piece === 'R' && srcR === 7 && srcC === 0) this.gameState.castlingRights.Q = false;
         if (piece === 'r' && srcR === 0 && srcC === 7) this.gameState.castlingRights.k = false;
         if (piece === 'r' && srcR === 0 && srcC === 0) this.gameState.castlingRights.q = false;
+
+        // Revoke if opponent rook is captured in corner
+        if (tr === 7 && tc === 7) this.gameState.castlingRights.K = false;
+        if (tr === 7 && tc === 0) this.gameState.castlingRights.Q = false;
+        if (tr === 0 && tc === 7) this.gameState.castlingRights.k = false;
+        if (tr === 0 && tc === 0) this.gameState.castlingRights.q = false;
 
         if (piece.toUpperCase() === 'P' && Math.abs(tr - srcR) === 2) {
             this.gameState.enPassantTarget = [(srcR + tr) / 2, srcC];
@@ -1290,9 +1360,39 @@ class ChessApp {
             } else {
                 this.showGameOver("Stalemate", "Game drawn by stalemate.");
             }
-        } else if (inCheck) {
+            return;
+        }
+
+        // 1. Insufficient Material
+        if (ChessRulesEngine.isInsufficientMaterial(this.gameState.board)) {
+            this.gameState.isGameOver = true;
+            this.stopClock();
+            this.showGameOver("Draw", "Game drawn by insufficient mating material.");
+            return;
+        }
+
+        // 2. 50-Move Rule
+        if (this.gameState.halfMoveClock >= 100) {
+            this.gameState.isGameOver = true;
+            this.stopClock();
+            this.showGameOver("Draw", "Game drawn by 50-move rule.");
+            return;
+        }
+
+        // 3. Threefold Repetition
+        const fenKey = this.getFEN().split(' ').slice(0, 4).join(' ');
+        if (!this.gameState.positionHistory) this.gameState.positionHistory = {};
+        this.gameState.positionHistory[fenKey] = (this.gameState.positionHistory[fenKey] || 0) + 1;
+        if (this.gameState.positionHistory[fenKey] >= 3) {
+            this.gameState.isGameOver = true;
+            this.stopClock();
+            this.showGameOver("Draw", "Game drawn by threefold repetition.");
+            return;
+        }
+
+        if (inCheck) {
             this.sound.playCheck();
-            this.oracleTextEl.textContent = "Check. King under attack.";
+            this.oracleTextEl.textContent = "⚠️ Check! King is under direct attack.";
         }
     }
 
@@ -1604,15 +1704,65 @@ class ChessApp {
         this.initPlayMode();
     }
 
+    resignMatch() {
+        if (!this.gameState.isGameActive || this.gameState.isGameOver) return;
+        this.gameState.isGameOver = true;
+        this.stopClock();
+        this.sound.playGameOver();
+        const winner = this.gameState.playMode === 'human_white' ? "Black (Heaven's Gate)" : "White (Heaven's Gate)";
+        this.showGameOver("Resignation", `${winner} won by resignation.`);
+    }
+
+    offerDraw() {
+        if (!this.gameState.isGameActive || this.gameState.isGameOver) return;
+        const cp = this.gameState.lastEvalScore || 0;
+        const aiColor = (this.gameState.playMode === 'human_white') ? 'b' : 'w';
+        const aiAdvantage = (aiColor === 'w') ? cp : -cp;
+
+        if (aiAdvantage > 80) {
+            this.sound.playError();
+            this.setStatus("Draw offer declined by engine", false);
+            this.oracleTextEl.textContent = "Engine declined draw offer. Position is advantageous for AI.";
+        } else {
+            this.gameState.isGameOver = true;
+            this.stopClock();
+            this.sound.playSuccess();
+            this.showGameOver("Draw Agreed", "Engine accepted the draw offer.");
+        }
+    }
+
     copyFEN() {
         navigator.clipboard.writeText(this.getFEN());
-        this.setStatus("FEN copied", false);
+        this.setStatus("FEN copied to clipboard", false);
     }
 
     copyPGN() {
-        const pgn = this.gameState.moveHistory.join(' ');
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '.');
+        const whitePlayer = this.gameState.playMode === 'human_black' ? "Heaven's Gate Master Edition" : "Player";
+        const blackPlayer = this.gameState.playMode === 'human_black' ? "Player" : "Heaven's Gate Master Edition";
+        let resultTag = "*";
+        if (this.gameState.isGameOver) {
+            resultTag = "1/2-1/2";
+        }
+
+        let pgn = `[Event "Heaven's Gate Master Match"]\n`;
+        pgn += `[Site "Localhost"]\n`;
+        pgn += `[Date "${dateStr}"]\n`;
+        pgn += `[White "${whitePlayer}"]\n`;
+        pgn += `[Black "${blackPlayer}"]\n`;
+        pgn += `[Result "${resultTag}"]\n\n`;
+
+        let movesStr = "";
+        for (let i = 0; i < this.gameState.uciHistory.length; i++) {
+            if (i % 2 === 0) {
+                movesStr += `${Math.floor(i / 2) + 1}. `;
+            }
+            movesStr += `${this.gameState.uciHistory[i]} `;
+        }
+        pgn += movesStr.trim() + ` ${resultTag}`;
+
         navigator.clipboard.writeText(pgn);
-        this.setStatus("PGN copied", false);
+        this.setStatus("PGN copied to clipboard", false);
     }
 
     setStatus(text, thinking = false) {

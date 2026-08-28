@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Heaven's Gate Chess Engine - Master Edition</title>
-    <link rel="stylesheet" href="style.css?v=17">
+    <link rel="icon" href="pieces/wK.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="style.css?v=18">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -101,10 +102,12 @@
             <!-- Quick Board Action Bar -->
             <div class="action-bar">
                 <button class="btn btn-primary" id="start-game-btn">Start Match</button>
-                <button class="btn btn-secondary" id="flip-btn">Flip</button>
-                <button class="btn btn-secondary" id="undo-btn">Undo</button>
-                <button class="btn btn-secondary" id="hint-btn">Hint</button>
-                <button class="btn btn-secondary" id="threat-toggle-btn">Threats</button>
+                <button class="btn btn-secondary" id="flip-btn" title="Flip Board (F)">Flip</button>
+                <button class="btn btn-secondary" id="undo-btn" title="Undo Move (U / Z)">Undo</button>
+                <button class="btn btn-secondary" id="hint-btn" title="Hint (H)">Hint</button>
+                <button class="btn btn-secondary" id="threat-toggle-btn" title="Threat Map (T)">Threats</button>
+                <button class="btn btn-secondary" id="draw-btn" title="Offer Draw">Draw</button>
+                <button class="btn btn-secondary btn-danger" id="resign-btn" title="Resign Match">Resign</button>
             </div>
 
             <!-- Live Engine Telemetry Quick Bar (Visible in all modes) -->
@@ -251,6 +254,6 @@
 
     </main>
 
-    <script src="app.js?v=17"></script>
+    <script src="app.js?v=18"></script>
 </body>
 </html>

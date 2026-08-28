@@ -505,6 +505,16 @@ html, body {
 
 .btn-text:hover { color: var(--text-bright); }
 
+.btn-danger {
+    color: #f87171;
+}
+
+.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.18) !important;
+    border-color: rgba(239, 68, 68, 0.45) !important;
+    color: #fca5a5 !important;
+}
+
 /* Right Sidebar Column */
 .sidebar-column {
     display: flex;

@@ -44,6 +44,17 @@ class EngineBridge:
             self.process.stdin.write(cmd + "\n")
             self.process.stdin.flush()
 
+    def stop_engine(self):
+        with self.lock:
+            if self.process:
+                try:
+                    self._send_command("quit")
+                    self.process.terminate()
+                    self.process.wait(timeout=1.0)
+                except Exception:
+                    pass
+                self.process = None
+
     def get_move(self, fen, depth=8, movetime=0, wtime=0, btime=0, winc=0, binc=0):
         with self.lock:
             if not self.process or self.process.poll() is not None:
@@ -139,7 +150,9 @@ class EngineBridge:
                 "pv": pv
             }
 
+import atexit
 bridge = EngineBridge(ENGINE_PATH)
+atexit.register(bridge.stop_engine)
 
 class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
