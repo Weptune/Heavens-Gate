@@ -355,6 +355,20 @@ class ChessApp {
             puzzles: DEFAULT_PUZZLES
         };
 
+        // Telemetry & Analysis Sandbox State (100% Isolated from Matches)
+        this.telemetryState = {
+            board: ChessRulesEngine.cloneBoard(INITIAL_BOARD),
+            turn: 'w',
+            castlingRights: { K: true, Q: true, k: true, q: true },
+            enPassantTarget: null,
+            lastMove: null,
+            isFlipped: false,
+            moveHistory: [],
+            uciHistory: [],
+            fullMoveNumber: 1,
+            lastEvalScore: 0
+        };
+
         this.selectedSquare = null;
         this.legalTargets = [];
         this.showThreatMap = false;
@@ -410,6 +424,10 @@ class ChessApp {
 
         // Match Actions
         this.startBtn.addEventListener('click', () => {
+            if (this.activeTab === 'telemetry') {
+                this.initTelemetryMode();
+                return;
+            }
             if (this.activeTab !== 'play') {
                 this.switchTab('play');
             }
@@ -512,13 +530,14 @@ class ChessApp {
             this.renderPuzzleView();
 
         } else if (tab === 'telemetry') {
+            this.stopClock();
             cardCommentary.classList.remove('hidden');
             cardHistory.classList.remove('hidden');
             cardConfig.classList.add('hidden');
             cardPuzzles.classList.add('hidden');
             cardTelemetry.classList.remove('hidden');
 
-            this.renderPlayView();
+            this.renderTelemetryView();
             this.runLiveAnalysis();
         }
     }
@@ -540,6 +559,31 @@ class ChessApp {
             this.setStatus('Ready', false);
             this.oracleTextEl.textContent = 'Click "Start Match" or make a move to begin.';
         }
+    }
+
+    renderTelemetryView() {
+        this.stopClock();
+        this.renderBoard();
+        this.setStatus('Analysis Lab', false);
+        this.startBtn.textContent = 'Reset Sandbox';
+        this.oracleTextEl.textContent = `${this.telemetryState.turn === 'w' ? 'White' : 'Black'} to move (Analysis Sandbox).`;
+        this.updateEvalBar(this.telemetryState.lastEvalScore);
+    }
+
+    initTelemetryMode() {
+        this.telemetryState.board = ChessRulesEngine.cloneBoard(INITIAL_BOARD);
+        this.telemetryState.turn = 'w';
+        this.telemetryState.castlingRights = { K: true, Q: true, k: true, q: true };
+        this.telemetryState.enPassantTarget = null;
+        this.telemetryState.lastMove = null;
+        this.telemetryState.moveHistory = [];
+        this.telemetryState.uciHistory = [];
+        this.telemetryState.fullMoveNumber = 1;
+        this.telemetryState.lastEvalScore = 0;
+        this.selectedSquare = null;
+        this.legalTargets = [];
+        this.renderTelemetryView();
+        this.runLiveAnalysis();
     }
 
     renderPuzzleView() {
@@ -572,7 +616,7 @@ class ChessApp {
         this.openingBadgeEl.textContent = 'Standard Start';
         this.moveGradeEl.classList.add('hidden');
 
-        if (this.activeTab === 'play' || this.activeTab === 'telemetry') {
+        if (this.activeTab === 'play') {
             this.renderPlayView();
         }
     }
@@ -650,27 +694,39 @@ class ChessApp {
     }
 
     getCurrentBoard() {
-        return this.activeTab === 'puzzles' ? this.puzzleState.board : this.gameState.board;
+        if (this.activeTab === 'puzzles') return this.puzzleState.board;
+        if (this.activeTab === 'telemetry') return this.telemetryState.board;
+        return this.gameState.board;
     }
 
     getCurrentTurn() {
-        return this.activeTab === 'puzzles' ? this.puzzleState.turn : this.gameState.turn;
+        if (this.activeTab === 'puzzles') return this.puzzleState.turn;
+        if (this.activeTab === 'telemetry') return this.telemetryState.turn;
+        return this.gameState.turn;
     }
 
     getCurrentCastling() {
-        return this.activeTab === 'puzzles' ? this.puzzleState.castlingRights : this.gameState.castlingRights;
+        if (this.activeTab === 'puzzles') return this.puzzleState.castlingRights;
+        if (this.activeTab === 'telemetry') return this.telemetryState.castlingRights;
+        return this.gameState.castlingRights;
     }
 
     getCurrentEPTarget() {
-        return this.activeTab === 'puzzles' ? this.puzzleState.enPassantTarget : this.gameState.enPassantTarget;
+        if (this.activeTab === 'puzzles') return this.puzzleState.enPassantTarget;
+        if (this.activeTab === 'telemetry') return this.telemetryState.enPassantTarget;
+        return this.gameState.enPassantTarget;
     }
 
     getCurrentLastMove() {
-        return this.activeTab === 'puzzles' ? this.puzzleState.lastMove : this.gameState.lastMove;
+        if (this.activeTab === 'puzzles') return this.puzzleState.lastMove;
+        if (this.activeTab === 'telemetry') return this.telemetryState.lastMove;
+        return this.gameState.lastMove;
     }
 
     getIsFlipped() {
-        return this.activeTab === 'puzzles' ? this.puzzleState.isFlipped : this.gameState.isFlipped;
+        if (this.activeTab === 'puzzles') return this.puzzleState.isFlipped;
+        if (this.activeTab === 'telemetry') return this.telemetryState.isFlipped;
+        return this.gameState.isFlipped;
     }
 
     getPieceImg(p) {
@@ -752,6 +808,10 @@ class ChessApp {
     handleSquareClick(r, c) {
         if (this.activeTab === 'puzzles') {
             this.handlePuzzleClick(r, c);
+            return;
+        }
+        if (this.activeTab === 'telemetry') {
+            this.handleTelemetryClick(r, c);
             return;
         }
 
@@ -869,6 +929,91 @@ class ChessApp {
             if (isMyPiece) {
                 this.selectedSquare = [r, c];
                 this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, board, turn, this.puzzleState.castlingRights, this.puzzleState.enPassantTarget);
+                this.renderBoard();
+            }
+        }
+    }
+
+    handleTelemetryClick(r, c) {
+        const board = this.telemetryState.board;
+        const turn = this.telemetryState.turn;
+        const piece = board[r][c];
+        const isMyPiece = (turn === 'w' && ChessRulesEngine.isWhite(piece)) || (turn === 'b' && ChessRulesEngine.isBlack(piece));
+
+        if (this.selectedSquare) {
+            const [srcR, srcC] = this.selectedSquare;
+            const isTarget = this.legalTargets.some(([tr, tc]) => tr === r && tc === c);
+
+            if (srcR === r && srcC === c) {
+                this.selectedSquare = null;
+                this.legalTargets = [];
+                this.renderBoard();
+                return;
+            }
+
+            if (isMyPiece) {
+                this.selectedSquare = [r, c];
+                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, board, turn, this.telemetryState.castlingRights, this.telemetryState.enPassantTarget);
+                this.renderBoard();
+                return;
+            }
+
+            if (isTarget) {
+                const srcPiece = board[srcR][srcC];
+                let isPromo = false;
+                let promoPiece = null;
+                if (srcPiece === 'P' && r === 0) { isPromo = true; promoPiece = 'Q'; }
+                if (srcPiece === 'p' && r === 7) { isPromo = true; promoPiece = 'q'; }
+
+                const isCapture = (board[r][c] !== '.') || (this.telemetryState.enPassantTarget && this.telemetryState.enPassantTarget[0] === r && this.telemetryState.enPassantTarget[1] === c);
+                
+                board[r][c] = isPromo ? promoPiece : board[srcR][srcC];
+                board[srcR][srcC] = '.';
+
+                if (srcPiece.toUpperCase() === 'P' && this.telemetryState.enPassantTarget && this.telemetryState.enPassantTarget[0] === r && this.telemetryState.enPassantTarget[1] === c) {
+                    const epCaptureR = turn === 'w' ? r + 1 : r - 1;
+                    board[epCaptureR][c] = '.';
+                }
+
+                if (srcPiece === 'K' && srcR === 7 && srcC === 4) {
+                    if (c === 6) { board[7][5] = 'R'; board[7][7] = '.'; }
+                    if (c === 2) { board[7][3] = 'R'; board[7][0] = '.'; }
+                }
+                if (srcPiece === 'k' && srcR === 0 && srcC === 4) {
+                    if (c === 6) { board[0][5] = 'r'; board[0][7] = '.'; }
+                    if (c === 2) { board[0][3] = 'r'; board[0][0] = '.'; }
+                }
+
+                if (srcPiece.toUpperCase() === 'P' && Math.abs(r - srcR) === 2) {
+                    this.telemetryState.enPassantTarget = [(srcR + r) / 2, srcC];
+                } else {
+                    this.telemetryState.enPassantTarget = null;
+                }
+
+                this.telemetryState.lastMove = { from: this.coordsToSquare(srcR, srcC), to: this.coordsToSquare(r, c) };
+                const uciStr = `${this.coordsToSquare(srcR, srcC)}${this.coordsToSquare(r, c)}${isPromo ? 'q' : ''}`;
+                this.telemetryState.uciHistory.push(uciStr);
+
+                if (isCapture) this.sound.playCapture();
+                else this.sound.playMove();
+
+                this.telemetryState.turn = this.telemetryState.turn === 'w' ? 'b' : 'w';
+                if (this.telemetryState.turn === 'w') this.telemetryState.fullMoveNumber++;
+
+                this.selectedSquare = null;
+                this.legalTargets = [];
+
+                this.renderBoard();
+                this.runLiveAnalysis();
+            } else {
+                this.selectedSquare = null;
+                this.legalTargets = [];
+                this.renderBoard();
+            }
+        } else {
+            if (isMyPiece) {
+                this.selectedSquare = [r, c];
+                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, board, turn, this.telemetryState.castlingRights, this.telemetryState.enPassantTarget);
                 this.renderBoard();
             }
         }
@@ -1041,8 +1186,9 @@ class ChessApp {
         if (castling.k) cStr += 'k';
         if (castling.q) cStr += 'q';
         fen += (cStr || '-') + ' ';
-        fen += (ep ? this.coordsToSquare(ep[0], ep[1]) : '-') + ' ';
-        fen += `${this.gameState.halfMoveClock} ${this.gameState.fullMoveNumber}`;
+        const halfClock = this.activeTab === 'telemetry' ? 0 : this.gameState.halfMoveClock;
+        const fullMove = this.activeTab === 'telemetry' ? this.telemetryState.fullMoveNumber : this.gameState.fullMoveNumber;
+        fen += `${halfClock} ${fullMove}`;
         return fen;
     }
 
@@ -1237,6 +1383,8 @@ class ChessApp {
     flipBoard() {
         if (this.activeTab === 'puzzles') {
             this.puzzleState.isFlipped = !this.puzzleState.isFlipped;
+        } else if (this.activeTab === 'telemetry') {
+            this.telemetryState.isFlipped = !this.telemetryState.isFlipped;
         } else {
             this.gameState.isFlipped = !this.gameState.isFlipped;
         }
@@ -1246,6 +1394,10 @@ class ChessApp {
     undoMove() {
         if (this.activeTab === 'puzzles') {
             this.loadPuzzle(this.puzzleState.puzzleIdx);
+            return;
+        }
+        if (this.activeTab === 'telemetry') {
+            this.initTelemetryMode();
             return;
         }
         if (this.gameState.moveHistory.length === 0) return;
