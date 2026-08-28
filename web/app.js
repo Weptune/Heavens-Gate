@@ -471,7 +471,6 @@ class ChessApp {
         this.promotionModal = document.getElementById('promotion-modal');
         this.promotionChoicesEl = document.getElementById('promotion-choices');
         this.gameoverModal = document.getElementById('gameover-modal');
-        this.gameoverIconEl = document.getElementById('gameover-icon');
         this.gameoverTitleEl = document.getElementById('gameover-title');
         this.gameoverSubEl = document.getElementById('gameover-sub');
     }
@@ -1411,20 +1410,13 @@ class ChessApp {
 
         if (inCheck) {
             this.sound.playCheck();
-            this.oracleTextEl.textContent = "⚠️ Check! King is under direct attack.";
+            this.oracleTextEl.textContent = "Check. King is under direct attack.";
         }
     }
 
     showGameOver(title, sub) {
         this.gameoverTitleEl.textContent = title;
         this.gameoverSubEl.textContent = sub;
-        if (this.gameoverIconEl) {
-            const lower = title.toLowerCase();
-            if (lower.includes('checkmate')) this.gameoverIconEl.textContent = '👑';
-            else if (lower.includes('resign')) this.gameoverIconEl.textContent = '🏳️';
-            else if (lower.includes('draw') || lower.includes('stalemate') || lower.includes('50-move') || lower.includes('repetition') || lower.includes('material')) this.gameoverIconEl.textContent = '🤝';
-            else this.gameoverIconEl.textContent = '🏆';
-        }
         this.gameoverModal.classList.remove('hidden');
     }
 
@@ -1639,7 +1631,7 @@ class ChessApp {
         const turn = this.getCurrentTurn();
         const inCheck = ChessRulesEngine.isInCheck(turn, board);
         if (inCheck) {
-            statusMsg = `⚠️ ${turn === 'w' ? 'White' : 'Black'} King is in Check! ` + statusMsg;
+            statusMsg = `${turn === 'w' ? 'White' : 'Black'} King is in Check! ` + statusMsg;
         }
 
         this.oracleTextEl.textContent = statusMsg;
