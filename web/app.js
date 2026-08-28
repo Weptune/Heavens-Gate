@@ -11,14 +11,30 @@ const PIECE_NAMES = {
 const OPENING_BOOK = {
     "e2e4 e7e5 g1f3 b8c6 f1c4": "Italian Game",
     "e2e4 e7e5 g1f3 b8c6 f1b5": "Ruy Lopez",
+    "e2e4 e7e5 g1f3 b8c6 d2d4": "Scotch Game",
+    "e2e4 e7e5 g1f3 g8f6": "Petrov's Defense",
+    "e2e4 e7e5 f2f4": "King's Gambit",
+    "e2e4 e7e5 g1f3 b8c6 b1c3 g8f6": "Four Knights Game",
+    "e2e4 b8c6": "Nimzowitsch Defense",
     "e2e4 c7c5": "Sicilian Defense",
     "e2e4 e7e6": "French Defense",
     "e2e4 c7c6": "Caro-Kann Defense",
+    "e2e4 d7d5": "Scandinavian Defense",
+    "e2e4 g7g6": "Modern Defense",
+    "e2e4 d7d6": "Pirc Defense",
     "d2d4 d7d5 c2c4": "Queen's Gambit",
+    "d2d4 d7d5 c2c4 c7c6": "Slav Defense",
+    "d2d4 d7d5 c2c4 e7e6": "Queen's Gambit Declined",
     "d2d4 g8f6 c2c4 g7g6": "King's Indian Defense",
-    "d2d4 g8f6 c2c4 e7e6 b1c3 f8b4": "Nimzo-Indian",
+    "d2d4 g8f6 c2c4 e7e6 b1c3 f8b4": "Nimzo-Indian Defense",
+    "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6": "Queen's Indian Defense",
+    "d2d4 g8f6 c2c4 c7c5": "Benoni Defense",
+    "d2d4 f7f5": "Dutch Defense",
+    "d2d4 d7d5": "Queen's Pawn Opening",
     "c2c4": "English Opening",
-    "g1f3": "Reti Opening"
+    "g1f3": "Reti Opening",
+    "b2b3": "Nimzo-Larsen Attack",
+    "f2f4": "Bird's Opening"
 };
 
 const INITIAL_BOARD = [
@@ -1099,8 +1115,9 @@ class ChessApp {
                 this.selectedSquare = null;
                 this.legalTargets = [];
 
+                const mover = this.telemetryState.turn === 'w' ? 'b' : 'w';
                 this.renderBoard();
-                this.runLiveAnalysis();
+                this.runLiveAnalysis(mover);
             } else {
                 this.selectedSquare = null;
                 this.legalTargets = [];
@@ -1220,11 +1237,41 @@ class ChessApp {
     }
 
     updateOpening() {
-        const uciLine = this.gameState.uciHistory.slice(0, 6).join(' ');
+        const uciHistory = (this.activeTab === 'telemetry') ? this.telemetryState.uciHistory : this.gameState.uciHistory;
+        const uciLine = uciHistory.join(' ');
+        const moveCount = uciHistory.length;
+
+        let matched = null;
+        let longestLen = 0;
         for (const [seq, name] of Object.entries(OPENING_BOOK)) {
-            if (uciLine.startsWith(seq)) {
-                this.openingBadgeEl.textContent = name;
-                return;
+            if (uciLine.startsWith(seq) && seq.length > longestLen) {
+                matched = name;
+                longestLen = seq.length;
+            }
+        }
+
+        if (matched && moveCount <= 12) {
+            this.openingBadgeEl.textContent = matched;
+        } else if (moveCount === 0) {
+            this.openingBadgeEl.textContent = 'Standard Start';
+        } else {
+            const board = this.getCurrentBoard();
+            let totalPieces = 0;
+            let queens = 0;
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const p = board[r][c].toUpperCase();
+                    if (p === 'Q') queens++;
+                    if (p === 'Q' || p === 'R' || p === 'B' || p === 'N') totalPieces++;
+                }
+            }
+
+            if (queens === 0 || totalPieces <= 4) {
+                this.openingBadgeEl.textContent = 'Endgame';
+            } else if (moveCount > 8) {
+                this.openingBadgeEl.textContent = 'Middlegame';
+            } else {
+                this.openingBadgeEl.textContent = matched || 'Opening';
             }
         }
     }
@@ -1323,9 +1370,10 @@ class ChessApp {
 
                 this.executeMove(srcR, srcC, dstR, dstC, data.best_move, promo);
 
+                const engineColor = (this.gameState.playMode === 'human_white') ? 'b' : 'w';
                 this.updateTelemetry(data);
                 this.updateEvalBar(data.score || 0);
-                this.updateOracle(data.score || 0, data.pv);
+                this.updateOracle(data.score || 0, data.pv, engineColor);
             }
         } catch (e) {
             console.error("Engine API error:", e);
@@ -1361,7 +1409,7 @@ class ChessApp {
         if (this.quickTimeEl) this.quickTimeEl.textContent = timeStr;
     }
 
-    async runLiveAnalysis() {
+    async runLiveAnalysis(movedBy = null) {
         if (this.gameState.isThinking || this.activeTab !== 'telemetry') return;
         const fen = this.getFEN();
         try {
@@ -1374,7 +1422,7 @@ class ChessApp {
                 const data = await resp.json();
                 this.updateTelemetry(data);
                 this.updateEvalBar(data.score || 0);
-                this.updateOracle(data.score || 0, data.pv);
+                this.updateOracle(data.score || 0, data.pv, movedBy);
             }
         } catch (e) {
             console.error("Live analysis error:", e);
@@ -1391,28 +1439,73 @@ class ChessApp {
         this.evalBadgeEl.textContent = evalText;
     }
 
-    updateOracle(scoreCp, pv) {
+    updateOracle(scoreCp, pv, movedBy = null) {
         const cp = scoreCp;
-        const delta = cp - this.gameState.lastEvalScore;
-        this.gameState.lastEvalScore = cp;
+        const state = (this.activeTab === 'telemetry') ? this.telemetryState : this.gameState;
+        const prevScore = state.lastEvalScore || 0;
+        state.lastEvalScore = cp;
 
-        this.moveGradeEl.classList.remove('hidden', 'brilliant', 'best', 'good', 'inaccuracy', 'blunder');
+        this.moveGradeEl.classList.remove('hidden', 'brilliant', 'best', 'good', 'inaccuracy', 'mistake', 'blunder', 'book');
 
-        if (Math.abs(delta) > 300) {
-            if ((this.gameState.turn === 'b' && delta < -300) || (this.gameState.turn === 'w' && delta > 300)) {
+        // 1. Move Quality Classification (if a move was just executed)
+        if (movedBy) {
+            // Delta from the perspective of the side who just moved
+            // If White moved: delta = cp - prevScore (positive = White improved)
+            // If Black moved: delta = prevScore - cp (positive = Black improved)
+            const delta = (movedBy === 'w') ? (cp - prevScore) : (prevScore - cp);
+            const mover = (movedBy === 'w') ? "White" : "Black";
+
+            if (delta >= 180) {
                 this.moveGradeEl.className = 'move-grade brilliant';
                 this.moveGradeEl.innerHTML = `<span class="grade-text">Brilliant</span>`;
-                this.oracleTextEl.textContent = "Tactical breakthrough. Advantage secured.";
+            } else if (delta >= -25) {
+                this.moveGradeEl.className = 'move-grade best';
+                this.moveGradeEl.innerHTML = `<span class="grade-text">Best Move</span>`;
+            } else if (delta >= -65) {
+                this.moveGradeEl.className = 'move-grade good';
+                this.moveGradeEl.innerHTML = `<span class="grade-text">Good</span>`;
+            } else if (delta >= -140) {
+                this.moveGradeEl.className = 'move-grade inaccuracy';
+                this.moveGradeEl.innerHTML = `<span class="grade-text">Inaccuracy</span>`;
+            } else if (delta >= -280) {
+                this.moveGradeEl.className = 'move-grade mistake';
+                this.moveGradeEl.innerHTML = `<span class="grade-text">Mistake</span>`;
             } else {
                 this.moveGradeEl.className = 'move-grade blunder';
                 this.moveGradeEl.innerHTML = `<span class="grade-text">Blunder</span>`;
-                this.oracleTextEl.textContent = "Inaccuracy detected. Advantage conceded.";
             }
-        } else if (Math.abs(cp) > 500) {
-            this.oracleTextEl.textContent = "Decisive advantage. Technical conversion.";
         } else {
-            this.oracleTextEl.textContent = "Balanced position. Solid piece coordination.";
+            this.moveGradeEl.classList.add('hidden');
         }
+
+        // 2. Comprehensive Dual-Sided Positional Commentary
+        const evalNum = (Math.abs(cp) / 100).toFixed(1);
+        let statusMsg = "";
+
+        if (cp >= 500) {
+            statusMsg = `White holds a winning +${evalNum} advantage. Black is under heavy mating pressure.`;
+        } else if (cp >= 150) {
+            statusMsg = `White holds a clear advantage (+${evalNum}). Black must defend carefully.`;
+        } else if (cp >= 40) {
+            statusMsg = `White has a slight edge (+${evalNum}). Black maintains active piece counterplay.`;
+        } else if (cp > -40) {
+            statusMsg = `Equal position (${cp >= 0 ? '+' : ''}${(cp/100).toFixed(1)}). Both White and Black have balanced piece coordination.`;
+        } else if (cp > -150) {
+            statusMsg = `Black has a slight edge (-${evalNum}). White maintains solid king defense.`;
+        } else if (cp > -500) {
+            statusMsg = `Black holds a clear advantage (-${evalNum}). White is on the defensive.`;
+        } else {
+            statusMsg = `Black holds a winning -${evalNum} advantage. White's defense is collapsing.`;
+        }
+
+        const board = this.getCurrentBoard();
+        const turn = this.getCurrentTurn();
+        const inCheck = ChessRulesEngine.isInCheck(turn, board);
+        if (inCheck) {
+            statusMsg = `⚠️ ${turn === 'w' ? 'White' : 'Black'} King is in Check! ` + statusMsg;
+        }
+
+        this.oracleTextEl.textContent = statusMsg;
     }
 
     async requestHint() {

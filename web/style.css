@@ -552,16 +552,22 @@ html, body {
 
 .move-grade {
     display: inline-block;
-    padding: 2px 6px;
+    padding: 2px 8px;
     border-radius: 3px;
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
     margin-top: 4px;
+    letter-spacing: 0.5px;
 }
 
-.move-grade.blunder { background: #8b2525; color: #fff8e7; }
-.move-grade.brilliant { background: #245c8b; color: #fff8e7; }
+.move-grade.brilliant { background: #0284c7; color: #fff8e7; }
+.move-grade.best { background: #16a34a; color: #fff8e7; }
+.move-grade.good { background: #0d9488; color: #fff8e7; }
+.move-grade.inaccuracy { background: #d97706; color: #fff8e7; }
+.move-grade.mistake { background: #ea580c; color: #fff8e7; }
+.move-grade.blunder { background: #dc2626; color: #fff8e7; }
+.move-grade.book { background: #9333ea; color: #fff8e7; }
 
 /* Move History Card */
 .move-history-card {
