@@ -471,6 +471,7 @@ class ChessApp {
         this.promotionModal = document.getElementById('promotion-modal');
         this.promotionChoicesEl = document.getElementById('promotion-choices');
         this.gameoverModal = document.getElementById('gameover-modal');
+        this.gameoverIconEl = document.getElementById('gameover-icon');
         this.gameoverTitleEl = document.getElementById('gameover-title');
         this.gameoverSubEl = document.getElementById('gameover-sub');
     }
@@ -507,6 +508,9 @@ class ChessApp {
             this.gameoverModal.classList.add('hidden');
             this.initPlayMode();
             this.startMatch();
+        });
+        document.getElementById('modal-review-btn').addEventListener('click', () => {
+            this.gameoverModal.classList.add('hidden');
         });
 
         // Global Keyboard Shortcuts
@@ -1414,6 +1418,13 @@ class ChessApp {
     showGameOver(title, sub) {
         this.gameoverTitleEl.textContent = title;
         this.gameoverSubEl.textContent = sub;
+        if (this.gameoverIconEl) {
+            const lower = title.toLowerCase();
+            if (lower.includes('checkmate')) this.gameoverIconEl.textContent = '👑';
+            else if (lower.includes('resign')) this.gameoverIconEl.textContent = '🏳️';
+            else if (lower.includes('draw') || lower.includes('stalemate') || lower.includes('50-move') || lower.includes('repetition') || lower.includes('material')) this.gameoverIconEl.textContent = '🤝';
+            else this.gameoverIconEl.textContent = '🏆';
+        }
         this.gameoverModal.classList.remove('hidden');
     }
 

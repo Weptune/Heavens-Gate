@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Heaven's Gate Chess Engine - Master Edition</title>
     <link rel="icon" href="pieces/wK.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="style.css?v=19">
+    <link rel="stylesheet" href="style.css?v=20">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -65,7 +65,8 @@
                     <!-- Promotion Modal -->
                     <div class="modal hidden" id="promotion-modal">
                         <div class="modal-card">
-                            <h4>Promote Pawn</h4>
+                            <h4 class="modal-title">Promote Pawn</h4>
+                            <p class="modal-subtitle">Choose a piece to promote to:</p>
                             <div class="promo-grid" id="promotion-choices"></div>
                         </div>
                     </div>
@@ -73,10 +74,12 @@
                     <!-- Game Over Modal -->
                     <div class="modal hidden" id="gameover-modal">
                         <div class="modal-card">
-                            <h3 id="gameover-title">Checkmate</h3>
-                            <p id="gameover-sub">White won the match.</p>
-                            <div class="modal-actions">
-                                <button class="btn btn-primary" id="modal-restart-btn">New Game</button>
+                            <div class="modal-icon-badge" id="gameover-icon">🏆</div>
+                            <h3 class="modal-title" id="gameover-title">Checkmate</h3>
+                            <p class="modal-subtitle" id="gameover-sub">White won the match.</p>
+                            <div class="modal-btn-group">
+                                <button class="btn btn-primary modal-action-btn" id="modal-restart-btn">New Game</button>
+                                <button class="btn btn-secondary modal-action-btn" id="modal-review-btn">Review Board</button>
                             </div>
                         </div>
                     </div>
@@ -254,6 +257,6 @@
 
     </main>
 
-    <script src="app.js?v=19"></script>
+    <script src="app.js?v=20"></script>
 </body>
 </html>
