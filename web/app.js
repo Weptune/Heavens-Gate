@@ -854,7 +854,8 @@ class ChessApp {
 
         const wMat = wCounts.P * 1 + wCounts.N * 3 + wCounts.B * 3 + wCounts.R * 5 + wCounts.Q * 9;
         const bMat = bCounts.p * 1 + bCounts.n * 3 + bCounts.b * 3 + bCounts.r * 5 + bCounts.q * 9;
-        const diff = wMat - bMat;
+        const wDiff = wMat - bMat; // Positive if White ahead, negative if Black ahead
+        const bDiff = bMat - wMat; // Positive if Black ahead, negative if White ahead
 
         const renderCaptured = (list) => {
             const folder = this.pieceSet === 'cburnett' ? '' : `${this.pieceSet}/`;
@@ -869,29 +870,35 @@ class ChessApp {
         const topCaptured = isFlipped ? wCaptured : bCaptured;
         const bottomCaptured = isFlipped ? bCaptured : wCaptured;
 
-        const topAdvantage = isFlipped ? (diff > 0 ? `+${diff}` : null) : (diff < 0 ? `+${-diff}` : null);
-        const bottomAdvantage = isFlipped ? (diff < 0 ? `+${-diff}` : null) : (diff > 0 ? `+${diff}` : null);
+        const topDiff = isFlipped ? wDiff : bDiff;
+        const bottomDiff = isFlipped ? bDiff : wDiff;
 
         if (this.topCapturedPiecesEl) this.topCapturedPiecesEl.innerHTML = renderCaptured(topCaptured);
         if (this.bottomCapturedPiecesEl) this.bottomCapturedPiecesEl.innerHTML = renderCaptured(bottomCaptured);
 
-        if (this.topMaterialDiffEl) {
-            if (topAdvantage) {
-                this.topMaterialDiffEl.textContent = topAdvantage;
-                this.topMaterialDiffEl.classList.remove('hidden');
-            } else {
-                this.topMaterialDiffEl.classList.add('hidden');
-            }
-        }
+        const hasCaptures = (wCaptured.length > 0 || bCaptured.length > 0);
 
-        if (this.bottomMaterialDiffEl) {
-            if (bottomAdvantage) {
-                this.bottomMaterialDiffEl.textContent = bottomAdvantage;
-                this.bottomMaterialDiffEl.classList.remove('hidden');
+        const applyBadge = (el, diffVal) => {
+            if (!el) return;
+            el.classList.remove('lead', 'trail', 'even', 'hidden');
+            if (diffVal > 0) {
+                el.textContent = `+${diffVal}`;
+                el.classList.add('lead');
+            } else if (diffVal < 0) {
+                el.textContent = `${diffVal}`;
+                el.classList.add('trail');
             } else {
-                this.bottomMaterialDiffEl.classList.add('hidden');
+                if (hasCaptures) {
+                    el.textContent = `= 0`;
+                    el.classList.add('even');
+                } else {
+                    el.classList.add('hidden');
+                }
             }
-        }
+        };
+
+        applyBadge(this.topMaterialDiffEl, topDiff);
+        applyBadge(this.bottomMaterialDiffEl, bottomDiff);
     }
 
     handleSquareClick(r, c) {
