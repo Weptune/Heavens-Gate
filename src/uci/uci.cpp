@@ -62,6 +62,8 @@ void UCI::handle_go(const std::string& line, Board& board, SearchEngine& engine)
     if (uci_book.is_loaded()) {
         Move book_move = uci_book.probe(board);
         if (static_cast<bool>(book_move)) {
+            int book_eval = Evaluator::evaluate_fast(board);
+            std::cout << "info depth 1 score cp " << book_eval << " nodes 1 nps 1000000 time 0 hashfull 0 pv " << move_to_uci(book_move) << " string Book move" << std::endl;
             std::cout << "bestmove " << move_to_uci(book_move) << std::endl;
             return;
         }

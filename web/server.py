@@ -67,6 +67,9 @@ class EngineBridge:
             nodes = 0
             nps = 0
             pv = ""
+            completed_depth = depth
+            time_ms = 0
+            hashfull = 0
 
             while True:
                 line = self.process.stdout.readline()
@@ -76,7 +79,12 @@ class EngineBridge:
                 if line.startswith("info"):
                     tokens = line.split()
                     for i in range(len(tokens)):
-                        if tokens[i] == "score" and i + 2 < len(tokens):
+                        if tokens[i] == "depth" and i + 1 < len(tokens):
+                            try:
+                                completed_depth = int(tokens[i+1])
+                            except ValueError:
+                                pass
+                        elif tokens[i] == "score" and i + 2 < len(tokens):
                             if tokens[i+1] == "cp":
                                 eval_score = int(tokens[i+2])
                                 is_mate = False
@@ -85,9 +93,25 @@ class EngineBridge:
                                 is_mate = True
                                 eval_score = 29000 if mate_in > 0 else -29000
                         elif tokens[i] == "nodes" and i + 1 < len(tokens):
-                            nodes = int(tokens[i+1])
+                            try:
+                                nodes = int(tokens[i+1])
+                            except ValueError:
+                                pass
                         elif tokens[i] == "nps" and i + 1 < len(tokens):
-                            nps = int(tokens[i+1])
+                            try:
+                                nps = int(tokens[i+1])
+                            except ValueError:
+                                pass
+                        elif tokens[i] == "time" and i + 1 < len(tokens):
+                            try:
+                                time_ms = int(tokens[i+1])
+                            except ValueError:
+                                pass
+                        elif tokens[i] == "hashfull" and i + 1 < len(tokens):
+                            try:
+                                hashfull = int(tokens[i+1])
+                            except ValueError:
+                                pass
                         elif tokens[i] == "pv":
                             pv = " ".join(tokens[i+1:])
                 elif line.startswith("bestmove"):
@@ -96,13 +120,22 @@ class EngineBridge:
                         best_move = parts[1]
                     break
 
+            import math
+            # Standard logistic chess win probability formula
+            win_chance = 50.0 + 50.0 * (2.0 / (1.0 + math.exp(-0.00368208 * eval_score)) - 1.0)
+            win_chance = max(0.0, min(100.0, win_chance))
+
             return {
                 "best_move": best_move,
                 "score": eval_score,
                 "is_mate": is_mate,
                 "mate_in": mate_in,
+                "depth": completed_depth,
                 "nodes": nodes,
                 "nps": nps,
+                "time_ms": time_ms,
+                "hashfull": hashfull,
+                "win_chance": round(win_chance, 1),
                 "pv": pv
             }
 

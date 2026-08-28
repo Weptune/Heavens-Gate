@@ -375,7 +375,17 @@ class ChessApp {
         this.teleNodesEl = document.getElementById('tele-nodes');
         this.teleNpsEl = document.getElementById('tele-nps');
         this.teleDepthEl = document.getElementById('tele-depth');
+        this.teleTimeEl = document.getElementById('tele-time');
+        this.teleHashfullEl = document.getElementById('tele-hashfull');
+        this.teleWinchanceEl = document.getElementById('tele-winchance');
         this.telePvEl = document.getElementById('tele-pv');
+        this.teleEngineTagEl = document.getElementById('tele-engine-tag');
+
+        this.quickNpsEl = document.getElementById('quick-nps');
+        this.quickDepthEl = document.getElementById('quick-depth');
+        this.quickNodesEl = document.getElementById('quick-nodes');
+        this.quickTimeEl = document.getElementById('quick-time');
+
         this.oracleTextEl = document.getElementById('oracle-text');
         this.openingBadgeEl = document.getElementById('opening-badge');
         this.moveGradeEl = document.getElementById('move-grade-badge');
@@ -509,6 +519,7 @@ class ChessApp {
             cardTelemetry.classList.remove('hidden');
 
             this.renderPlayView();
+            this.runLiveAnalysis();
         }
     }
 
@@ -950,7 +961,7 @@ class ChessApp {
         }
         this.gameState.moveHistory.push(uciStr);
 
-        const isWhite = this.gameState.turn === 'b';
+        const isWhite = (this.gameState.turn === 'b');
         if (isWhite) {
             const row = document.createElement('div');
             row.className = 'history-row';
@@ -958,8 +969,9 @@ class ChessApp {
             row.innerHTML = `<span class="history-num">${this.gameState.fullMoveNumber}.</span><span class="history-move">${uciStr}</span><span class="history-move"></span>`;
             this.moveHistoryEl.appendChild(row);
         } else {
-            const row = document.getElementById(`hist-row-${this.gameState.fullMoveNumber}`);
-            if (row) {
+            const rowNum = this.gameState.fullMoveNumber - 1;
+            const row = document.getElementById(`hist-row-${rowNum}`);
+            if (row && row.children.length >= 3) {
                 row.children[2].textContent = uciStr;
             }
         }
@@ -1060,7 +1072,7 @@ class ChessApp {
             });
             const data = await resp.json();
 
-            if (data.best_move && this.gameState.isGameActive && this.activeTab === 'play') {
+            if (data.best_move && this.gameState.isGameActive && (this.activeTab === 'play' || this.activeTab === 'telemetry')) {
                 const src = data.best_move.substring(0, 2);
                 const dst = data.best_move.substring(2, 4);
                 const promo = data.best_move.length > 4 ? data.best_move[4] : null;
@@ -1069,11 +1081,7 @@ class ChessApp {
 
                 this.executeMove(srcR, srcC, dstR, dstC, data.best_move, promo);
 
-                this.teleNodesEl.textContent = Number(data.nodes || 0).toLocaleString();
-                this.teleNpsEl.textContent = `${(Number(data.nps || 0) / 1e6).toFixed(2)}M NPS`;
-                this.teleDepthEl.textContent = `Depth ${depth}`;
-                this.telePvEl.textContent = data.pv || '--';
-
+                this.updateTelemetry(data);
                 this.updateEvalBar(data.score || 0);
                 this.updateOracle(data.score || 0, data.pv);
             }
@@ -1081,9 +1089,53 @@ class ChessApp {
             console.error("Engine API error:", e);
         } finally {
             this.gameState.isThinking = false;
-            if (this.gameState.isGameActive && this.activeTab === 'play') {
+            if (this.gameState.isGameActive && (this.activeTab === 'play' || this.activeTab === 'telemetry')) {
                 this.setStatus("Match Active", false);
             }
+        }
+    }
+
+    updateTelemetry(data) {
+        if (!data) return;
+        const nodesStr = Number(data.nodes || 0).toLocaleString();
+        const npsM = (Number(data.nps || 0) / 1e6).toFixed(2);
+        const depthStr = `Depth ${data.depth || 12}`;
+        const timeStr = `${data.time_ms || 0} ms`;
+        const hashStr = `${((data.hashfull || 0) / 10).toFixed(1)}%`;
+        const winStr = `${data.win_chance !== undefined ? data.win_chance : 50.0}%`;
+        const pvStr = data.pv || '--';
+
+        if (this.teleNodesEl) this.teleNodesEl.textContent = nodesStr;
+        if (this.teleNpsEl) this.teleNpsEl.textContent = `${npsM}M NPS`;
+        if (this.teleDepthEl) this.teleDepthEl.textContent = depthStr;
+        if (this.teleTimeEl) this.teleTimeEl.textContent = timeStr;
+        if (this.teleHashfullEl) this.teleHashfullEl.textContent = hashStr;
+        if (this.teleWinchanceEl) this.teleWinchanceEl.textContent = winStr;
+        if (this.telePvEl) this.telePvEl.textContent = pvStr;
+
+        if (this.quickNpsEl) this.quickNpsEl.textContent = `${npsM}M NPS`;
+        if (this.quickDepthEl) this.quickDepthEl.textContent = depthStr;
+        if (this.quickNodesEl) this.quickNodesEl.textContent = nodesStr;
+        if (this.quickTimeEl) this.quickTimeEl.textContent = timeStr;
+    }
+
+    async runLiveAnalysis() {
+        if (this.gameState.isThinking || this.activeTab !== 'telemetry') return;
+        const fen = this.getFEN();
+        try {
+            const resp = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fen, depth: 12 })
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                this.updateTelemetry(data);
+                this.updateEvalBar(data.score || 0);
+                this.updateOracle(data.score || 0, data.pv);
+            }
+        } catch (e) {
+            console.error("Live analysis error:", e);
         }
     }
 

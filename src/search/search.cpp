@@ -195,6 +195,10 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         depth++;
     }
 
+    if (ply < MaxSearchDepth) {
+        pv_table_.init_ply(ply);
+    }
+
     int orig_alpha = alpha;
     Move tt_move = pv_move;
     int tt_score = -ScoreInfinity;

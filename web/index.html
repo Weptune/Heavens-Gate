@@ -98,6 +98,14 @@
                 <button class="btn btn-secondary" id="hint-btn">Hint</button>
                 <button class="btn btn-secondary" id="threat-toggle-btn">Threats</button>
             </div>
+
+            <!-- Live Engine Telemetry Quick Bar (Visible in all modes) -->
+            <div class="telemetry-bar" id="live-telemetry-bar">
+                <div class="tele-pill"><span class="tele-label">SPEED</span> <strong id="quick-nps">35.0M NPS</strong></div>
+                <div class="tele-pill"><span class="tele-label">DEPTH</span> <strong id="quick-depth">Depth 12</strong></div>
+                <div class="tele-pill"><span class="tele-label">NODES</span> <strong id="quick-nodes">--</strong></div>
+                <div class="tele-pill"><span class="tele-label">TIME</span> <strong id="quick-time">--</strong></div>
+            </div>
         </section>
 
         <!-- Right Column: Sidebar Panels -->
@@ -193,10 +201,11 @@
                 </div>
             </div>
 
-            <!-- Panel: Search Telemetry (hidden by default) -->
+            <!-- Panel: Comprehensive Search Telemetry -->
             <div class="sidebar-card hidden" id="card-telemetry">
                 <div class="card-header">
                     <span>Engine Telemetry</span>
+                    <span class="card-tag" id="tele-engine-tag">35.0M NPS</span>
                 </div>
                 <div class="telemetry-table">
                     <div class="tele-row">
@@ -204,7 +213,7 @@
                         <strong id="tele-nps">0 NPS</strong>
                     </div>
                     <div class="tele-row">
-                        <span>Nodes:</span>
+                        <span>Search Nodes:</span>
                         <strong id="tele-nodes">0</strong>
                     </div>
                     <div class="tele-row">
@@ -212,8 +221,20 @@
                         <strong id="tele-depth">Depth 12</strong>
                     </div>
                     <div class="tele-row">
+                        <span>Search Time:</span>
+                        <strong id="tele-time">0 ms</strong>
+                    </div>
+                    <div class="tele-row">
+                        <span>TT Hashfull:</span>
+                        <strong id="tele-hashfull">0.0%</strong>
+                    </div>
+                    <div class="tele-row">
+                        <span>Win Probability:</span>
+                        <strong id="tele-winchance">50.0%</strong>
+                    </div>
+                    <div class="tele-row tele-pv-row">
                         <span>Principal Variation:</span>
-                        <span class="tele-pv-text" id="tele-pv">--</span>
+                        <div class="tele-pv-box" id="tele-pv">--</div>
                     </div>
                 </div>
             </div>

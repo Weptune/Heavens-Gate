@@ -41,17 +41,28 @@ public:
         length_.fill(0);
     }
 
+    void init_ply(int ply) noexcept {
+        if (ply < MaxSearchDepth) {
+            length_[ply] = ply;
+        }
+    }
+
     void update(int ply, Move move) noexcept {
+        if (ply >= MaxSearchDepth) return;
         table_[ply][ply] = move;
-        for (int next = ply + 1; next < length_[ply + 1]; ++next) {
+        int next_len = (ply + 1 < MaxSearchDepth) ? length_[ply + 1] : (ply + 1);
+        if (next_len < ply + 1) next_len = ply + 1;
+        for (int next = ply + 1; next < next_len && next < MaxSearchDepth; ++next) {
             table_[ply][next] = table_[ply + 1][next];
         }
-        length_[ply] = length_[ply + 1];
+        length_[ply] = next_len;
     }
 
     void set_move(int ply, Move move) noexcept {
-        table_[ply][ply] = move;
-        length_[ply] = ply + 1;
+        if (ply < MaxSearchDepth) {
+            table_[ply][ply] = move;
+            length_[ply] = ply + 1;
+        }
     }
 
     PrincipalVariation get_pv(int depth) const {
