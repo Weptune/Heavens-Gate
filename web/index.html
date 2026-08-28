@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Heaven's Gate Chess Engine - Master Edition</title>
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=13">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -34,13 +34,17 @@
         <!-- Left Column: Chess Board & Controls -->
         <section class="board-column">
             
-            <!-- Top HUD (Black) -->
+            <!-- Top HUD -->
             <div class="player-hud" id="top-hud">
                 <div class="hud-left">
                     <div class="avatar" id="top-avatar">AI</div>
                     <div class="player-details">
                         <span class="player-name" id="top-player-name">Heaven's Gate</span>
                         <span class="player-rating">Master Edition (~3450 Elo)</span>
+                    </div>
+                    <div class="captured-box" id="top-captured">
+                        <div class="captured-pieces" id="top-captured-pieces"></div>
+                        <span class="material-diff hidden" id="top-material-diff">+0</span>
                     </div>
                 </div>
                 <div class="clock-display" id="top-clock">03:00</div>
@@ -78,13 +82,17 @@
                 </div>
             </div>
 
-            <!-- Bottom HUD (White) -->
+            <!-- Bottom HUD -->
             <div class="player-hud" id="bottom-hud">
                 <div class="hud-left">
                     <div class="avatar" id="bottom-avatar">YOU</div>
                     <div class="player-details">
                         <span class="player-name" id="bottom-player-name">Player</span>
                         <span class="player-rating">Challenger</span>
+                    </div>
+                    <div class="captured-box" id="bottom-captured">
+                        <div class="captured-pieces" id="bottom-captured-pieces"></div>
+                        <span class="material-diff hidden" id="bottom-material-diff">+0</span>
                     </div>
                 </div>
                 <div class="clock-display" id="bottom-clock">03:00</div>
@@ -243,6 +251,6 @@
 
     </main>
 
-    <script src="app.js?v=12"></script>
+    <script src="app.js?v=13"></script>
 </body>
 </html>

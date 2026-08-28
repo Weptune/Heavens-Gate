@@ -407,6 +407,11 @@ class ChessApp {
         this.topClockEl = document.getElementById('top-clock');
         this.bottomClockEl = document.getElementById('bottom-clock');
         this.engineStatusEl = document.getElementById('engine-status');
+        this.topCapturedPiecesEl = document.getElementById('top-captured-pieces');
+        this.topMaterialDiffEl = document.getElementById('top-material-diff');
+        this.bottomCapturedPiecesEl = document.getElementById('bottom-captured-pieces');
+        this.bottomMaterialDiffEl = document.getElementById('bottom-material-diff');
+
         this.statusDotEl = document.getElementById('status-dot');
         this.heatmapCanvas = document.getElementById('heatmap-canvas');
         this.promotionModal = document.getElementById('promotion-modal');
@@ -803,6 +808,90 @@ class ChessApp {
         }
 
         if (this.showThreatMap) this.drawThreatMap();
+        this.updateCapturedPiecesAndMaterial();
+    }
+
+    updateCapturedPiecesAndMaterial() {
+        const board = this.getCurrentBoard();
+        const isFlipped = this.getIsFlipped();
+
+        const wCounts = { P: 0, N: 0, B: 0, R: 0, Q: 0 };
+        const bCounts = { p: 0, n: 0, b: 0, r: 0, q: 0 };
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = board[r][c];
+                if (wCounts[p] !== undefined) wCounts[p]++;
+                if (bCounts[p] !== undefined) bCounts[p]++;
+            }
+        }
+
+        // Captured by White (Black pieces missing from board)
+        const wCaptured = [];
+        const missingBp = Math.max(0, 8 - bCounts.p);
+        const missingBn = Math.max(0, 2 - bCounts.n);
+        const missingBb = Math.max(0, 2 - bCounts.b);
+        const missingBr = Math.max(0, 2 - bCounts.r);
+        const missingBq = Math.max(0, 1 - bCounts.q);
+        for (let i = 0; i < missingBq; i++) wCaptured.push('q');
+        for (let i = 0; i < missingBr; i++) wCaptured.push('r');
+        for (let i = 0; i < missingBb; i++) wCaptured.push('b');
+        for (let i = 0; i < missingBn; i++) wCaptured.push('n');
+        for (let i = 0; i < missingBp; i++) wCaptured.push('p');
+
+        // Captured by Black (White pieces missing from board)
+        const bCaptured = [];
+        const missingWp = Math.max(0, 8 - wCounts.P);
+        const missingWn = Math.max(0, 2 - wCounts.N);
+        const missingWb = Math.max(0, 2 - wCounts.B);
+        const missingWr = Math.max(0, 2 - wCounts.R);
+        const missingWq = Math.max(0, 1 - wCounts.Q);
+        for (let i = 0; i < missingWq; i++) bCaptured.push('Q');
+        for (let i = 0; i < missingWr; i++) bCaptured.push('R');
+        for (let i = 0; i < missingWb; i++) bCaptured.push('B');
+        for (let i = 0; i < missingWn; i++) bCaptured.push('N');
+        for (let i = 0; i < missingWp; i++) bCaptured.push('P');
+
+        const wMat = wCounts.P * 1 + wCounts.N * 3 + wCounts.B * 3 + wCounts.R * 5 + wCounts.Q * 9;
+        const bMat = bCounts.p * 1 + bCounts.n * 3 + bCounts.b * 3 + bCounts.r * 5 + bCounts.q * 9;
+        const diff = wMat - bMat;
+
+        const renderCaptured = (list) => {
+            const folder = this.pieceSet === 'cburnett' ? '' : `${this.pieceSet}/`;
+            return list.map(p => {
+                const code = PIECE_NAMES[p];
+                return `<img src="pieces/${folder}${code}.svg" class="captured-icon" alt="${p}" />`;
+            }).join('');
+        };
+
+        // If !isFlipped: Top HUD is Black, Bottom HUD is White
+        // If isFlipped: Top HUD is White, Bottom HUD is Black
+        const topCaptured = isFlipped ? wCaptured : bCaptured;
+        const bottomCaptured = isFlipped ? bCaptured : wCaptured;
+
+        const topAdvantage = isFlipped ? (diff > 0 ? `+${diff}` : null) : (diff < 0 ? `+${-diff}` : null);
+        const bottomAdvantage = isFlipped ? (diff < 0 ? `+${-diff}` : null) : (diff > 0 ? `+${diff}` : null);
+
+        if (this.topCapturedPiecesEl) this.topCapturedPiecesEl.innerHTML = renderCaptured(topCaptured);
+        if (this.bottomCapturedPiecesEl) this.bottomCapturedPiecesEl.innerHTML = renderCaptured(bottomCaptured);
+
+        if (this.topMaterialDiffEl) {
+            if (topAdvantage) {
+                this.topMaterialDiffEl.textContent = topAdvantage;
+                this.topMaterialDiffEl.classList.remove('hidden');
+            } else {
+                this.topMaterialDiffEl.classList.add('hidden');
+            }
+        }
+
+        if (this.bottomMaterialDiffEl) {
+            if (bottomAdvantage) {
+                this.bottomMaterialDiffEl.textContent = bottomAdvantage;
+                this.bottomMaterialDiffEl.classList.remove('hidden');
+            } else {
+                this.bottomMaterialDiffEl.classList.add('hidden');
+            }
+        }
     }
 
     handleSquareClick(r, c) {
