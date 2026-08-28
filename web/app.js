@@ -1429,9 +1429,13 @@ class ChessApp {
         }
     }
 
+    cpToWinProb(cp) {
+        const normalized = Math.max(-2000, Math.min(2000, cp));
+        return 1.0 / (1.0 + Math.pow(10, -normalized / 400.0));
+    }
+
     updateEvalBar(scoreCp) {
-        const normalized = Math.max(-1000, Math.min(1000, scoreCp));
-        const whiteWinProb = 1 / (1 + Math.pow(10, -normalized / 400));
+        const whiteWinProb = this.cpToWinProb(scoreCp);
         const fillPct = (whiteWinProb * 100).toFixed(1);
         this.evalFillEl.style.height = `${fillPct}%`;
 
@@ -1442,32 +1446,36 @@ class ChessApp {
     updateOracle(scoreCp, pv, movedBy = null) {
         const cp = scoreCp;
         const state = (this.activeTab === 'telemetry') ? this.telemetryState : this.gameState;
-        const prevScore = state.lastEvalScore || 0;
+        const prevScore = state.lastEvalScore !== undefined ? state.lastEvalScore : 0;
         state.lastEvalScore = cp;
 
         this.moveGradeEl.classList.remove('hidden', 'brilliant', 'best', 'good', 'inaccuracy', 'mistake', 'blunder', 'book');
 
-        // 1. Move Quality Classification (if a move was just executed)
+        // 1. Move Quality Classification via Win Probability Loss (Lichess/Chess.com standard)
         if (movedBy) {
-            // Delta from the perspective of the side who just moved
-            // If White moved: delta = cp - prevScore (positive = White improved)
-            // If Black moved: delta = prevScore - cp (positive = Black improved)
-            const delta = (movedBy === 'w') ? (cp - prevScore) : (prevScore - cp);
-            const mover = (movedBy === 'w') ? "White" : "Black";
+            const prevWp = this.cpToWinProb(prevScore);
+            const currWp = this.cpToWinProb(cp);
 
-            if (delta >= 180) {
+            // Mover's win probability before and after the move
+            const moverPrevWp = (movedBy === 'w') ? prevWp : (1.0 - prevWp);
+            const moverCurrWp = (movedBy === 'w') ? currWp : (1.0 - currWp);
+            const wpLoss = Math.max(0, moverPrevWp - moverCurrWp);
+            const wpGain = moverCurrWp - moverPrevWp;
+
+            // Brilliant: finding a game-deciding tactic / breakthrough that swings win probability
+            if (wpGain >= 0.18 && moverCurrWp >= 0.65) {
                 this.moveGradeEl.className = 'move-grade brilliant';
                 this.moveGradeEl.innerHTML = `<span class="grade-text">Brilliant</span>`;
-            } else if (delta >= -25) {
+            } else if (wpLoss <= 0.015) {
                 this.moveGradeEl.className = 'move-grade best';
                 this.moveGradeEl.innerHTML = `<span class="grade-text">Best Move</span>`;
-            } else if (delta >= -65) {
+            } else if (wpLoss <= 0.045) {
                 this.moveGradeEl.className = 'move-grade good';
                 this.moveGradeEl.innerHTML = `<span class="grade-text">Good</span>`;
-            } else if (delta >= -140) {
+            } else if (wpLoss <= 0.10) {
                 this.moveGradeEl.className = 'move-grade inaccuracy';
                 this.moveGradeEl.innerHTML = `<span class="grade-text">Inaccuracy</span>`;
-            } else if (delta >= -280) {
+            } else if (wpLoss <= 0.22) {
                 this.moveGradeEl.className = 'move-grade mistake';
                 this.moveGradeEl.innerHTML = `<span class="grade-text">Mistake</span>`;
             } else {
