@@ -459,8 +459,10 @@ class ChessApp {
         this.topClockEl = document.getElementById('top-clock');
         this.bottomClockEl = document.getElementById('bottom-clock');
         this.engineStatusEl = document.getElementById('engine-status');
+        this.topCapturedBoxEl = document.getElementById('top-captured');
         this.topCapturedPiecesEl = document.getElementById('top-captured-pieces');
         this.topMaterialDiffEl = document.getElementById('top-material-diff');
+        this.bottomCapturedBoxEl = document.getElementById('bottom-captured');
         this.bottomCapturedPiecesEl = document.getElementById('bottom-captured-pieces');
         this.bottomMaterialDiffEl = document.getElementById('bottom-material-diff');
 
@@ -941,8 +943,21 @@ class ChessApp {
         const topDiff = isFlipped ? wDiff : bDiff;
         const bottomDiff = isFlipped ? bDiff : wDiff;
 
-        if (this.topCapturedPiecesEl) this.topCapturedPiecesEl.innerHTML = renderCaptured(topCaptured);
-        if (this.bottomCapturedPiecesEl) this.bottomCapturedPiecesEl.innerHTML = renderCaptured(bottomCaptured);
+        if (topCaptured.length > 0) {
+            if (this.topCapturedBoxEl) this.topCapturedBoxEl.classList.remove('hidden');
+            if (this.topCapturedPiecesEl) this.topCapturedPiecesEl.innerHTML = renderCaptured(topCaptured);
+        } else {
+            if (this.topCapturedBoxEl) this.topCapturedBoxEl.classList.add('hidden');
+            if (this.topCapturedPiecesEl) this.topCapturedPiecesEl.innerHTML = '';
+        }
+
+        if (bottomCaptured.length > 0) {
+            if (this.bottomCapturedBoxEl) this.bottomCapturedBoxEl.classList.remove('hidden');
+            if (this.bottomCapturedPiecesEl) this.bottomCapturedPiecesEl.innerHTML = renderCaptured(bottomCaptured);
+        } else {
+            if (this.bottomCapturedBoxEl) this.bottomCapturedBoxEl.classList.add('hidden');
+            if (this.bottomCapturedPiecesEl) this.bottomCapturedPiecesEl.innerHTML = '';
+        }
 
         const hasCaptures = (wCaptured.length > 0 || bCaptured.length > 0);
 
