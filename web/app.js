@@ -1488,17 +1488,20 @@ class ChessApp {
 
         // 2. Comprehensive Dual-Sided Positional Commentary
         const evalNum = (Math.abs(cp) / 100).toFixed(1);
+        const moveCount = (this.activeTab === 'telemetry' ? this.telemetryState.uciHistory : this.gameState.uciHistory).length;
         let statusMsg = "";
 
-        if (cp >= 500) {
+        if (moveCount === 0 && Math.abs(cp) <= 65) {
+            statusMsg = `Balanced starting position (+${evalNum} first-move initiative). Full piece coordination for both sides.`;
+        } else if (cp >= 500) {
             statusMsg = `White holds a winning +${evalNum} advantage. Black is under heavy mating pressure.`;
-        } else if (cp >= 150) {
+        } else if (cp >= 200) {
             statusMsg = `White holds a clear advantage (+${evalNum}). Black must defend carefully.`;
-        } else if (cp >= 40) {
+        } else if (cp >= 75) {
             statusMsg = `White has a slight edge (+${evalNum}). Black maintains active piece counterplay.`;
-        } else if (cp > -40) {
+        } else if (cp > -75) {
             statusMsg = `Equal position (${cp >= 0 ? '+' : ''}${(cp/100).toFixed(1)}). Both White and Black have balanced piece coordination.`;
-        } else if (cp > -150) {
+        } else if (cp > -200) {
             statusMsg = `Black has a slight edge (-${evalNum}). White maintains solid king defense.`;
         } else if (cp > -500) {
             statusMsg = `Black holds a clear advantage (-${evalNum}). White is on the defensive.`;
