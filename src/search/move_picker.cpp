@@ -95,14 +95,9 @@ void MovePicker::add_history_score(Color side, Move move, int depth) noexcept {
     size_t from_idx = static_cast<size_t>(move.from());
     size_t to_idx = static_cast<size_t>(move.to());
 
-    history_scores_[c_idx][from_idx][to_idx] += depth * depth;
-    if (history_scores_[c_idx][from_idx][to_idx] > 10000) {
-        for (auto& from_arr : history_scores_[c_idx]) {
-            for (auto& val : from_arr) {
-                val /= 2;
-            }
-        }
-    }
+    int bonus = std::clamp(depth * depth, -400, 400);
+    int& val = history_scores_[c_idx][from_idx][to_idx];
+    val += bonus - (val * std::abs(bonus)) / 16384;
 }
 
 int MovePicker::get_history_score(Color c, Move move) const noexcept {
@@ -131,16 +126,9 @@ void MovePicker::add_continuation_history(const Board& board, Move prev_move, Mo
     size_t prev_to = static_cast<size_t>(prev_move.to());
 
     if (curr_p_idx < 14 && prev_p_idx < 14) {
-        cont_tables_->cont_history[curr_p_idx][curr_to][prev_p_idx][prev_to] += depth * depth;
-        if (cont_tables_->cont_history[curr_p_idx][curr_to][prev_p_idx][prev_to] > 10000) {
-            for (auto& a1 : cont_tables_->cont_history) {
-                for (auto& a2 : a1) {
-                    for (auto& a3 : a2) {
-                        for (auto& val : a3) val /= 2;
-                    }
-                }
-            }
-        }
+        int bonus = std::clamp(depth * depth, -400, 400);
+        int& val = cont_tables_->cont_history[curr_p_idx][curr_to][prev_p_idx][prev_to];
+        val += bonus - (val * std::abs(bonus)) / 16384;
     }
 }
 
@@ -175,16 +163,9 @@ void MovePicker::add_continuation_history_2(const Board& board, Move prev2_move,
     size_t prev2_to = static_cast<size_t>(prev2_move.to());
 
     if (curr_p_idx < 14 && prev2_p_idx < 14) {
-        cont_tables_->cont_history_2[curr_p_idx][curr_to][prev2_p_idx][prev2_to] += depth * depth;
-        if (cont_tables_->cont_history_2[curr_p_idx][curr_to][prev2_p_idx][prev2_to] > 10000) {
-            for (auto& a1 : cont_tables_->cont_history_2) {
-                for (auto& a2 : a1) {
-                    for (auto& a3 : a2) {
-                        for (auto& val : a3) val /= 2;
-                    }
-                }
-            }
-        }
+        int bonus = std::clamp(depth * depth, -400, 400);
+        int& val = cont_tables_->cont_history_2[curr_p_idx][curr_to][prev2_p_idx][prev2_to];
+        val += bonus - (val * std::abs(bonus)) / 16384;
     }
 }
 
@@ -213,14 +194,9 @@ void MovePicker::add_capture_history(Piece attacker, Square to, PieceType victim
     size_t vic_idx = static_cast<size_t>(victim);
 
     if (att_idx < 14 && to_idx < 64 && vic_idx < 6) {
-        cont_tables_->capture_history[att_idx][to_idx][vic_idx] += depth * depth;
-        if (cont_tables_->capture_history[att_idx][to_idx][vic_idx] > 10000) {
-            for (auto& a1 : cont_tables_->capture_history) {
-                for (auto& a2 : a1) {
-                    for (auto& val : a2) val /= 2;
-                }
-            }
-        }
+        int bonus = std::clamp(depth * depth, -400, 400);
+        int& val = cont_tables_->capture_history[att_idx][to_idx][vic_idx];
+        val += bonus - (val * std::abs(bonus)) / 16384;
     }
 }
 
@@ -236,9 +212,7 @@ int MovePicker::get_capture_history(Piece attacker, Square to, PieceType victim)
     return 0;
 }
 
-void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move tt_move, Move prev_move, Move prev2_move) const noexcept {
-    std::array<int, 256> scores{};
-
+void MovePicker::score_moves(const Board& board, MoveList& moves, std::array<int, 256>& scores, int ply, Move tt_move, Move prev_move, Move prev2_move) const noexcept {
     Move killer1 = (ply < 256) ? killer_moves_[static_cast<size_t>(ply)][0] : Move();
     Move killer2 = (ply < 256) ? killer_moves_[static_cast<size_t>(ply)][1] : Move();
 
@@ -305,21 +279,73 @@ void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int p
             scores[i] = hist + cont + cont2;
         }
     }
+}
 
-    // Insertion sort
-    for (size_t i = 1; i < moves.size(); ++i) {
-        Move key_move = moves[i];
-        int key_score = scores[i];
-        int j = static_cast<int>(i) - 1;
+void MovePicker::score_captures_only(const Board& board, MoveList& moves, std::array<int, 256>& scores, Move pv_move) const noexcept {
+    for (size_t i = 0; i < moves.size(); ++i) {
+        Move m = moves[i];
+        if (m == pv_move) {
+            scores[i] = 2000000;
+            continue;
+        }
+        if (m.type() == MoveType::PromoQueen || m.type() == MoveType::PromoCaptureQueen) {
+            scores[i] = 950000;
+            continue;
+        }
+        if (m.is_promotion()) {
+            scores[i] = 200000;
+            continue;
+        }
+        Piece attacker = board.piece_at(m.from());
+        Piece victim   = board.piece_at(m.to());
 
-        while (j >= 0 && scores[static_cast<size_t>(j)] < key_score) {
-            moves[static_cast<size_t>(j + 1)] = moves[static_cast<size_t>(j)];
-            scores[static_cast<size_t>(j + 1)] = scores[static_cast<size_t>(j)];
-            j--;
+        int victim_val = PawnValue;
+        switch (piece_type_of(victim)) {
+            case PieceType::Pawn:   victim_val = PawnValue; break;
+            case PieceType::Knight: victim_val = KnightValue; break;
+            case PieceType::Bishop: victim_val = BishopValue; break;
+            case PieceType::Rook:   victim_val = RookValue; break;
+            case PieceType::Queen:  victim_val = QueenValue; break;
+            default: break;
         }
 
-        moves[static_cast<size_t>(j + 1)] = key_move;
-        scores[static_cast<size_t>(j + 1)] = key_score;
+        int attacker_val = PawnValue;
+        switch (piece_type_of(attacker)) {
+            case PieceType::Pawn:   attacker_val = PawnValue; break;
+            case PieceType::Knight: attacker_val = KnightValue; break;
+            case PieceType::Bishop: attacker_val = BishopValue; break;
+            case PieceType::Rook:   attacker_val = RookValue; break;
+            case PieceType::Queen:  attacker_val = QueenValue; break;
+            default: break;
+        }
+
+        bool is_good_see = see_ge(board, m, 0);
+        int cap_hist = get_capture_history(attacker, m.to(), piece_type_of(victim));
+        scores[i] = (is_good_see ? 1000000 : -100000) + (victim_val * 10 - attacker_val) + cap_hist;
+    }
+}
+
+void MovePicker::pick_best(MoveList& moves, std::array<int, 256>& scores, size_t start_idx) noexcept {
+    if (start_idx >= moves.size()) return;
+    size_t best_idx = start_idx;
+    int best_score = scores[start_idx];
+    for (size_t i = start_idx + 1; i < moves.size(); ++i) {
+        if (scores[i] > best_score) {
+            best_score = scores[i];
+            best_idx = i;
+        }
+    }
+    if (best_idx != start_idx) {
+        std::swap(moves[start_idx], moves[best_idx]);
+        std::swap(scores[start_idx], scores[best_idx]);
+    }
+}
+
+void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move tt_move, Move prev_move, Move prev2_move) const noexcept {
+    std::array<int, 256> scores{};
+    score_moves(board, moves, scores, ply, tt_move, prev_move, prev2_move);
+    for (size_t i = 0; i < moves.size(); ++i) {
+        pick_best(moves, scores, i);
     }
 }
 

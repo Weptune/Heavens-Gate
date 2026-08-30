@@ -75,10 +75,23 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
         return stand_pat;
     }
 
-    move_picker_.score_and_sort_moves(board, moves, ply);
+    std::array<int, 256> scores{};
+    if (in_chk) {
+        move_picker_.score_moves(board, moves, scores, ply);
+    } else {
+        move_picker_.score_captures_only(board, moves, scores);
+    }
 
-    for (const auto& m : moves) {
+    for (size_t i = 0; i < moves.size(); ++i) {
+        MovePicker::pick_best(moves, scores, i);
+        const auto& m = moves[i];
+
         if (!in_chk) {
+            // SEE Pruning in QSearch: Skip clearly losing captures
+            if (!MovePicker::see_ge(board, m, 0)) {
+                continue;
+            }
+
             Piece victim = board.piece_at(m.to());
             int victim_val = (victim != Piece::None || m.is_ep()) ? PawnValue : 0;
             switch (piece_type_of(victim)) {
@@ -387,8 +400,9 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
     }
 
+    std::array<int, 256> scores{};
     if (use_move_ordering) {
-        move_picker_.score_and_sort_moves(board, moves, ply, tt_move, prev_move, prev2_move);
+        move_picker_.score_moves(board, moves, scores, ply, tt_move, prev_move, prev2_move);
     }
 
     int best_score = -ScoreInfinity;
@@ -396,6 +410,9 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     int quiets_searched = 0;
 
     for (size_t i = 0; i < moves.size(); ++i) {
+        if (use_move_ordering) {
+            MovePicker::pick_best(moves, scores, i);
+        }
         Move m = moves[i];
         if (m == excluded_move) continue;
 

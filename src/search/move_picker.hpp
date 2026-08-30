@@ -41,6 +41,10 @@ public:
     void add_capture_history(Piece attacker, Square to, PieceType victim, int depth) noexcept;
     int get_capture_history(Piece attacker, Square to, PieceType victim) const noexcept;
 
+    void score_moves(const Board& board, MoveList& moves, std::array<int, 256>& scores, int ply, Move pv_move = Move(), Move prev_move = Move(), Move prev2_move = Move()) const noexcept;
+    void score_captures_only(const Board& board, MoveList& moves, std::array<int, 256>& scores, Move pv_move = Move()) const noexcept;
+    static void pick_best(MoveList& moves, std::array<int, 256>& scores, size_t start_idx) noexcept;
+
     void score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move pv_move = Move(), Move prev_move = Move(), Move prev2_move = Move()) const noexcept;
     static bool see_ge(const Board& board, Move m, int threshold) noexcept;
 };
