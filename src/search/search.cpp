@@ -724,7 +724,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     return result;
 }
 
-SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_depth, double max_time_ms, uint64_t max_nodes) {
+SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_depth, double max_time_ms, uint64_t max_nodes, double opt_time_ms) {
     if (polyglot_book_.is_loaded()) {
         Move book_move = polyglot_book_.probe(board);
         if (static_cast<bool>(book_move)) {
@@ -749,6 +749,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 
     search_start_time_ = std::chrono::high_resolution_clock::now();
     max_time_ms_ = max_time_ms;
+    opt_time_ms_ = (opt_time_ms > 0.0) ? opt_time_ms : (max_time_ms * 0.60);
     time_stop_flag_ = false;
 
     metrics_tracker_.reset();
@@ -825,6 +826,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                         if (interrupted) break;
 
                         if (current_best_score <= orig_alpha) {
+                            opt_time_ms_ = std::min(max_time_ms_, opt_time_ms_ * 1.5);
                             alpha = std::max(-ScoreInfinity, orig_alpha - window_delta);
                             window_delta += window_delta / 2;
                         } else if (current_best_score >= beta) {
@@ -880,6 +882,15 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                         std::cout << std::endl;
                     }
 
+                    // Dual-limit time check & stable move early exit
+                    if (opt_time_ms_ > 0.0 && d >= 4) {
+                        auto now = std::chrono::high_resolution_clock::now();
+                        double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
+                        if (elapsed >= opt_time_ms_) {
+                            break;
+                        }
+                    }
+
                     if (max_time_ms > 0.0 && d >= 10 && stable_move_count >= 5) {
                         auto now = std::chrono::high_resolution_clock::now();
                         double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
@@ -892,11 +903,12 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                 }
                 time_stop_flag_.store(true, std::memory_order_relaxed);
             } else {
-                // Helper thread (private board and engine instance sharing master TT)
+                // Helper thread (sharing master TT and shared MovePicker history tables)
                 Board helper_board = board;
-                SearchEngine helper(tt_ptr_);
+                SearchEngine helper(tt_ptr_, move_picker_ptr_);
                 helper.search_start_time_ = search_start_time_;
                 helper.max_time_ms_ = max_time_ms_;
+                helper.opt_time_ms_ = opt_time_ms_;
 
                 int depth_offset = (tid % 2);
                 for (int d = 1 + depth_offset; d <= max_depth; ++d) {
@@ -978,6 +990,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                 if (interrupted) break;
 
                 if (current_best_score <= orig_alpha) {
+                    opt_time_ms_ = std::min(max_time_ms_, opt_time_ms_ * 1.5);
                     alpha = std::max(-ScoreInfinity, orig_alpha - window_delta);
                     window_delta += window_delta / 2;
                 } else if (current_best_score >= beta) {
@@ -1006,31 +1019,12 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
             final_result.tt_hits = tt().hits();
             final_result.q_nodes = q_nodes_;
 
-            if (uci_output_) {
+            if (opt_time_ms_ > 0.0 && d >= 4) {
                 auto now = std::chrono::high_resolution_clock::now();
-                uint64_t elapsed_ms = std::max<uint64_t>(1, std::chrono::duration_cast<std::chrono::milliseconds>(now - search_start_time_).count());
-                uint64_t total_nodes = node_count_ + q_nodes_;
-                uint64_t nps = (total_nodes * 1000) / elapsed_ms;
-
-                std::cout << "info depth " << d
-                          << " score ";
-                if (std::abs(current_best_score) >= ScoreMate - 1000) {
-                    int mate_plies = ScoreMate - std::abs(current_best_score);
-                    int mate_moves = (mate_plies + 1) / 2;
-                    if (current_best_score < 0) mate_moves = -mate_moves;
-                    std::cout << "mate " << mate_moves;
-                } else {
-                    std::cout << "cp " << current_best_score;
+                double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
+                if (elapsed >= opt_time_ms_) {
+                    break;
                 }
-                std::cout << " nodes " << total_nodes
-                          << " nps " << nps
-                          << " time " << elapsed_ms
-                          << " hashfull " << tt().hashfull()
-                          << " pv";
-                for (const auto& pv_m : final_result.pv) {
-                    std::cout << " " << move_to_uci(pv_m);
-                }
-                std::cout << std::endl;
             }
 
             if (max_time_ms > 0.0 && d >= 10 && stable_move_count >= 5) {

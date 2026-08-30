@@ -29,8 +29,10 @@ struct SearchResult {
 
 class SearchEngine {
 public:
-    explicit SearchEngine(TranspositionTable* shared_tt = nullptr)
-        : tt_ptr_(shared_tt ? shared_tt : &local_tt_) {
+    explicit SearchEngine(TranspositionTable* shared_tt = nullptr, MovePicker* shared_picker = nullptr)
+        : tt_ptr_(shared_tt ? shared_tt : &local_tt_),
+          move_picker_ptr_(shared_picker ? shared_picker : &local_move_picker_),
+          move_picker_(*move_picker_ptr_) {
         if (!polyglot_book_.is_loaded()) {
             polyglot_book_.load("performance.bin");
             if (!polyglot_book_.is_loaded()) polyglot_book_.load("tools/performance.bin");
@@ -44,7 +46,7 @@ public:
 
     SearchResult search_minimax(Board& board, int depth, bool export_tree = false);
     SearchResult search_alphabeta(Board& board, int depth, bool use_move_ordering = true, bool use_tt = true, bool export_tree = false);
-    SearchResult search_iterative_deepening(Board& board, int max_depth, double max_time_ms, uint64_t max_nodes = 0);
+    SearchResult search_iterative_deepening(Board& board, int max_depth, double max_time_ms, uint64_t max_nodes = 0, double opt_time_ms = 0.0);
     SearchResult search_smp(Board& board, int max_depth, int num_threads = 4);
 
     GameTreeExporter& exporter() { return exporter_; }
@@ -52,6 +54,8 @@ public:
     GameTreeExporter& tree_exporter() { return exporter_; }
     TranspositionTable& tt() { return *tt_ptr_; }
     const TranspositionTable& tt() const { return *tt_ptr_; }
+    MovePicker& move_picker() noexcept { return *move_picker_ptr_; }
+    const MovePicker& move_picker() const noexcept { return *move_picker_ptr_; }
     PolyGlotBook& polyglot_book() { return polyglot_book_; }
     const PolyGlotBook& polyglot_book() const { return polyglot_book_; }
     void stop() { time_stop_flag_.store(true, std::memory_order_relaxed); }
@@ -83,7 +87,9 @@ private:
     TranspositionTable local_tt_;
     PolyGlotBook polyglot_book_;
     PVTable pv_table_;
-    MovePicker move_picker_;
+    MovePicker* move_picker_ptr_{nullptr};
+    MovePicker local_move_picker_;
+    MovePicker& move_picker_;
     GameTreeExporter exporter_;
     MetricsTracker metrics_tracker_;
     std::array<std::array<int, 4096>, 2> corr_history_{};
@@ -95,7 +101,7 @@ private:
 public:
     void clear() noexcept {
         pv_table_.clear();
-        move_picker_.clear();
+        local_move_picker_.clear();
         if (tt_ptr_ == &local_tt_) {
             local_tt_.clear();
         }
@@ -107,6 +113,7 @@ public:
     }
 
     std::chrono::high_resolution_clock::time_point search_start_time_;
+    double opt_time_ms_ = 0.0;
     double max_time_ms_ = 0.0;
     std::atomic<bool> time_stop_flag_{false};
     uint64_t q_nodes_ = 0;

@@ -32,10 +32,14 @@ struct alignas(16) TTEntry {
     }
 };
 
+struct alignas(64) TTBucket {
+    std::array<TTEntry, 4> entries{};
+};
+
 class TranspositionTable {
 private:
-    std::vector<TTEntry> table_;
-    size_t size_{0};
+    std::vector<TTBucket> table_;
+    size_t num_buckets_{0};
     size_t mask_{0};
     uint8_t generation_{0};
 
@@ -58,7 +62,7 @@ public:
     size_t hits() const noexcept { return hits_; }
     size_t probes() const noexcept { return probes_; }
     double hit_rate() const noexcept { return probes_ > 0 ? (100.0 * hits_) / probes_ : 0.0; }
-    size_t capacity() const noexcept { return size_; }
+    size_t capacity() const noexcept { return num_buckets_ * 4; }
     int hashfull() const noexcept;
 };
 
