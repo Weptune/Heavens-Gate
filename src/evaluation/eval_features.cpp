@@ -180,8 +180,8 @@ ScorePair EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
         // 0. Uncastled Exposed King Penalty (-120 cp MG, -20 cp EG)
         int kr = static_cast<int>(rank_of(ksq));
         int kf = static_cast<int>(file_of(ksq));
-        if ((side == Color::White && kr >= 1 && kr <= 3 && kf >= 2 && kf <= 5) ||
-            (side == Color::Black && kr >= 4 && kr <= 6 && kf >= 2 && kf <= 5)) {
+        if ((side == Color::White && kr <= 3 && kf >= 2 && kf <= 5) ||
+            (side == Color::Black && kr >= 4 && kf >= 2 && kf <= 5)) {
             score.mg -= 120;
             score.eg -= 20;
         }

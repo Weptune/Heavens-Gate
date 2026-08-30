@@ -453,7 +453,7 @@ SpectralFeatures SpectralGraph::compute_spectrum(const Board& board) {
     feat.king_shield_them = them_king_shield;
 
     // Game phase: 1.0 = all pieces present, 0.0 = endgame (pawns + kings only)
-    feat.game_phase = std::min(1.0f, phase_material / 8200.0f);
+    feat.game_phase = std::min(1.0f, phase_material / 6400.0f);
 
     if (key != 0) {
         s_spectral_cache[cache_idx] = {key, feat};

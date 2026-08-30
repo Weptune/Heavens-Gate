@@ -811,11 +811,9 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                         if (interrupted) break;
 
                         if (current_best_score <= orig_alpha) {
-                            beta = (orig_alpha + beta) / 2;
                             alpha = std::max(-ScoreInfinity, orig_alpha - window_delta);
                             window_delta += window_delta / 2;
                         } else if (current_best_score >= beta) {
-                            alpha = (orig_alpha + beta) / 2;
                             beta = std::min(ScoreInfinity, beta + window_delta);
                             window_delta += window_delta / 2;
                         } else {
@@ -966,11 +964,9 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                 if (interrupted) break;
 
                 if (current_best_score <= orig_alpha) {
-                    beta = (orig_alpha + beta) / 2;
                     alpha = std::max(-ScoreInfinity, orig_alpha - window_delta);
                     window_delta += window_delta / 2;
                 } else if (current_best_score >= beta) {
-                    alpha = (orig_alpha + beta) / 2;
                     beta = std::min(ScoreInfinity, beta + window_delta);
                     window_delta += window_delta / 2;
                 } else {

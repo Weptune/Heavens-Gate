@@ -8,14 +8,14 @@
 namespace heavensgate {
 
 struct ContHistoryTables {
-    std::array<std::array<std::array<std::array<int, 64>, 6>, 64>, 6> cont_history{};
-    std::array<std::array<std::array<std::array<int, 64>, 6>, 64>, 6> cont_history_2{};
+    std::array<std::array<std::array<std::array<int, 64>, 14>, 64>, 14> cont_history{};
+    std::array<std::array<std::array<std::array<int, 64>, 14>, 64>, 14> cont_history_2{};
     std::array<std::array<std::array<int, 6>, 64>, 14> capture_history{};
 };
 
 class MovePicker {
 private:
-    std::array<std::array<Move, 2>, 128> killer_moves_{};
+    std::array<std::array<Move, 2>, 256> killer_moves_{};
     std::array<std::array<std::array<int, 64>, 64>, 2> history_scores_{};
     std::array<std::array<Move, 64>, 64> countermoves_{};
     std::unique_ptr<ContHistoryTables> cont_tables_;
