@@ -131,7 +131,13 @@ int Evaluator::evaluate(const Board& board) {
         // Softened for Classical/Rapid so full Spectral-Tropical graph physics
         // remain active across all positional battles up to a full Queen lead!
         if (std::abs(fast_diff) >= 600) {
-            return fast_diff + 15; // +15 cp Side-to-Move Tempo Bonus
+            int knights = popcount(board.pieces(Piece::WhiteKnight) | board.pieces(Piece::BlackKnight));
+            int bishops = popcount(board.pieces(Piece::WhiteBishop) | board.pieces(Piece::BlackBishop));
+            int rooks   = popcount(board.pieces(Piece::WhiteRook)   | board.pieces(Piece::BlackRook));
+            int queens  = popcount(board.pieces(Piece::WhiteQueen)  | board.pieces(Piece::BlackQueen));
+            int game_phase = std::min(24, knights * 1 + bishops * 1 + rooks * 2 + queens * 4);
+            int tapered_tempo = (18 * game_phase + 4 * (24 - game_phase)) / 24;
+            return fast_diff + tapered_tempo;
         }
 
         // Tier 2: Full Spectral-Tropical Graph Eigensolver (High Precision for [-600, +600] cp)
@@ -141,8 +147,15 @@ int Evaluator::evaluate(const Board& board) {
     int white_score = evaluate_side(board, Color::White);
     int black_score = evaluate_side(board, Color::Black);
 
+    int knights = popcount(board.pieces(Piece::WhiteKnight) | board.pieces(Piece::BlackKnight));
+    int bishops = popcount(board.pieces(Piece::WhiteBishop) | board.pieces(Piece::BlackBishop));
+    int rooks   = popcount(board.pieces(Piece::WhiteRook)   | board.pieces(Piece::BlackRook));
+    int queens  = popcount(board.pieces(Piece::WhiteQueen)  | board.pieces(Piece::BlackQueen));
+    int game_phase = std::min(24, knights * 1 + bishops * 1 + rooks * 2 + queens * 4);
+    int tapered_tempo = (18 * game_phase + 4 * (24 - game_phase)) / 24;
+
     int relative_score = white_score - black_score;
-    return (board.side_to_move() == Color::White) ? (relative_score + 15) : (-relative_score + 15);
+    return (board.side_to_move() == Color::White) ? (relative_score + tapered_tempo) : (-relative_score + tapered_tempo);
 }
 
 int Evaluator::evaluate_fast(const Board& board) {
@@ -152,8 +165,15 @@ int Evaluator::evaluate_fast(const Board& board) {
     int white_score = evaluate_side(board, Color::White);
     int black_score = evaluate_side(board, Color::Black);
 
+    int knights = popcount(board.pieces(Piece::WhiteKnight) | board.pieces(Piece::BlackKnight));
+    int bishops = popcount(board.pieces(Piece::WhiteBishop) | board.pieces(Piece::BlackBishop));
+    int rooks   = popcount(board.pieces(Piece::WhiteRook)   | board.pieces(Piece::BlackRook));
+    int queens  = popcount(board.pieces(Piece::WhiteQueen)  | board.pieces(Piece::BlackQueen));
+    int game_phase = std::min(24, knights * 1 + bishops * 1 + rooks * 2 + queens * 4);
+    int tapered_tempo = (18 * game_phase + 4 * (24 - game_phase)) / 24;
+
     int relative_score = white_score - black_score;
-    return (board.side_to_move() == Color::White) ? (relative_score + 15) : (-relative_score + 15);
+    return (board.side_to_move() == Color::White) ? (relative_score + tapered_tempo) : (-relative_score + tapered_tempo);
 }
 
 static constexpr int MAX_SEARCH_PLY = 256;

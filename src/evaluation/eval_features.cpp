@@ -61,18 +61,18 @@ ScorePair EvalFeatures::evaluate_pawn_structure(const Board& board, Color side) 
     Piece opp_pawn_piece = make_piece(~side, PieceType::Pawn);
     Bitboard opp_pawns = board.pieces(opp_pawn_piece);
 
-    // Doubled pawns (-12 cp MG, -20 cp EG per extra pawn on same file)
+    // Doubled pawns (-14 cp MG, -24 cp EG per extra pawn on same file)
     for (int f = 0; f < 8; ++f) {
         File file_enum = static_cast<File>(f);
         Bitboard file_pawns = my_pawns & file_bb(file_enum);
         int count = popcount(file_pawns);
         if (count > 1) {
-            score.mg -= (count - 1) * 12;
-            score.eg -= (count - 1) * 20;
+            score.mg -= (count - 1) * 14;
+            score.eg -= (count - 1) * 24;
         }
     }
 
-    // Isolated pawns (-15 cp MG, -25 cp EG if no friendly pawns on adjacent files)
+    // Isolated pawns (-16 cp MG, -26 cp EG if no friendly pawns on adjacent files)
     Bitboard pawns_copy = my_pawns;
     while (pawns_copy) {
         Square sq = pop_lsb(pawns_copy);
@@ -80,12 +80,12 @@ ScorePair EvalFeatures::evaluate_pawn_structure(const Board& board, Color side) 
         Bitboard adj_mask = IsolatedPawnMask[static_cast<size_t>(f)];
 
         if ((my_pawns & adj_mask) == EmptyBB) {
-            score.mg -= 15;
-            score.eg -= 25;
+            score.mg -= 16;
+            score.eg -= 26;
         }
     }
 
-    // Backward pawns (-12 cp MG, -20 cp EG)
+    // Backward pawns (-12 cp MG, -22 cp EG)
     pawns_copy = my_pawns;
     while (pawns_copy) {
         Square sq = pop_lsb(pawns_copy);
@@ -116,7 +116,7 @@ ScorePair EvalFeatures::evaluate_pawn_structure(const Board& board, Color side) 
 
                 if (opp_attacks & square_bb(stop_sq)) {
                     score.mg -= 12;
-                    score.eg -= 20;
+                    score.eg -= 22;
                 }
             }
         }
@@ -136,8 +136,8 @@ ScorePair EvalFeatures::evaluate_passed_pawns(const Board& board, Color side) {
 
     size_t pers_idx = (side == Color::White) ? 0 : 1;
 
-    constexpr std::array<int, 8> PassedBonusMG = { 0,  5, 10, 20, 35,  60, 100, 0 };
-    constexpr std::array<int, 8> PassedBonusEG = { 0, 10, 20, 40, 75, 130, 220, 0 };
+    constexpr std::array<int, 8> PassedBonusMG = { 0,  5, 12, 24, 42,  72, 115, 0 };
+    constexpr std::array<int, 8> PassedBonusEG = { 0, 12, 25, 50, 92, 155, 245, 0 };
 
     while (my_pawns) {
         Square sq = pop_lsb(my_pawns);
@@ -149,12 +149,12 @@ ScorePair EvalFeatures::evaluate_passed_pawns(const Board& board, Color side) {
             score.mg += PassedBonusMG[static_cast<size_t>(rank_idx)];
             score.eg += PassedBonusEG[static_cast<size_t>(rank_idx)];
 
-            // Protected passed pawn bonus (+15 cp MG, +35 cp EG)
+            // Protected passed pawn bonus (+18 cp MG, +38 cp EG)
             Bitboard friendly_defenders = board.pieces(pawn_piece);
             Bitboard pawn_def_mask = AttackMasks::pawn_attacks(~side, sq);
             if (friendly_defenders & pawn_def_mask) {
-                score.mg += 15;
-                score.eg += 35;
+                score.mg += 18;
+                score.eg += 38;
             }
         }
     }
@@ -260,10 +260,10 @@ ScorePair EvalFeatures::evaluate_piece_activity(const Board& board, Color side) 
     Bitboard bishops = board.pieces(make_piece(side, PieceType::Bishop));
     Bitboard rooks   = board.pieces(make_piece(side, PieceType::Rook));
 
-    // Bishop Pair Bonus (+30 cp MG, +45 cp EG in open endgames)
+    // Bishop Pair Bonus (+32 cp MG, +52 cp EG in open endgames)
     if (popcount(bishops) >= 2) {
-        score.mg += 30;
-        score.eg += 45;
+        score.mg += 32;
+        score.eg += 52;
     }
 
     // Minor Piece Development: Penalize sleeping minors on starting squares in MG (-15 cp MG, 0 EG)

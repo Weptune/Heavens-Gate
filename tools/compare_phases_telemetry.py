@@ -4,10 +4,11 @@ import os
 import statistics
 
 commits = [
-    ("Phase 1 (Bug Fixes)", "776a501", False),
-    ("Phase 2 (Ordering/EMA)", "e33e0ba", False),
-    ("Phase 3 (Pruning/LMR)", "750fae2", False),
-    ("Phase 4 (TT Cluster/SMP)", "current", True)
+    ("Phase 1 (Fixes)", "776a501", False),
+    ("Phase 2 (Ordering)", "e33e0ba", False),
+    ("Phase 3 (Pruning)", "750fae2", False),
+    ("Phase 4 (TT Cluster)", "d53ac9f", False),
+    ("Phase 5 (Master)", "current", True)
 ]
 
 def analyze_pgn_text(name, pgn_text):
@@ -32,6 +33,9 @@ def analyze_pgn_text(name, pgn_text):
     leads_never_lost = 0
     rolling_volatilities = []
     hg_times = []
+
+    # Phase-specific buckets
+    op_cpl, mid_cpl, end_cpl = [], [], []
 
     for g_idx, g_text in enumerate(games, 1):
         white_is_hg = 'White "Master Edition"' in g_text
@@ -64,6 +68,7 @@ def analyze_pgn_text(name, pgn_text):
 
             is_white = (ply_idx % 2 == 0)
             is_hg = (is_white and white_is_hg) or (not is_white and not white_is_hg)
+            move_num = (ply_idx // 2) + 1
             mover_eval = clamped
             hg_score = mover_eval if is_hg else -mover_eval
 
@@ -71,7 +76,11 @@ def analyze_pgn_text(name, pgn_text):
                 hg_times.append(clk_val)
                 hg_eval_series.append(hg_score)
                 if hg_prev is not None:
-                    cpl = max(0, hg_prev - hg_score)
+                    cpl = max(0, min(500, hg_prev - hg_score))
+                    if move_num <= 10: op_cpl.append(cpl)
+                    elif move_num <= 25: mid_cpl.append(cpl)
+                    else: end_cpl.append(cpl)
+
                     if cpl <= 5: hg_move_counts["best"] += 1
                     elif cpl <= 15: hg_move_counts["excellent"] += 1
                     elif cpl <= 35: hg_move_counts["good"] += 1
@@ -84,7 +93,7 @@ def analyze_pgn_text(name, pgn_text):
                 if dec_ply is None and hg_score >= 500: dec_ply = ply_idx + 1
             else:
                 if sf_prev is not None:
-                    cpl = max(0, sf_prev - mover_eval)
+                    cpl = max(0, min(500, sf_prev - mover_eval))
                     if cpl <= 5: sf_move_counts["best"] += 1
                     elif cpl <= 15: sf_move_counts["excellent"] += 1
                     elif cpl <= 35: sf_move_counts["good"] += 1
@@ -124,11 +133,21 @@ def analyze_pgn_text(name, pgn_text):
     vol = statistics.mean(rolling_volatilities) if rolling_volatilities else 0
     avg_time = statistics.mean(hg_times) if hg_times else 0
 
+    op_acpl = statistics.mean(op_cpl) if op_cpl else 0
+    mid_acpl = statistics.mean(mid_cpl) if mid_cpl else 0
+    end_acpl = statistics.mean(end_cpl) if end_cpl else 0
+
     return {
         "name": name,
         "games": total_games,
         "score": f"{hg_wins}-{sf_wins}",
         "avg_len": avg_len,
+        "op_acpl": op_acpl,
+        "mid_acpl": mid_acpl,
+        "end_acpl": end_acpl,
+        "op_acc": max(40.0, min(99.0, 100.0 - (op_acpl * 0.45))),
+        "mid_acc": max(40.0, min(99.0, 100.0 - (mid_acpl * 0.45))),
+        "end_acc": max(40.0, min(99.0, 100.0 - (end_acpl * 0.45))),
         "best_pct": best_pct,
         "inacc_pct": inacc_pct,
         "mistake_pct": mistake_pct,
@@ -155,23 +174,27 @@ for name, commit, is_current in commits:
             data = analyze_pgn_text(name, res.stdout)
             results.append(data)
 
-print("=" * 125)
-print("                       GRANDMASTER TELEMETRY EVOLUTION (PHASES 1 TO 4)")
-print("=" * 125)
-print(f"{'Performance Metric':<30} | {'Phase 1 (Fixes)':<18} | {'Phase 2 (Ordering)':<18} | {'Phase 3 (Pruning)':<18} | {'Phase 4 (TT/SMP)':<18}")
-print("-" * 125)
-print(f"{'Match Record vs SF 3400':<30} | {results[0]['score']:<18} | {results[1]['score']:<18} | {results[2]['score']:<18} | {results[3]['score']:<18}")
-print(f"{'Average Game Duration':<30} | {results[0]['avg_len']:<15.1f} mv | {results[1]['avg_len']:<15.1f} mv | {results[2]['avg_len']:<15.1f} mv | {results[3]['avg_len']:<15.1f} mv")
-print(f"{'Advantage Milestone (+1.50)':<30} | Move {results[0]['avg_adv_move']:<13.1f} | Move {results[1]['avg_adv_move']:<13.1f} | Move {results[2]['avg_adv_move']:<13.1f} | Move {results[3]['avg_adv_move']:<13.1f}")
-print(f"{'Decisive Milestone (+5.00)':<30} | Move {results[0]['avg_dec_move']:<13.1f} | Move {results[1]['avg_dec_move']:<13.1f} | Move {results[2]['avg_dec_move']:<13.1f} | Move {results[3]['avg_dec_move']:<13.1f}")
-print(f"{'Squeeze Speed (+5.00 to Mate)':<30} | {results[0]['squeeze_speed']:<15.1f} mv | {results[1]['squeeze_speed']:<15.1f} mv | {results[2]['squeeze_speed']:<15.1f} mv | {results[3]['squeeze_speed']:<15.1f} mv")
-print("-" * 125)
-print(f"{'Top Quality Moves (0-15 cp)':<30} | {results[0]['best_pct']:<17.1f}% | {results[1]['best_pct']:<17.1f}% | {results[2]['best_pct']:<17.1f}% | {results[3]['best_pct']:<17.1f}%")
-print(f"{'Inaccuracy Rate (35-80 cp)':<30} | {results[0]['inacc_pct']:<17.1f}% | {results[1]['inacc_pct']:<17.1f}% | {results[2]['inacc_pct']:<17.1f}% | {results[3]['inacc_pct']:<17.1f}%")
-print(f"{'Mistake Rate (80-200 cp)':<30} | {results[0]['mistake_pct']:<17.1f}% | {results[1]['mistake_pct']:<17.1f}% | {results[2]['mistake_pct']:<17.1f}% | {results[3]['mistake_pct']:<17.1f}%")
-print(f"{'Blunder Rate (>200 cp)':<30} | {results[0]['blunder_pct']:<17.1f}% | {results[1]['blunder_pct']:<17.1f}% | {results[2]['blunder_pct']:<17.1f}% | {results[3]['blunder_pct']:<17.1f}%")
-print("-" * 125)
-print(f"{'Advantage Retention Rate':<30} | {results[0]['lead_retention']:<17.1f}% | {results[1]['lead_retention']:<17.1f}% | {results[2]['lead_retention']:<17.1f}% | {results[3]['lead_retention']:<17.1f}%")
-print(f"{'Score Volatility (SD cp)':<30} | {results[0]['volatility']:<15.1f} cp | {results[1]['volatility']:<15.1f} cp | {results[2]['volatility']:<15.1f} cp | {results[3]['volatility']:<15.1f} cp")
-print(f"{'Avg Calculation Time / Move':<30} | {results[0]['avg_time']:<15.1f} ms | {results[1]['avg_time']:<15.1f} ms | {results[2]['avg_time']:<15.1f} ms | {results[3]['avg_time']:<15.1f} ms")
-print("=" * 125)
+print("=" * 135)
+print("                       GRANDMASTER TELEMETRY EVOLUTION (PHASES 1 TO 5)")
+print("=" * 135)
+print(f"{'Performance Metric':<28} | {'Phase 1':<16} | {'Phase 2':<16} | {'Phase 3':<16} | {'Phase 4':<16} | {'Phase 5 (Master)':<16}")
+print("-" * 135)
+print(f"{'Match vs SF 3400':<28} | {results[0]['score']:<16} | {results[1]['score']:<16} | {results[2]['score']:<16} | {results[3]['score']:<16} | {results[4]['score']:<16}")
+print(f"{'Average Game Duration':<28} | {results[0]['avg_len']:<13.1f} mv | {results[1]['avg_len']:<13.1f} mv | {results[2]['avg_len']:<13.1f} mv | {results[3]['avg_len']:<13.1f} mv | {results[4]['avg_len']:<13.1f} mv")
+print("-" * 135)
+print(f"{'Opening ACPL (Moves 1-10)':<28} | {results[0]['op_acpl']:<13.1f} cp | {results[1]['op_acpl']:<13.1f} cp | {results[2]['op_acpl']:<13.1f} cp | {results[3]['op_acpl']:<13.1f} cp | {results[4]['op_acpl']:<13.1f} cp")
+print(f"{'Opening Accuracy %':<28} | {results[0]['op_acc']:<15.1f}% | {results[1]['op_acc']:<15.1f}% | {results[2]['op_acc']:<15.1f}% | {results[3]['op_acc']:<15.1f}% | {results[4]['op_acc']:<15.1f}%")
+print(f"{'Midgame ACPL (Moves 11-25)':<28} | {results[0]['mid_acpl']:<13.1f} cp | {results[1]['mid_acpl']:<13.1f} cp | {results[2]['mid_acpl']:<13.1f} cp | {results[3]['mid_acpl']:<13.1f} cp | {results[4]['mid_acpl']:<13.1f} cp")
+print(f"{'Midgame Accuracy %':<28} | {results[0]['mid_acc']:<15.1f}% | {results[1]['mid_acc']:<15.1f}% | {results[2]['mid_acc']:<15.1f}% | {results[3]['mid_acc']:<15.1f}% | {results[4]['mid_acc']:<15.1f}%")
+print(f"{'Endgame ACPL (Moves 26+)':<28} | {results[0]['end_acpl']:<13.1f} cp | {results[1]['end_acpl']:<13.1f} cp | {results[2]['end_acpl']:<13.1f} cp | {results[3]['end_acpl']:<13.1f} cp | {results[4]['end_acpl']:<13.1f} cp")
+print(f"{'Endgame Accuracy %':<28} | {results[0]['end_acc']:<15.1f}% | {results[1]['end_acc']:<15.1f}% | {results[2]['end_acc']:<15.1f}% | {results[3]['end_acc']:<15.1f}% | {results[4]['end_acc']:<15.1f}%")
+print("-" * 135)
+print(f"{'Top Quality Moves (0-15 cp)':<28} | {results[0]['best_pct']:<15.1f}% | {results[1]['best_pct']:<15.1f}% | {results[2]['best_pct']:<15.1f}% | {results[3]['best_pct']:<15.1f}% | {results[4]['best_pct']:<15.1f}%")
+print(f"{'Inaccuracy Rate (35-80 cp)':<28} | {results[0]['inacc_pct']:<15.1f}% | {results[1]['inacc_pct']:<15.1f}% | {results[2]['inacc_pct']:<15.1f}% | {results[3]['inacc_pct']:<15.1f}% | {results[4]['inacc_pct']:<15.1f}%")
+print(f"{'Mistake Rate (80-200 cp)':<28} | {results[0]['mistake_pct']:<15.1f}% | {results[1]['mistake_pct']:<15.1f}% | {results[2]['mistake_pct']:<15.1f}% | {results[3]['mistake_pct']:<15.1f}% | {results[4]['mistake_pct']:<15.1f}%")
+print(f"{'Blunder Rate (>200 cp)':<28} | {results[0]['blunder_pct']:<15.1f}% | {results[1]['blunder_pct']:<15.1f}% | {results[2]['blunder_pct']:<15.1f}% | {results[3]['blunder_pct']:<15.1f}% | {results[4]['blunder_pct']:<15.1f}%")
+print("-" * 135)
+print(f"{'Advantage Milestone (+1.50)':<28} | Move {results[0]['avg_adv_move']:<11.1f} | Move {results[1]['avg_adv_move']:<11.1f} | Move {results[2]['avg_adv_move']:<11.1f} | Move {results[3]['avg_adv_move']:<11.1f} | Move {results[4]['avg_adv_move']:<11.1f}")
+print(f"{'Decisive Milestone (+5.00)':<28} | Move {results[0]['avg_dec_move']:<11.1f} | Move {results[1]['avg_dec_move']:<11.1f} | Move {results[2]['avg_dec_move']:<11.1f} | Move {results[3]['avg_dec_move']:<11.1f} | Move {results[4]['avg_dec_move']:<11.1f}")
+print(f"{'Squeeze Speed (+5.00 to Mate)':<28} | {results[0]['squeeze_speed']:<13.1f} mv | {results[1]['squeeze_speed']:<13.1f} mv | {results[2]['squeeze_speed']:<13.1f} mv | {results[3]['squeeze_speed']:<13.1f} mv | {results[4]['squeeze_speed']:<13.1f} mv")
+print("=" * 135)

@@ -749,7 +749,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 
     search_start_time_ = std::chrono::high_resolution_clock::now();
     max_time_ms_ = max_time_ms;
-    opt_time_ms_ = (opt_time_ms > 0.0) ? opt_time_ms : (max_time_ms * 0.60);
+    opt_time_ms_ = (opt_time_ms > 0.0) ? opt_time_ms : max_time_ms;
     time_stop_flag_ = false;
 
     metrics_tracker_.reset();
@@ -882,19 +882,11 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                         std::cout << std::endl;
                     }
 
-                    // Dual-limit time check & stable move early exit
-                    if (opt_time_ms_ > 0.0 && d >= 4) {
+                    // High-depth stable move early exit (saves clock time safely on rock-solid moves)
+                    if (opt_time_ms_ > 0.0 && d >= 12 && stable_move_count >= 5) {
                         auto now = std::chrono::high_resolution_clock::now();
                         double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
-                        if (elapsed >= opt_time_ms_) {
-                            break;
-                        }
-                    }
-
-                    if (max_time_ms > 0.0 && d >= 10 && stable_move_count >= 5) {
-                        auto now = std::chrono::high_resolution_clock::now();
-                        double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
-                        if (elapsed >= max_time_ms * 0.85) {
+                        if (elapsed >= opt_time_ms_ * 0.85) {
                             break;
                         }
                     }
@@ -1019,18 +1011,10 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
             final_result.tt_hits = tt().hits();
             final_result.q_nodes = q_nodes_;
 
-            if (opt_time_ms_ > 0.0 && d >= 4) {
+            if (opt_time_ms_ > 0.0 && d >= 12 && stable_move_count >= 5) {
                 auto now = std::chrono::high_resolution_clock::now();
                 double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
-                if (elapsed >= opt_time_ms_) {
-                    break;
-                }
-            }
-
-            if (max_time_ms > 0.0 && d >= 10 && stable_move_count >= 5) {
-                auto now = std::chrono::high_resolution_clock::now();
-                double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
-                if (elapsed >= max_time_ms * 0.85) {
+                if (elapsed >= opt_time_ms_ * 0.85) {
                     break;
                 }
             }
