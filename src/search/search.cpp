@@ -48,11 +48,9 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
     Color us = board.side_to_move();
     bool in_chk = MoveGenerator::in_check(board, us);
 
-    // Hybrid Eval Strategy:
-    // PV nodes (full window: alpha+1 < beta) use full SpectralTropical eval for quality
-    // Non-PV nodes (zero window: alpha+1 == beta) use fast Material+PST eval for speed
-    bool is_pv = (beta - alpha) > 1;
-    int stand_pat = is_pv ? Evaluator::evaluate(board) : Evaluator::evaluate_fast(board);
+    // Unified Positional Evaluation:
+    // Uses high-speed Bitboard Positional Eval consistently across all nodes
+    int stand_pat = Evaluator::evaluate_fast(board);
     if (!in_chk) {
         if (stand_pat >= beta) {
             return beta;
@@ -895,9 +893,9 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                 }
                 time_stop_flag_.store(true, std::memory_order_relaxed);
             } else {
-                // Helper thread (sharing master TT and shared MovePicker history tables)
+                // Helper thread (sharing master TT, private thread-local MovePicker history tables)
                 Board helper_board = board;
-                SearchEngine helper(tt_ptr_, move_picker_ptr_);
+                SearchEngine helper(tt_ptr_);
                 helper.search_start_time_ = search_start_time_;
                 helper.max_time_ms_ = max_time_ms_;
                 helper.opt_time_ms_ = opt_time_ms_;

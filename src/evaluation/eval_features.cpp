@@ -86,6 +86,12 @@ ScorePair EvalFeatures::evaluate_pawn_structure(const Board& board, Color side) 
     }
 
     // Backward pawns (-12 cp MG, -22 cp EG)
+    Bitboard not_file_a = ~file_bb(File::FileA);
+    Bitboard not_file_h = ~file_bb(File::FileH);
+    Bitboard opp_attacks = (side == Color::White)
+        ? (((opp_pawns & not_file_a) >> 9) | ((opp_pawns & not_file_h) >> 7))
+        : (((opp_pawns & not_file_a) << 7) | ((opp_pawns & not_file_h) << 9));
+
     pawns_copy = my_pawns;
     while (pawns_copy) {
         Square sq = pop_lsb(pawns_copy);
@@ -106,18 +112,9 @@ ScorePair EvalFeatures::evaluate_pawn_structure(const Board& board, Color side) 
 
         if (is_behind && (my_pawns & adj_mask) != EmptyBB) {
             Square stop_sq = make_square(f, (side == Color::White) ? static_cast<Rank>(static_cast<int>(r) + 1) : static_cast<Rank>(static_cast<int>(r) - 1));
-            if (stop_sq != Square::None) {
-                Bitboard opp_attacks = EmptyBB;
-                Bitboard opp_pawns_copy = opp_pawns;
-                while (opp_pawns_copy) {
-                    Square op_sq = pop_lsb(opp_pawns_copy);
-                    opp_attacks |= AttackMasks::pawn_attacks(~side, op_sq);
-                }
-
-                if (opp_attacks & square_bb(stop_sq)) {
-                    score.mg -= 12;
-                    score.eg -= 22;
-                }
+            if (stop_sq != Square::None && (opp_attacks & square_bb(stop_sq))) {
+                score.mg -= 12;
+                score.eg -= 22;
             }
         }
     }

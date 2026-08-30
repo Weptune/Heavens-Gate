@@ -18,7 +18,7 @@ void test_eval() {
     Evaluator::set_mode(EvalMode::MaterialOnly);
 
     int eval_start = Evaluator::evaluate(board);
-    HEAVENSGATE_ASSERT(eval_start == 15, "Startpos material score must be 15 centipawns (with side-to-move tempo)!");
+    HEAVENSGATE_ASSERT(eval_start == 18, "Startpos material score must be 18 centipawns (with side-to-move tapered tempo)!");
     std::cout << "PASSED" << std::endl;
 
     std::cout << "[RUN] Eval: NNUE Startpos symmetry ... " << std::flush;

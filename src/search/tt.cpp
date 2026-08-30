@@ -113,10 +113,32 @@ void TranspositionTable::store(uint64_t key, Move move, int score, int depth, TT
 
     uint64_t target_data = target->data_word();
     uint64_t target_key = target->key ^ target_data;
-    bool key_matches = (target_key == key);
+    bool key_matches = (target->bound != TTBound::None && target_key == key);
+
+    if (key_matches) {
+        // Depth-protection on key match:
+        // Only replace if new search is deeper, or if new search produced an Exact bound,
+        // or if the existing entry is from an older generation.
+        if (bound == TTBound::Exact || depth >= target->depth || generation_ != target->generation) {
+            TTEntry new_entry;
+            new_entry.move = static_cast<bool>(move) ? move : target->move;
+            new_entry.score = static_cast<int16_t>(score);
+            new_entry.depth = static_cast<uint8_t>(depth);
+            new_entry.bound = bound;
+            new_entry.generation = generation_;
+            new_entry.pad = 0;
+            new_entry.key = key ^ new_entry.data_word();
+            *target = new_entry;
+        } else if (!static_cast<bool>(target->move) && static_cast<bool>(move)) {
+            // Preserve deep score, but update the best move if old entry lacked one
+            target->move = move;
+            target->key = key ^ target->data_word();
+        }
+        return;
+    }
 
     TTEntry new_entry;
-    new_entry.move = static_cast<bool>(move) ? move : (key_matches ? target->move : Move());
+    new_entry.move = move;
     new_entry.score = static_cast<int16_t>(score);
     new_entry.depth = static_cast<uint8_t>(depth);
     new_entry.bound = bound;
