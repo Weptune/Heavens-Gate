@@ -304,8 +304,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
 
         // Reverse Futility Pruning (Static Null Move Pruning)
-        if (depth <= 3 && !excluded_move) {
-            int margin = g_search_params.rfp_margin * depth;
+        if (depth <= 6 && !excluded_move) {
+            int margin = std::max(60, g_search_params.rfp_margin) * depth - (improving ? 30 : 0);
             if (static_eval - margin >= beta) {
                 metrics_tracker_.add_cut();
                 return static_eval - margin;
@@ -313,21 +313,18 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
 
         // Forward Futility Pruning flag (checked per-move in the loop below)
-        if (depth <= 2 && !excluded_move && static_eval + g_search_params.futility_margin * depth <= alpha) {
+        if (depth <= 4 && !excluded_move && static_eval + g_search_params.futility_margin * depth <= alpha) {
             can_futility_prune = true;
         }
     }
 
-    // 3. Adaptive Null Move Pruning (NMP) (R=2 for shallow depth, R=3 for depth >= 6, R=4 if static_eval >= beta + nmp_eval_margin, +1 if !improving)
+    // 3. Adaptive Null Move Pruning (NMP) with continuous depth & score scaling
     if (depth >= 3 && !in_chk && !excluded_move && board.has_non_pawn_material(us)) {
-        int R = (depth >= 6) ? 3 : 2;
-        if (static_eval - beta >= g_search_params.nmp_eval_margin) {
+        int R = 3 + depth / 4 + std::min(3, (static_eval - beta) / 200);
+        if (!improving) {
             R += 1;
         }
-        if (!improving && depth >= 4) {
-            R += 1;
-        }
-        R = std::min(R, depth - 1);
+        R = std::clamp(R, 1, depth - 1);
 
         board.make_null_move();
 
@@ -375,8 +372,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         if (singular_score < singular_beta) {
             singular_extension = 1;
-            // Double extension on PV nodes if failed low by a substantial margin
-            if (!is_non_pv && singular_score < singular_beta - 25) {
+            // Double extension on PV nodes if failed low by a substantial scaled margin
+            if (!is_non_pv && singular_score < singular_beta - std::max(50, 3 * singular_margin)) {
                 singular_extension = 2;
             }
         } else if (singular_beta >= beta) {
@@ -470,7 +467,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             int search_depth = depth - 1 + singular_extension;
             score = -negamax_alphabeta(board, search_depth, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), m, prev_move, child_node, static_eval);
         } else {
-            // History-Based Late Move Reductions (LMR) for quiet moves (extra reduction when !improving)
+            // History-Based Late Move Reductions (LMR) for quiet moves
             if (i >= 3 && depth >= 3 && !m.is_capture() && !m.is_promotion() && !in_chk) {
                 int reduction = lmr_table[std::min(depth, 63)][std::min(i + 1, static_cast<size_t>(63))];
                 int history_val = move_picker_.get_history_score(us, m);
@@ -478,8 +475,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 int cont2_val = move_picker_.get_continuation_history_2(board, prev2_move, m);
                 int total_hist = history_val + cont_val + cont2_val;
 
-                if (total_hist > g_search_params.lmr_hist_bonus) reduction = std::max(1, reduction - 1);
-                if (total_hist < g_search_params.lmr_hist_malus && i >= 6) reduction += 1;
+                // Smooth continuous history reduction scaling
+                reduction -= total_hist / 8192;
                 if (!improving) reduction += 1;
                 if (!is_non_pv) reduction = std::max(0, reduction - 1);
                 reduction = std::clamp(reduction, 0, depth - 2);
