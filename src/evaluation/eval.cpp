@@ -10,7 +10,7 @@
 
 namespace heavensgate {
 
-thread_local EvalMode Evaluator::current_mode_ = EvalMode::SpectralTropical;
+thread_local EvalMode Evaluator::current_mode_ = EvalMode::MasterPositional;
 
 void Evaluator::init() {
     PST::init();

@@ -8,8 +8,10 @@
 namespace heavensgate {
 
 struct ContHistoryTables {
-    std::array<std::array<std::array<std::array<int, 64>, 14>, 64>, 14> cont_history{};
-    std::array<std::array<std::array<std::array<int, 64>, 14>, 64>, 14> cont_history_2{};
+    std::array<std::array<std::array<std::array<int, 64>, 14>, 64>, 14> cont_history{};   // 1-ply (opp move 1 ply ago)
+    std::array<std::array<std::array<std::array<int, 64>, 14>, 64>, 14> cont_history_2{}; // 2-ply (self move 2 plies ago)
+    std::array<std::array<std::array<std::array<int, 64>, 14>, 64>, 14> cont_history_4{}; // 4-ply (self move 4 plies ago)
+    std::array<std::array<std::array<std::array<int, 64>, 14>, 64>, 14> cont_history_6{}; // 6-ply (self move 6 plies ago)
     std::array<std::array<std::array<int, 6>, 64>, 14> capture_history{};
 };
 
@@ -41,14 +43,20 @@ public:
     void add_continuation_history_2(const Board& board, Move prev2_move, Move curr_move, int depth) noexcept;
     void sub_continuation_history_2(const Board& board, Move prev2_move, Move curr_move, int depth) noexcept;
     int get_continuation_history_2(const Board& board, Move prev2_move, Move curr_move) const noexcept;
+    void add_continuation_history_4(const Board& board, Move prev4_move, Move curr_move, int depth) noexcept;
+    void sub_continuation_history_4(const Board& board, Move prev4_move, Move curr_move, int depth) noexcept;
+    int get_continuation_history_4(const Board& board, Move prev4_move, Move curr_move) const noexcept;
+    void add_continuation_history_6(const Board& board, Move prev6_move, Move curr_move, int depth) noexcept;
+    void sub_continuation_history_6(const Board& board, Move prev6_move, Move curr_move, int depth) noexcept;
+    int get_continuation_history_6(const Board& board, Move prev6_move, Move curr_move) const noexcept;
     void add_capture_history(Piece attacker, Square to, PieceType victim, int depth) noexcept;
     int get_capture_history(Piece attacker, Square to, PieceType victim) const noexcept;
 
-    void score_moves(const Board& board, MoveList& moves, std::array<int, 256>& scores, int ply, Move pv_move = Move(), Move prev_move = Move(), Move prev2_move = Move()) const noexcept;
+    void score_moves(const Board& board, MoveList& moves, std::array<int, 256>& scores, int ply, Move pv_move = Move(), Move prev_move = Move(), Move prev2_move = Move(), Move prev4_move = Move(), Move prev6_move = Move()) const noexcept;
     void score_captures_only(const Board& board, MoveList& moves, std::array<int, 256>& scores, Move pv_move = Move()) const noexcept;
     static void pick_best(MoveList& moves, std::array<int, 256>& scores, size_t start_idx) noexcept;
 
-    void score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move pv_move = Move(), Move prev_move = Move(), Move prev2_move = Move()) const noexcept;
+    void score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move pv_move = Move(), Move prev_move = Move(), Move prev2_move = Move(), Move prev4_move = Move(), Move prev6_move = Move()) const noexcept;
     static bool see_ge(const Board& board, Move m, int threshold) noexcept;
 };
 

@@ -1,6 +1,9 @@
 #include "tt.hpp"
 #include "../evaluation/eval.hpp"
 #include <algorithm>
+#if defined(_MSC_VER)
+#include <xmmintrin.h>
+#endif
 
 namespace heavensgate {
 
