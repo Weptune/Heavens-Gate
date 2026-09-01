@@ -151,6 +151,34 @@ ScorePair EvalFeatures::evaluate_pawn_structure(const Board& board, Color side) 
         }
     }
 
+    // 5. Pawn Levers & Central Tension Breaks (+16 cp MG, +10 cp EG)
+    // A pawn push that actively challenges an opponent pawn (e.g. c4/c5, d4/d5, e4/e5, f4/f5)
+    Bitboard occ = board.occupied();
+    Bitboard single_pushes = (side == Color::White)
+        ? ((my_pawns << 8) & ~occ)
+        : ((my_pawns >> 8) & ~occ);
+
+    Bitboard push_attacks = (side == Color::White)
+        ? (((single_pushes & not_file_a) << 7) | ((single_pushes & not_file_h) << 9))
+        : (((single_pushes & not_file_a) >> 9) | ((single_pushes & not_file_h) >> 7));
+
+    Bitboard lever_targets = push_attacks & opp_pawns;
+    if (lever_targets) {
+        // Bonus for candidate central pawn levers on files c, d, e, f
+        Bitboard central_files = file_bb(File::FileC) | file_bb(File::FileD) | file_bb(File::FileE) | file_bb(File::FileF);
+        int central_levers = popcount(lever_targets & central_files);
+        score.mg += central_levers * 16;
+        score.eg += central_levers * 10;
+    }
+
+    // Active existing pawn tension (pawns attacking each other)
+    Bitboard current_tension = my_pawn_attacks & opp_pawns;
+    if (current_tension) {
+        int tension_count = popcount(current_tension);
+        score.mg += tension_count * 8;
+        score.eg += tension_count * 5;
+    }
+
     return score;
 }
 
@@ -162,9 +190,6 @@ ScorePair EvalFeatures::evaluate_passed_pawns(const Board& board, Color side) {
 
     Piece opp_pawn_piece = make_piece(~side, PieceType::Pawn);
     Bitboard opp_pawns = board.pieces(opp_pawn_piece);
-
-    Square my_ksq = board.king_square(side);
-    Square opp_ksq = board.king_square(~side);
 
     size_t pers_idx = (side == Color::White) ? 0 : 1;
 
@@ -314,9 +339,16 @@ ScorePair EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
             }
         }
 
-        // 4. Enemy Attackers Count & Danger Scale
+        // 4. Enemy Attackers Count & Safe Checks Danger Scale
         Bitboard king_zone = AttackMasks::king_attacks(ksq) | square_bb(ksq);
         Bitboard occ = board.occupied();
+        Bitboard my_pieces = board.pieces(side);
+
+        Bitboard not_file_a = ~file_bb(File::FileA);
+        Bitboard not_file_h = ~file_bb(File::FileH);
+        Bitboard my_pawn_attacks = (side == Color::White)
+            ? (((my_pawns & not_file_a) << 7) | ((my_pawns & not_file_h) << 9))
+            : (((my_pawns & not_file_a) >> 9) | ((my_pawns & not_file_h) >> 7));
 
         int attacker_weight = 0;
 
@@ -335,6 +367,61 @@ ScorePair EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
         check_attackers(PieceType::Bishop, 3, [](Square s, Bitboard o) { return AttackMasks::bishop_attacks(s, o); });
         check_attackers(PieceType::Rook,   5, [](Square s, Bitboard o) { return AttackMasks::rook_attacks(s, o); });
         check_attackers(PieceType::Queen,  8, [](Square s, Bitboard o) { return AttackMasks::queen_attacks(s, o); });
+
+        // Safe Checks: Squares where enemy pieces can check our king without being captured by friendly pawns
+        Bitboard safe_check_mask = ~my_pieces & ~my_pawn_attacks;
+
+        Bitboard rook_chk_sqs   = AttackMasks::rook_attacks(ksq, occ) & safe_check_mask;
+        Bitboard bishop_chk_sqs = AttackMasks::bishop_attacks(ksq, occ) & safe_check_mask;
+        Bitboard knight_chk_sqs = AttackMasks::knight_attacks(ksq) & safe_check_mask;
+
+        // Check for safe enemy queen checks
+        Bitboard opp_queens = board.pieces(make_piece(~side, PieceType::Queen));
+        while (opp_queens) {
+            Square qsq = pop_lsb(opp_queens);
+            Bitboard q_attacks = AttackMasks::queen_attacks(qsq, occ);
+            int safe_q_checks = popcount(q_attacks & (rook_chk_sqs | bishop_chk_sqs));
+            if (safe_q_checks > 0) {
+                attacker_weight += safe_q_checks * 6;
+                score.mg -= 35; // Direct safe queen check threat penalty
+            }
+        }
+
+        // Check for safe enemy rook checks
+        Bitboard opp_rooks = board.pieces(make_piece(~side, PieceType::Rook));
+        while (opp_rooks) {
+            Square rsq = pop_lsb(opp_rooks);
+            Bitboard r_attacks = AttackMasks::rook_attacks(rsq, occ);
+            int safe_r_checks = popcount(r_attacks & rook_chk_sqs);
+            if (safe_r_checks > 0) {
+                attacker_weight += safe_r_checks * 4;
+                score.mg -= 20; // Direct safe rook check threat penalty
+            }
+        }
+
+        // Check for safe enemy knight checks
+        Bitboard opp_knights = board.pieces(make_piece(~side, PieceType::Knight));
+        while (opp_knights) {
+            Square nsq = pop_lsb(opp_knights);
+            Bitboard n_attacks = AttackMasks::knight_attacks(nsq);
+            int safe_n_checks = popcount(n_attacks & knight_chk_sqs);
+            if (safe_n_checks > 0) {
+                attacker_weight += safe_n_checks * 3;
+                score.mg -= 15; // Direct safe knight check threat penalty
+            }
+        }
+
+        // Check for safe enemy bishop checks
+        Bitboard opp_bishops = board.pieces(make_piece(~side, PieceType::Bishop));
+        while (opp_bishops) {
+            Square bsq = pop_lsb(opp_bishops);
+            Bitboard b_attacks = AttackMasks::bishop_attacks(bsq, occ);
+            int safe_b_checks = popcount(b_attacks & bishop_chk_sqs);
+            if (safe_b_checks > 0) {
+                attacker_weight += safe_b_checks * 2;
+                score.mg -= 10; // Direct safe bishop check threat penalty
+            }
+        }
 
         size_t danger_idx = std::min(static_cast<size_t>(attacker_weight), static_cast<size_t>(31));
         score.mg -= KingDangerTable[danger_idx];
@@ -424,6 +511,64 @@ ScorePair EvalFeatures::evaluate_piece_activity(const Board& board, Color side) 
         } else if ((board.pieces(make_piece(side, PieceType::Pawn)) & file_bb(f)) == EmptyBB) {
             score.mg += 10;
             score.eg += 15; // Semi-open file
+        }
+    }
+
+    // 5. Trapped Pieces (Bishops, Knights, Boxed-in Rooks)
+    // Trapped Bishops on the rim
+    if (side == Color::White) {
+        if (board.piece_at(Square::a7) == Piece::WhiteBishop && (opp_pawns & square_bb(Square::b6))) {
+            score.mg -= 70; score.eg -= 110;
+        }
+        if (board.piece_at(Square::h7) == Piece::WhiteBishop && (opp_pawns & square_bb(Square::g6))) {
+            score.mg -= 70; score.eg -= 110;
+        }
+        if (board.piece_at(Square::b8) == Piece::WhiteBishop && (opp_pawns & square_bb(Square::c7))) {
+            score.mg -= 60; score.eg -= 90;
+        }
+        if (board.piece_at(Square::g8) == Piece::WhiteBishop && (opp_pawns & square_bb(Square::f7))) {
+            score.mg -= 60; score.eg -= 90;
+        }
+    } else {
+        if (board.piece_at(Square::a2) == Piece::BlackBishop && (opp_pawns & square_bb(Square::b3))) {
+            score.mg -= 70; score.eg -= 110;
+        }
+        if (board.piece_at(Square::h2) == Piece::BlackBishop && (opp_pawns & square_bb(Square::g3))) {
+            score.mg -= 70; score.eg -= 110;
+        }
+        if (board.piece_at(Square::b1) == Piece::BlackBishop && (opp_pawns & square_bb(Square::c2))) {
+            score.mg -= 60; score.eg -= 90;
+        }
+        if (board.piece_at(Square::g1) == Piece::BlackBishop && (opp_pawns & square_bb(Square::f2))) {
+            score.mg -= 60; score.eg -= 90;
+        }
+    }
+
+    // Boxed-in Uncastled Rooks trapped by King
+    Square ksq = board.king_square(side);
+    if (ksq != Square::None) {
+        if (side == Color::White) {
+            if ((ksq == Square::f1 || ksq == Square::g1) && (rooks & (square_bb(Square::h1) | square_bb(Square::h2)))) {
+                if ((all_pawns & file_bb(File::FileH)) != EmptyBB) {
+                    score.mg -= 45; // Trapped Kingside Rook
+                }
+            }
+            if ((ksq == Square::c1 || ksq == Square::d1) && (rooks & (square_bb(Square::a1) | square_bb(Square::a2)))) {
+                if ((all_pawns & file_bb(File::FileA)) != EmptyBB) {
+                    score.mg -= 45; // Trapped Queenside Rook
+                }
+            }
+        } else {
+            if ((ksq == Square::f8 || ksq == Square::g8) && (rooks & (square_bb(Square::h8) | square_bb(Square::h7)))) {
+                if ((all_pawns & file_bb(File::FileH)) != EmptyBB) {
+                    score.mg -= 45; // Trapped Kingside Rook
+                }
+            }
+            if ((ksq == Square::c8 || ksq == Square::d8) && (rooks & (square_bb(Square::a8) | square_bb(Square::a7)))) {
+                if ((all_pawns & file_bb(File::FileA)) != EmptyBB) {
+                    score.mg -= 45; // Trapped Queenside Rook
+                }
+            }
         }
     }
 

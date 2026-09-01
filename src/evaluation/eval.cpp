@@ -115,14 +115,7 @@ int Evaluator::evaluate(const Board& board) {
         return TropicalEvaluator::instance().evaluate(board);
     }
 
-    int white_score = evaluate_side(board, Color::White);
-    int black_score = evaluate_side(board, Color::Black);
-
-    int game_phase = std::min(24, board.game_phase());
-    int tapered_tempo = (18 * game_phase + 4 * (24 - game_phase)) / 24;
-
-    int relative_score = white_score - black_score;
-    return (board.side_to_move() == Color::White) ? (relative_score + tapered_tempo) : (-relative_score + tapered_tempo);
+    return evaluate_fast(board);
 }
 
 int Evaluator::evaluate_fast(const Board& board) {
