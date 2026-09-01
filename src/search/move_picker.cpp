@@ -100,6 +100,16 @@ void MovePicker::add_history_score(Color side, Move move, int depth) noexcept {
     val += bonus - (val * std::abs(bonus)) / 16384;
 }
 
+void MovePicker::sub_history_score(Color side, Move move, int depth) noexcept {
+    size_t c_idx = static_cast<size_t>(side);
+    size_t from_idx = static_cast<size_t>(move.from());
+    size_t to_idx = static_cast<size_t>(move.to());
+
+    int bonus = std::clamp(depth * depth, -400, 400);
+    int& val = history_scores_[c_idx][from_idx][to_idx];
+    val -= bonus + (val * std::abs(bonus)) / 16384;
+}
+
 int MovePicker::get_history_score(Color c, Move move) const noexcept {
     size_t c_idx = static_cast<size_t>(c);
     size_t from_idx = static_cast<size_t>(move.from());
@@ -129,6 +139,25 @@ void MovePicker::add_continuation_history(const Board& board, Move prev_move, Mo
         int bonus = std::clamp(depth * depth, -400, 400);
         int& val = cont_tables_->cont_history[curr_p_idx][curr_to][prev_p_idx][prev_to];
         val += bonus - (val * std::abs(bonus)) / 16384;
+    }
+}
+
+void MovePicker::sub_continuation_history(const Board& board, Move prev_move, Move curr_move, int depth) noexcept {
+    if (!cont_tables_ || !static_cast<bool>(prev_move) || !static_cast<bool>(curr_move)) return;
+
+    Piece curr_p = board.piece_at(curr_move.from());
+    Piece prev_p = board.piece_at(prev_move.to());
+    if (curr_p == Piece::None || prev_p == Piece::None) return;
+
+    size_t curr_p_idx = static_cast<size_t>(curr_p);
+    size_t curr_to = static_cast<size_t>(curr_move.to());
+    size_t prev_p_idx = static_cast<size_t>(prev_p);
+    size_t prev_to = static_cast<size_t>(prev_move.to());
+
+    if (curr_p_idx < 14 && prev_p_idx < 14) {
+        int bonus = std::clamp(depth * depth, -400, 400);
+        int& val = cont_tables_->cont_history[curr_p_idx][curr_to][prev_p_idx][prev_to];
+        val -= bonus + (val * std::abs(bonus)) / 16384;
     }
 }
 
@@ -166,6 +195,25 @@ void MovePicker::add_continuation_history_2(const Board& board, Move prev2_move,
         int bonus = std::clamp(depth * depth, -400, 400);
         int& val = cont_tables_->cont_history_2[curr_p_idx][curr_to][prev2_p_idx][prev2_to];
         val += bonus - (val * std::abs(bonus)) / 16384;
+    }
+}
+
+void MovePicker::sub_continuation_history_2(const Board& board, Move prev2_move, Move curr_move, int depth) noexcept {
+    if (!cont_tables_ || !static_cast<bool>(prev2_move) || !static_cast<bool>(curr_move)) return;
+
+    Piece curr_p = board.piece_at(curr_move.from());
+    Piece prev2_p = board.piece_at(prev2_move.to());
+    if (curr_p == Piece::None || prev2_p == Piece::None) return;
+
+    size_t curr_p_idx = static_cast<size_t>(curr_p);
+    size_t curr_to = static_cast<size_t>(curr_move.to());
+    size_t prev2_p_idx = static_cast<size_t>(prev2_p);
+    size_t prev2_to = static_cast<size_t>(prev2_move.to());
+
+    if (curr_p_idx < 14 && prev2_p_idx < 14) {
+        int bonus = std::clamp(depth * depth, -400, 400);
+        int& val = cont_tables_->cont_history_2[curr_p_idx][curr_to][prev2_p_idx][prev2_to];
+        val -= bonus + (val * std::abs(bonus)) / 16384;
     }
 }
 

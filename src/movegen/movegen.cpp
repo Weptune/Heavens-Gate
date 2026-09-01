@@ -273,4 +273,68 @@ void MoveGenerator::generate_capture_moves(const Board& board, MoveList& moves) 
     moves = legal_captures;
 }
 
+bool MoveGenerator::gives_check(const Board& board, Move m) {
+    Square from = m.from();
+    Square to = m.to();
+    Piece p = board.piece_at(from);
+    if (p == Piece::None) return false;
+
+    Color us = board.side_to_move();
+    Color them = ~us;
+    Square ksq = board.king_square(them);
+    if (ksq == Square::None) return false;
+
+    PieceType pt = m.is_promotion() ? m.promotion_piece_type() : piece_type_of(p);
+    Bitboard occ_after = (board.occupied() ^ square_bb(from)) | square_bb(to);
+
+    // 1. En Passant: Clear the captured pawn's square from occupancy
+    if (m.is_ep()) {
+        Square cap_sq = make_square(file_of(to), rank_of(from));
+        occ_after ^= square_bb(cap_sq);
+    }
+
+    // 2. Castling: Update rook's movement in occupancy and test direct rook check
+    if (m.is_castle()) {
+        Square rfrom = Square::None;
+        Square rto = Square::None;
+        if (to == Square::g1) { rfrom = Square::h1; rto = Square::f1; }
+        else if (to == Square::c1) { rfrom = Square::a1; rto = Square::d1; }
+        else if (to == Square::g8) { rfrom = Square::h8; rto = Square::f8; }
+        else if (to == Square::c8) { rfrom = Square::a8; rto = Square::d8; }
+
+        occ_after = (occ_after ^ square_bb(rfrom)) | square_bb(rto);
+        if (AttackMasks::rook_attacks(rto, occ_after) & square_bb(ksq)) return true;
+    }
+
+    // 3. Direct check by moved piece (or promoted piece)
+    if (pt == PieceType::Pawn) {
+        if (AttackMasks::pawn_attacks(us, to) & square_bb(ksq)) return true;
+    } else if (pt == PieceType::Knight) {
+        if (AttackMasks::knight_attacks(to) & square_bb(ksq)) return true;
+    } else if (pt == PieceType::Bishop) {
+        if (AttackMasks::bishop_attacks(to, occ_after) & square_bb(ksq)) return true;
+    } else if (pt == PieceType::Rook) {
+        if (AttackMasks::rook_attacks(to, occ_after) & square_bb(ksq)) return true;
+    } else if (pt == PieceType::Queen) {
+        if (AttackMasks::queen_attacks(to, occ_after) & square_bb(ksq)) return true;
+    }
+
+    // 4. Discovered check from friendly slider unmasked by moving 'from'
+    Bitboard rooks_queens = board.pieces(make_piece(us, PieceType::Rook)) | board.pieces(make_piece(us, PieceType::Queen));
+    rooks_queens &= ~square_bb(from);
+    if (m.is_castle()) {
+        Square rfrom = (to == Square::g1) ? Square::h1 : (to == Square::c1) ? Square::a1 : (to == Square::g8) ? Square::h8 : Square::a8;
+        Square rto = (to == Square::g1) ? Square::f1 : (to == Square::c1) ? Square::d1 : (to == Square::g8) ? Square::f8 : Square::d8;
+        rooks_queens &= ~square_bb(rfrom);
+        rooks_queens |= square_bb(rto);
+    }
+    if (rooks_queens && (AttackMasks::rook_attacks(ksq, occ_after) & rooks_queens)) return true;
+
+    Bitboard bishops_queens = board.pieces(make_piece(us, PieceType::Bishop)) | board.pieces(make_piece(us, PieceType::Queen));
+    bishops_queens &= ~square_bb(from);
+    if (bishops_queens && (AttackMasks::bishop_attacks(ksq, occ_after) & bishops_queens)) return true;
+
+    return false;
+}
+
 } // namespace heavensgate

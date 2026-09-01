@@ -15,6 +15,7 @@ public:
     static void generate_legal_moves(const Board& board, MoveList& moves);
     static void generate_capture_moves(const Board& board, MoveList& moves);
     static bool in_check(const Board& board, Color side);
+    static bool gives_check(const Board& board, Move m);
     static bool is_square_attacked(const Board& board, Square sq, Color attacker_color);
 
 private:

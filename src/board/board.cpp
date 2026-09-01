@@ -1,6 +1,7 @@
 #include "board.hpp"
 #include "../core/fen.hpp"
 #include "../core/zobrist.hpp"
+#include "../evaluation/pst.hpp"
 #include <algorithm>
 
 namespace heavensgate {
@@ -16,6 +17,12 @@ void Board::clear() {
 
     king_squares_[0] = Square::None;
     king_squares_[1] = Square::None;
+
+    mg_material_ = { 0, 0 };
+    eg_material_ = { 0, 0 };
+    mg_pst_ = { 0, 0 };
+    eg_pst_ = { 0, 0 };
+    game_phase_ = 0;
 
     side_to_move_ = Color::White;
     castling_rights_ = CastlingNone;
@@ -62,6 +69,22 @@ void Board::set_piece(Square sq, Piece p) {
     if (pt == PieceType::King) {
         king_squares_[c_idx] = sq;
     }
+
+    int mg_val = 0, eg_val = 0, phase_w = 0;
+    switch (pt) {
+        case PieceType::Pawn:   mg_val = 100; eg_val = 120; phase_w = 0; break;
+        case PieceType::Knight: mg_val = 320; eg_val = 310; phase_w = 1; break;
+        case PieceType::Bishop: mg_val = 330; eg_val = 340; phase_w = 1; break;
+        case PieceType::Rook:   mg_val = 500; eg_val = 530; phase_w = 2; break;
+        case PieceType::Queen:  mg_val = 900; eg_val = 950; phase_w = 4; break;
+        default: break;
+    }
+
+    mg_material_[c_idx] += mg_val;
+    eg_material_[c_idx] += eg_val;
+    mg_pst_[c_idx] += PieceSquareTables::get_mg(pt, c, sq);
+    eg_pst_[c_idx] += PieceSquareTables::get_eg(pt, c, sq);
+    game_phase_ += phase_w;
 }
 
 void Board::remove_piece(Square sq) {
@@ -81,6 +104,22 @@ void Board::remove_piece(Square sq) {
     if (pt == PieceType::King) {
         king_squares_[c_idx] = Square::None;
     }
+
+    int mg_val = 0, eg_val = 0, phase_w = 0;
+    switch (pt) {
+        case PieceType::Pawn:   mg_val = 100; eg_val = 120; phase_w = 0; break;
+        case PieceType::Knight: mg_val = 320; eg_val = 310; phase_w = 1; break;
+        case PieceType::Bishop: mg_val = 330; eg_val = 340; phase_w = 1; break;
+        case PieceType::Rook:   mg_val = 500; eg_val = 530; phase_w = 2; break;
+        case PieceType::Queen:  mg_val = 900; eg_val = 950; phase_w = 4; break;
+        default: break;
+    }
+
+    mg_material_[c_idx] -= mg_val;
+    eg_material_[c_idx] -= eg_val;
+    mg_pst_[c_idx] -= PieceSquareTables::get_mg(pt, c, sq);
+    eg_pst_[c_idx] -= PieceSquareTables::get_eg(pt, c, sq);
+    game_phase_ -= phase_w;
 }
 
 bool Board::has_non_pawn_material(Color c) const {

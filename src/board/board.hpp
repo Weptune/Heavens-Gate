@@ -76,6 +76,13 @@ public:
     Accumulator& accumulator() { return accumulator_; }
     const Accumulator& accumulator() const { return accumulator_; }
 
+    // Incremental Material, PST & Phase Accessors (O(1) Evaluation)
+    int mg_material(Color c) const noexcept { return mg_material_[static_cast<size_t>(c)]; }
+    int eg_material(Color c) const noexcept { return eg_material_[static_cast<size_t>(c)]; }
+    int mg_pst(Color c) const noexcept { return mg_pst_[static_cast<size_t>(c)]; }
+    int eg_pst(Color c) const noexcept { return eg_pst_[static_cast<size_t>(c)]; }
+    int game_phase() const noexcept { return game_phase_; }
+
     void set_piece(Square sq, Piece p);
     void remove_piece(Square sq);
     void clear();
@@ -85,6 +92,12 @@ private:
     std::array<Bitboard, 12> piece_bitboards_{};
     std::array<Bitboard, 2>  color_bitboards_{};
     std::array<Square, 2>    king_squares_{ Square::None, Square::None };
+
+    std::array<int, 2> mg_material_{ 0, 0 };
+    std::array<int, 2> eg_material_{ 0, 0 };
+    std::array<int, 2> mg_pst_{ 0, 0 };
+    std::array<int, 2> eg_pst_{ 0, 0 };
+    int game_phase_{ 0 };
 
     Color side_to_move_ = Color::White;
     CastlingRights castling_rights_ = CastlingNone;

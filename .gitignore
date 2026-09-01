@@ -55,3 +55,6 @@ game_tree.json
 *.swp
 *.DS_Store
 Thumbs.db
+__pycache__/
+web/__pycache__/
+tools/test_in.txt

@@ -33,6 +33,7 @@ struct ScorePair {
 class EvalFeatures {
 public:
     static std::array<Bitboard, 64> PassedPawnMask[2];
+    static std::array<Bitboard, 64> OutpostMask[2];
     static std::array<Bitboard, 8>  IsolatedPawnMask;
     static std::array<int, 32>      KingDangerTable;
 
@@ -42,6 +43,7 @@ public:
     static ScorePair evaluate_passed_pawns(const Board& board, Color side);
     static ScorePair evaluate_king_safety(const Board& board, Color side);
     static ScorePair evaluate_piece_activity(const Board& board, Color side);
+    static ScorePair evaluate_threats(const Board& board, Color side);
     static ScorePair evaluate_mobility(const Board& board, Color side);
 };
 

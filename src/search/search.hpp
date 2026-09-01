@@ -95,6 +95,7 @@ private:
     std::array<std::array<int, 4096>, 2> corr_history_{};
     std::array<std::array<int, 4096>, 2> non_pawn_corr_history_{};
     std::array<std::array<int, 4096>, 2> major_corr_history_{};
+    std::array<int, 256> eval_stack_{};
     int num_threads_{6};
     bool uci_output_{false};
 
@@ -108,6 +109,7 @@ public:
         corr_history_.fill({});
         non_pawn_corr_history_.fill({});
         major_corr_history_.fill({});
+        eval_stack_.fill(-ScoreInfinity);
         node_count_ = 0;
         time_stop_flag_.store(false, std::memory_order_relaxed);
     }

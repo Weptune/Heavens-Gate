@@ -32,11 +32,14 @@ public:
     void age_history() noexcept;
     void add_killer_move(int ply, Move m) noexcept;
     void add_history_score(Color c, Move m, int depth) noexcept;
+    void sub_history_score(Color c, Move m, int depth) noexcept;
     int get_history_score(Color c, Move m) const noexcept;
     void add_countermove(Move prev_move, Move countermove) noexcept;
     void add_continuation_history(const Board& board, Move prev_move, Move curr_move, int depth) noexcept;
+    void sub_continuation_history(const Board& board, Move prev_move, Move curr_move, int depth) noexcept;
     int get_continuation_history(const Board& board, Move prev_move, Move curr_move) const noexcept;
     void add_continuation_history_2(const Board& board, Move prev2_move, Move curr_move, int depth) noexcept;
+    void sub_continuation_history_2(const Board& board, Move prev2_move, Move curr_move, int depth) noexcept;
     int get_continuation_history_2(const Board& board, Move prev2_move, Move curr_move) const noexcept;
     void add_capture_history(Piece attacker, Square to, PieceType victim, int depth) noexcept;
     int get_capture_history(Piece attacker, Square to, PieceType victim) const noexcept;

@@ -32,32 +32,10 @@ static constexpr size_t PAWN_HASH_SIZE = 32768;
 static thread_local std::array<PawnHashEntry, PAWN_HASH_SIZE> s_pawn_hash_table{};
 
 int Evaluator::evaluate_side(const Board& board, Color side) {
-    int mg_material = 0;
-    int eg_material = 0;
-
-    int mg_pst = 0;
-    int eg_pst = 0;
-
-    auto score_piece = [&](PieceType pt, int mg_val, int eg_val) {
-        Piece p = make_piece(side, pt);
-        Bitboard bb = board.pieces(p);
-
-        while (bb) {
-            Square sq = pop_lsb(bb);
-            mg_material += mg_val;
-            eg_material += eg_val;
-
-            mg_pst += PST::get_mg(pt, side, sq);
-            eg_pst += PST::get_eg(pt, side, sq);
-        }
-    };
-
-    score_piece(PieceType::Pawn,   100, 120);
-    score_piece(PieceType::Knight, 320, 310);
-    score_piece(PieceType::Bishop, 330, 340);
-    score_piece(PieceType::Rook,   500, 530);
-    score_piece(PieceType::Queen,  900, 950);
-    score_piece(PieceType::King,     0,   0);
+    int mg_material = board.mg_material(side);
+    int eg_material = board.eg_material(side);
+    int mg_pst = board.mg_pst(side);
+    int eg_pst = board.eg_pst(side);
 
     if (current_mode_ == EvalMode::MaterialOnly) {
         return mg_material + mg_pst;
@@ -93,15 +71,12 @@ int Evaluator::evaluate_side(const Board& board, Color side) {
 
     ScorePair king_safety  = EvalFeatures::evaluate_king_safety(board, side);
     ScorePair activity     = EvalFeatures::evaluate_piece_activity(board, side);
+    ScorePair threats      = EvalFeatures::evaluate_threats(board, side);
     ScorePair mobility     = EvalFeatures::evaluate_mobility(board, side);
 
-    ScorePair pos_total = pawn_struct + passed_pawns + king_safety + activity + mobility;
+    ScorePair pos_total = pawn_struct + passed_pawns + king_safety + activity + threats + mobility;
 
-    int knights = popcount(board.pieces(make_piece(Color::White, PieceType::Knight))) + popcount(board.pieces(make_piece(Color::Black, PieceType::Knight)));
-    int bishops = popcount(board.pieces(make_piece(Color::White, PieceType::Bishop))) + popcount(board.pieces(make_piece(Color::Black, PieceType::Bishop)));
-    int rooks   = popcount(board.pieces(make_piece(Color::White, PieceType::Rook)))   + popcount(board.pieces(make_piece(Color::Black, PieceType::Rook)));
-    int queens  = popcount(board.pieces(make_piece(Color::White, PieceType::Queen)))  + popcount(board.pieces(make_piece(Color::Black, PieceType::Queen)));
-    int game_phase = knights * 1 + bishops * 1 + rooks * 2 + queens * 4;
+    int game_phase = board.game_phase();
 
     int mg_total = mg_material + mg_pst + pos_total.mg;
     int eg_total = eg_material + eg_pst + pos_total.eg;
@@ -131,11 +106,7 @@ int Evaluator::evaluate(const Board& board) {
         // Softened for Classical/Rapid so full Spectral-Tropical graph physics
         // remain active across all positional battles up to a full Queen lead!
         if (std::abs(fast_diff) >= 600) {
-            int knights = popcount(board.pieces(Piece::WhiteKnight) | board.pieces(Piece::BlackKnight));
-            int bishops = popcount(board.pieces(Piece::WhiteBishop) | board.pieces(Piece::BlackBishop));
-            int rooks   = popcount(board.pieces(Piece::WhiteRook)   | board.pieces(Piece::BlackRook));
-            int queens  = popcount(board.pieces(Piece::WhiteQueen)  | board.pieces(Piece::BlackQueen));
-            int game_phase = std::min(24, knights * 1 + bishops * 1 + rooks * 2 + queens * 4);
+            int game_phase = std::min(24, board.game_phase());
             int tapered_tempo = (18 * game_phase + 4 * (24 - game_phase)) / 24;
             return fast_diff + tapered_tempo;
         }
@@ -147,11 +118,7 @@ int Evaluator::evaluate(const Board& board) {
     int white_score = evaluate_side(board, Color::White);
     int black_score = evaluate_side(board, Color::Black);
 
-    int knights = popcount(board.pieces(Piece::WhiteKnight) | board.pieces(Piece::BlackKnight));
-    int bishops = popcount(board.pieces(Piece::WhiteBishop) | board.pieces(Piece::BlackBishop));
-    int rooks   = popcount(board.pieces(Piece::WhiteRook)   | board.pieces(Piece::BlackRook));
-    int queens  = popcount(board.pieces(Piece::WhiteQueen)  | board.pieces(Piece::BlackQueen));
-    int game_phase = std::min(24, knights * 1 + bishops * 1 + rooks * 2 + queens * 4);
+    int game_phase = std::min(24, board.game_phase());
     int tapered_tempo = (18 * game_phase + 4 * (24 - game_phase)) / 24;
 
     int relative_score = white_score - black_score;
@@ -165,11 +132,7 @@ int Evaluator::evaluate_fast(const Board& board) {
     int white_score = evaluate_side(board, Color::White);
     int black_score = evaluate_side(board, Color::Black);
 
-    int knights = popcount(board.pieces(Piece::WhiteKnight) | board.pieces(Piece::BlackKnight));
-    int bishops = popcount(board.pieces(Piece::WhiteBishop) | board.pieces(Piece::BlackBishop));
-    int rooks   = popcount(board.pieces(Piece::WhiteRook)   | board.pieces(Piece::BlackRook));
-    int queens  = popcount(board.pieces(Piece::WhiteQueen)  | board.pieces(Piece::BlackQueen));
-    int game_phase = std::min(24, knights * 1 + bishops * 1 + rooks * 2 + queens * 4);
+    int game_phase = std::min(24, board.game_phase());
     int tapered_tempo = (18 * game_phase + 4 * (24 - game_phase)) / 24;
 
     int relative_score = white_score - black_score;
