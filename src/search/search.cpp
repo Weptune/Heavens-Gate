@@ -820,7 +820,8 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
 
     TreeNodeJSON* root_json = export_tree ? &exporter_.root() : nullptr;
 
-    for (const auto& m : moves) {
+    for (size_t i = 0; i < moves.size(); ++i) {
+        const auto& m = moves[i];
         move_stack_[0] = m;
         board.make_move(m);
 
@@ -834,7 +835,15 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
             child_json->ply = 1;
         }
 
-        int score = -negamax_alphabeta(board, depth - 1, 1, -beta, -alpha, use_move_ordering, use_tt, Move(), child_json);
+        int score = 0;
+        if (i == 0) {
+            score = -negamax_alphabeta(board, depth - 1, 1, -beta, -alpha, use_move_ordering, use_tt, Move(), child_json);
+        } else {
+            score = -negamax_alphabeta(board, depth - 1, 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), child_json);
+            if (score > alpha && score < beta) {
+                score = -negamax_alphabeta(board, depth - 1, 1, -beta, -alpha, use_move_ordering, use_tt, Move(), child_json);
+            }
+        }
 
         board.unmake_move(m);
         move_stack_[0] = Move();
@@ -938,11 +947,20 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                         current_best_score = -ScoreInfinity;
                         int search_alpha = alpha;
 
-                        for (const auto& m : moves) {
+                        for (size_t i = 0; i < moves.size(); ++i) {
+                            const auto& m = moves[i];
                             move_stack_[0] = m;
                             board.make_move(m);
 
-                            int score = -negamax_alphabeta(board, d - 1, 1, -beta, -search_alpha, true, true, Move(), nullptr);
+                            int score = 0;
+                            if (i == 0) {
+                                score = -negamax_alphabeta(board, d - 1, 1, -beta, -search_alpha, true, true, Move(), nullptr);
+                            } else {
+                                score = -negamax_alphabeta(board, d - 1, 1, -search_alpha - 1, -search_alpha, true, true, Move(), nullptr);
+                                if (score > search_alpha && score < beta) {
+                                    score = -negamax_alphabeta(board, d - 1, 1, -beta, -search_alpha, true, true, Move(), nullptr);
+                                }
+                            }
 
                             board.unmake_move(m);
                             move_stack_[0] = Move();
@@ -1100,11 +1118,20 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                 current_best_score = -ScoreInfinity;
                 int search_alpha = alpha;
 
-                for (const auto& m : moves) {
+                for (size_t i = 0; i < moves.size(); ++i) {
+                    const auto& m = moves[i];
                     move_stack_[0] = m;
                     board.make_move(m);
 
-                    int score = -negamax_alphabeta(board, d - 1, 1, -beta, -search_alpha, true, true, Move(), nullptr);
+                    int score = 0;
+                    if (i == 0) {
+                        score = -negamax_alphabeta(board, d - 1, 1, -beta, -search_alpha, true, true, Move(), nullptr);
+                    } else {
+                        score = -negamax_alphabeta(board, d - 1, 1, -search_alpha - 1, -search_alpha, true, true, Move(), nullptr);
+                        if (score > search_alpha && score < beta) {
+                            score = -negamax_alphabeta(board, d - 1, 1, -beta, -search_alpha, true, true, Move(), nullptr);
+                        }
+                    }
 
                     board.unmake_move(m);
                     move_stack_[0] = Move();
