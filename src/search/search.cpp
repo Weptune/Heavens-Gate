@@ -158,7 +158,7 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
         }
     }
 
-    TTBound bound = (best_score > orig_alpha) ? TTBound::Exact : TTBound::Upper;
+    TTBound bound = (best_score > orig_alpha) ? (in_chk ? TTBound::Exact : TTBound::Lower) : TTBound::Upper;
     tt().store(board.zobrist_key(), best_move, best_score, 0, bound, ply);
 
     return alpha;
@@ -238,8 +238,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     Color us = board.side_to_move();
     bool in_chk = MoveGenerator::in_check(board, us);
 
-    // Check Extension (ply < 16) to prevent checkmate blind spots in middlegame/endgame
-    if (in_chk && ply < 16 && depth > 1) {
+    // Check Extension (ply < 64) to prevent checkmate blind spots in middlegame/endgame
+    if (in_chk && ply < 64 && depth > 1) {
         depth++;
     }
 

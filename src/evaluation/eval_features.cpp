@@ -368,19 +368,56 @@ ScorePair EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
         check_attackers(PieceType::Rook,   5, [](Square s, Bitboard o) { return AttackMasks::rook_attacks(s, o); });
         check_attackers(PieceType::Queen,  8, [](Square s, Bitboard o) { return AttackMasks::queen_attacks(s, o); });
 
-        // Safe Checks: Squares where enemy pieces can check our king without being captured by friendly pawns
-        Bitboard safe_check_mask = ~my_pieces & ~my_pawn_attacks;
+        // Safe Checks: Squares where enemy pieces can check our king without being captured by friendly defenders
+        Bitboard my_knights = board.pieces(make_piece(side, PieceType::Knight));
+        Bitboard my_bishops = board.pieces(make_piece(side, PieceType::Bishop));
+        Bitboard my_rooks   = board.pieces(make_piece(side, PieceType::Rook));
+        Bitboard my_queens  = board.pieces(make_piece(side, PieceType::Queen));
+        Bitboard my_king_att = AttackMasks::king_attacks(ksq);
 
-        Bitboard rook_chk_sqs   = AttackMasks::rook_attacks(ksq, occ) & safe_check_mask;
-        Bitboard bishop_chk_sqs = AttackMasks::bishop_attacks(ksq, occ) & safe_check_mask;
-        Bitboard knight_chk_sqs = AttackMasks::knight_attacks(ksq) & safe_check_mask;
+        Bitboard my_knight_att = EmptyBB;
+        Bitboard k_copy = my_knights;
+        while (k_copy) {
+            my_knight_att |= AttackMasks::knight_attacks(pop_lsb(k_copy));
+        }
+
+        Bitboard my_bishop_att = EmptyBB;
+        Bitboard b_copy = my_bishops;
+        while (b_copy) {
+            my_bishop_att |= AttackMasks::bishop_attacks(pop_lsb(b_copy), occ);
+        }
+
+        Bitboard my_rook_att = EmptyBB;
+        Bitboard r_copy = my_rooks;
+        while (r_copy) {
+            my_rook_att |= AttackMasks::rook_attacks(pop_lsb(r_copy), occ);
+        }
+
+        Bitboard my_queen_att = EmptyBB;
+        Bitboard q_copy = my_queens;
+        while (q_copy) {
+            my_queen_att |= AttackMasks::queen_attacks(pop_lsb(q_copy), occ);
+        }
+
+        Bitboard my_all_attacks = my_pawn_attacks | my_knight_att | my_bishop_att | my_rook_att | my_queen_att | my_king_att;
+        Bitboard my_minor_plus_pawn = my_pawn_attacks | my_knight_att | my_bishop_att;
+        Bitboard my_rook_plus_minor_pawn = my_minor_plus_pawn | my_rook_att;
+
+        Bitboard rook_chk_sqs   = AttackMasks::rook_attacks(ksq, occ) & ~my_pieces;
+        Bitboard bishop_chk_sqs = AttackMasks::bishop_attacks(ksq, occ) & ~my_pieces;
+        Bitboard knight_chk_sqs = AttackMasks::knight_attacks(ksq) & ~my_pieces;
+
+        Bitboard safe_queen_chk_sqs  = (rook_chk_sqs | bishop_chk_sqs) & ~my_all_attacks;
+        Bitboard safe_rook_chk_sqs   = rook_chk_sqs & ~my_rook_plus_minor_pawn;
+        Bitboard safe_knight_chk_sqs = knight_chk_sqs & ~my_minor_plus_pawn;
+        Bitboard safe_bishop_chk_sqs = bishop_chk_sqs & ~my_minor_plus_pawn;
 
         // Check for safe enemy queen checks
         Bitboard opp_queens = board.pieces(make_piece(~side, PieceType::Queen));
         while (opp_queens) {
             Square qsq = pop_lsb(opp_queens);
             Bitboard q_attacks = AttackMasks::queen_attacks(qsq, occ);
-            int safe_q_checks = popcount(q_attacks & (rook_chk_sqs | bishop_chk_sqs));
+            int safe_q_checks = popcount(q_attacks & safe_queen_chk_sqs);
             if (safe_q_checks > 0) {
                 attacker_weight += safe_q_checks * 6;
                 score.mg -= 35; // Direct safe queen check threat penalty
@@ -392,7 +429,7 @@ ScorePair EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
         while (opp_rooks) {
             Square rsq = pop_lsb(opp_rooks);
             Bitboard r_attacks = AttackMasks::rook_attacks(rsq, occ);
-            int safe_r_checks = popcount(r_attacks & rook_chk_sqs);
+            int safe_r_checks = popcount(r_attacks & safe_rook_chk_sqs);
             if (safe_r_checks > 0) {
                 attacker_weight += safe_r_checks * 4;
                 score.mg -= 20; // Direct safe rook check threat penalty
@@ -404,7 +441,7 @@ ScorePair EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
         while (opp_knights) {
             Square nsq = pop_lsb(opp_knights);
             Bitboard n_attacks = AttackMasks::knight_attacks(nsq);
-            int safe_n_checks = popcount(n_attacks & knight_chk_sqs);
+            int safe_n_checks = popcount(n_attacks & safe_knight_chk_sqs);
             if (safe_n_checks > 0) {
                 attacker_weight += safe_n_checks * 3;
                 score.mg -= 15; // Direct safe knight check threat penalty
@@ -416,7 +453,7 @@ ScorePair EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
         while (opp_bishops) {
             Square bsq = pop_lsb(opp_bishops);
             Bitboard b_attacks = AttackMasks::bishop_attacks(bsq, occ);
-            int safe_b_checks = popcount(b_attacks & bishop_chk_sqs);
+            int safe_b_checks = popcount(b_attacks & safe_bishop_chk_sqs);
             if (safe_b_checks > 0) {
                 attacker_weight += safe_b_checks * 2;
                 score.mg -= 10; // Direct safe bishop check threat penalty
