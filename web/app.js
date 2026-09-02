@@ -559,20 +559,6 @@ class ChessApp {
         });
 
         // Settings
-        const diffSelect = document.getElementById('difficulty-select');
-        if (diffSelect) {
-            diffSelect.addEventListener('change', (e) => {
-                this.gameState.difficulty = e.target.value;
-                const titles = {
-                    'sovereign': "Sovereign Engine (~3000 Elo)",
-                    'grandmaster': "Grandmaster Trial (~2600 Elo)",
-                    'master': "International Master (~2200 Elo)",
-                    'club': "Club Contender (~1800 Elo)"
-                };
-                const ratingEl = document.getElementById('top-player-rating');
-                if (ratingEl) ratingEl.textContent = titles[e.target.value] || "Grandmaster Engine (~3000 Elo)";
-            });
-        }
 
         document.getElementById('mode-select').addEventListener('change', (e) => {
             this.gameState.playMode = e.target.value;
@@ -1542,13 +1528,8 @@ class ChessApp {
         this.setStatus("SOVEREIGN CALCULATING", true);
 
         const fen = this.getFEN();
-        const diff = this.gameState.difficulty || 'sovereign';
-        let depth = 14;
-        let movetime = 0;
-
-        if (diff === 'grandmaster') { depth = 10; movetime = 1500; }
-        else if (diff === 'master') { depth = 8; movetime = 500; }
-        else if (diff === 'club') { depth = 5; movetime = 150; }
+        const depth = 14;
+        const movetime = 0;
 
         const wtimeMs = Math.round(this.gameState.whiteTime * 1000);
         const btimeMs = Math.round(this.gameState.blackTime * 1000);
