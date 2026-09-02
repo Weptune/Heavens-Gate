@@ -556,6 +556,10 @@ bool MovePicker::see_ge(const Board& board, Move m, int threshold) noexcept {
 
     Bitboard occ = board.occupied();
     occ ^= square_bb(from); // Remove initial attacker
+    if (m.is_ep()) {
+        Square ep_victim_sq = make_square(file_of(to), rank_of(from));
+        occ ^= square_bb(ep_victim_sq);
+    }
 
     Color side = ~board.side_to_move();
     PieceType curr_piece = m.is_promotion() ? m.promotion_piece_type() : piece_type_of(attacker);
