@@ -64,10 +64,10 @@ class EngineBridge:
                 return {"error": "Engine process not available"}
 
             self._send_command(f"position fen {fen}")
-            if wtime > 0 and btime > 0:
-                self._send_command(f"go wtime {wtime} btime {btime} winc {winc} binc {binc}")
-            elif movetime > 0:
+            if movetime > 0:
                 self._send_command(f"go movetime {movetime}")
+            elif wtime > 0 and btime > 0:
+                self._send_command(f"go wtime {wtime} btime {btime} winc {winc} binc {binc}")
             else:
                 self._send_command(f"go depth {depth}")
 

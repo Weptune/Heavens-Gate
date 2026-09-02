@@ -3,57 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heaven's Gate Chess Engine - Master Edition</title>
+    <title>HEAVEN'S GATE — Face Off Against The Classical Sovereign (~3000 Elo)</title>
     <link rel="icon" href="pieces/wK.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="style.css?v=21">
+    <link rel="stylesheet" href="style.css?v=30">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
-<body class="theme-wood">
+<body class="theme-celestial">
 
-    <!-- Top Navbar -->
+    <!-- Top Celestial Navbar -->
     <header class="navbar">
         <div class="brand">
-            <span class="brand-title">HEAVEN'S GATE</span>
-            <span class="version-badge">v1.0 Master</span>
+            <div class="brand-icon">⚔️</div>
+            <div class="brand-text">
+                <span class="brand-title">HEAVEN'S GATE</span>
+                <span class="brand-subtitle">THE ~3000 ELO CLASSICAL SOVEREIGN</span>
+            </div>
+            <span class="version-badge">NO NEURAL NETWORKS • PURE HCE</span>
         </div>
         <div class="nav-tabs">
-            <button class="nav-tab active" id="tab-play">Match Play</button>
-            <button class="nav-tab" id="tab-puzzles">Puzzles</button>
-            <button class="nav-tab" id="tab-telemetry">Analysis Lab</button>
+            <button class="nav-tab active" id="tab-play">⚔️ Arena Match</button>
+            <button class="nav-tab" id="tab-puzzles">🧩 Master Trials</button>
+            <button class="nav-tab" id="tab-telemetry">🔬 Search Lab</button>
         </div>
         <div class="nav-status">
-            <span class="status-dot" id="status-dot"></span>
-            <span id="engine-status">Ready</span>
+            <span class="status-dot online" id="status-dot"></span>
+            <span id="engine-status">SOVEREIGN READY</span>
         </div>
     </header>
 
-    <!-- Main Viewport Container -->
+    <!-- Main Viewport Arena Container -->
     <main class="app-layout">
         
-        <!-- Left Column: Chess Board & Controls -->
+        <!-- Left Column: Chess Board & Face-Off HUD -->
         <section class="board-column">
             
-            <!-- Top HUD -->
-            <div class="player-hud" id="top-hud">
+            <!-- Top HUD: Heaven's Gate Boss Status -->
+            <div class="player-hud boss-hud" id="top-hud">
                 <div class="hud-left">
-                    <div class="avatar" id="top-avatar">AI</div>
+                    <div class="avatar boss-avatar" id="top-avatar">
+                        <span>⚡</span>
+                        <div class="avatar-glow"></div>
+                    </div>
                     <div class="player-details">
-                        <span class="player-name" id="top-player-name">Heaven's Gate</span>
-                        <span class="player-rating">Master Edition (~3450 Elo)</span>
+                        <div class="player-title-row">
+                            <span class="player-name" id="top-player-name">HEAVEN'S GATE</span>
+                            <span class="boss-tag">SOVEREIGN</span>
+                        </div>
+                        <span class="player-rating" id="top-player-rating">Grandmaster Engine (~3000 Elo)</span>
                     </div>
                     <div class="captured-box hidden" id="top-captured">
                         <div class="captured-pieces" id="top-captured-pieces"></div>
                         <span class="material-diff hidden" id="top-material-diff">+0</span>
                     </div>
                 </div>
-                <div class="clock-display" id="top-clock">03:00</div>
+                <div class="clock-box">
+                    <span class="clock-label">TIME</span>
+                    <div class="clock-display" id="top-clock">03:00</div>
+                </div>
             </div>
 
             <!-- Board Area with Eval Gauge -->
             <div class="board-wrapper">
-                <div class="eval-gauge" title="Engine Evaluation">
+                <div class="eval-gauge" title="Sovereign Advantage Gauge">
                     <div class="eval-fill" id="eval-fill"></div>
                     <span class="eval-text" id="eval-badge">0.0</span>
                 </div>
@@ -66,74 +79,126 @@
                     <div class="modal hidden" id="promotion-modal">
                         <div class="modal-card">
                             <h4 class="modal-title">Promote Pawn</h4>
-                            <p class="modal-subtitle">Choose a piece to promote to:</p>
+                            <p class="modal-subtitle">Select your promotion piece:</p>
                             <div class="promo-grid" id="promotion-choices"></div>
                         </div>
                     </div>
 
-                    <!-- Game Over Modal -->
+                    <!-- Game Over / Autopsy Modal -->
                     <div class="modal hidden" id="gameover-modal">
-                        <div class="modal-card">
+                        <div class="modal-card autopsy-card">
+                            <div class="modal-icon" id="gameover-icon">🏆</div>
                             <h3 class="modal-title" id="gameover-title">Checkmate</h3>
-                            <p class="modal-subtitle" id="gameover-sub">White won the match.</p>
+                            <p class="modal-subtitle" id="gameover-sub">Heaven's Gate has prevailed.</p>
+                            
+                            <!-- Match Autopsy Summary -->
+                            <div class="autopsy-stats" id="autopsy-stats">
+                                <div class="stat-pill">
+                                    <span class="stat-label">SURVIVED</span>
+                                    <strong class="stat-value" id="autopsy-moves">24 moves</strong>
+                                </div>
+                                <div class="stat-pill">
+                                    <span class="stat-label">MAX LEAD</span>
+                                    <strong class="stat-value" id="autopsy-lead">+0 cp</strong>
+                                </div>
+                                <div class="stat-pill">
+                                    <span class="stat-label">ACCURACY</span>
+                                    <strong class="stat-value" id="autopsy-acc">--</strong>
+                                </div>
+                            </div>
+
+                            <p class="boss-quote" id="autopsy-quote">"The 6-ply continuation history calculated every escape."</p>
+
                             <div class="modal-btn-group">
-                                <button class="btn btn-primary modal-action-btn" id="modal-restart-btn">New Game</button>
-                                <button class="btn btn-secondary modal-action-btn" id="modal-review-btn">Review Board</button>
+                                <button class="btn btn-primary modal-action-btn" id="modal-restart-btn">⚔️ Challenge Again</button>
+                                <button class="btn btn-secondary modal-action-btn" id="modal-review-btn">🔍 Review Board</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Bottom HUD -->
-            <div class="player-hud" id="bottom-hud">
+            <!-- Bottom HUD: Challenger (Player) -->
+            <div class="player-hud challenger-hud" id="bottom-hud">
                 <div class="hud-left">
-                    <div class="avatar" id="bottom-avatar">YOU</div>
+                    <div class="avatar challenger-avatar" id="bottom-avatar">YOU</div>
                     <div class="player-details">
-                        <span class="player-name" id="bottom-player-name">Player</span>
-                        <span class="player-rating">Challenger</span>
+                        <div class="player-title-row">
+                            <span class="player-name" id="bottom-player-name">Human Challenger</span>
+                            <span class="challenger-tag">HERO</span>
+                        </div>
+                        <span class="player-rating">Ranked Arena Match</span>
                     </div>
                     <div class="captured-box hidden" id="bottom-captured">
                         <div class="captured-pieces" id="bottom-captured-pieces"></div>
                         <span class="material-diff hidden" id="bottom-material-diff">+0</span>
                     </div>
                 </div>
-                <div class="clock-display" id="bottom-clock">03:00</div>
+                <div class="clock-box">
+                    <span class="clock-label">TIME</span>
+                    <div class="clock-display" id="bottom-clock">03:00</div>
+                </div>
             </div>
 
             <!-- Quick Board Action Bar -->
             <div class="action-bar">
-                <button class="btn btn-primary" id="start-game-btn">Start Match</button>
-                <button class="btn btn-secondary" id="flip-btn" title="Flip Board (F)">Flip</button>
-                <button class="btn btn-secondary" id="undo-btn" title="Undo Move (U / Z)">Undo</button>
-                <button class="btn btn-secondary" id="hint-btn" title="Hint (H)">Hint</button>
-                <button class="btn btn-secondary" id="threat-toggle-btn" title="Threat Map (T)">Threats</button>
-                <button class="btn btn-secondary" id="draw-btn" title="Offer Draw">Draw</button>
-                <button class="btn btn-secondary btn-danger" id="resign-btn" title="Resign Match">Resign</button>
+                <button class="btn btn-primary" id="start-game-btn">⚔️ Start Match</button>
+                <button class="btn btn-secondary" id="flip-btn" title="Flip Board (F)">🔄 Flip</button>
+                <button class="btn btn-secondary" id="undo-btn" title="Undo Move (U / Z)">↩️ Undo</button>
+                <button class="btn btn-secondary" id="hint-btn" title="Sovereign Hint (H)">💡 Hint</button>
+                <button class="btn btn-secondary" id="threat-toggle-btn" title="Toggle Threat Radar (T)">🎯 Threat Map</button>
+                <button class="btn btn-secondary" id="draw-btn" title="Offer Draw">🤝 Draw</button>
+                <button class="btn btn-secondary btn-danger" id="resign-btn" title="Resign Match">🏳️ Resign</button>
             </div>
 
-            <!-- Live Engine Telemetry Quick Bar (Visible in all modes) -->
+            <!-- Live Engine Telemetry Quick Bar -->
             <div class="telemetry-bar" id="live-telemetry-bar">
-                <div class="tele-pill"><span class="tele-label">SPEED</span> <strong id="quick-nps">35.0M NPS</strong></div>
+                <div class="tele-pill"><span class="tele-label">THROUGHPUT</span> <strong id="quick-nps">-- NPS</strong></div>
                 <div class="tele-pill"><span class="tele-label">DEPTH</span> <strong id="quick-depth">Depth 12</strong></div>
-                <div class="tele-pill"><span class="tele-label">NODES</span> <strong id="quick-nodes">--</strong></div>
-                <div class="tele-pill"><span class="tele-label">TIME</span> <strong id="quick-time">--</strong></div>
+                <div class="tele-pill"><span class="tele-label">CALCULATED</span> <strong id="quick-nodes">-- nodes</strong></div>
+                <div class="tele-pill"><span class="tele-label">WIN PROB</span> <strong id="quick-winprob">50.0%</strong></div>
             </div>
         </section>
 
-        <!-- Right Column: Sidebar Panels -->
+        <!-- Right Column: Sidebar Arena Panels -->
         <aside class="sidebar-column">
             
-            <!-- Panel: Game Info & Commentary -->
-            <div class="sidebar-card" id="card-commentary">
+            <!-- Panel: Boss Commentary & Oracle -->
+            <div class="sidebar-card boss-commentary-card" id="card-commentary">
                 <div class="card-header">
-                    <span>Position Analysis</span>
+                    <span class="card-header-title">⚡ Sovereign Thoughts</span>
                     <span class="card-tag" id="opening-badge">Standard Start</span>
                 </div>
                 <div class="card-body">
-                    <p class="commentary-text" id="oracle-text">Click "Start Match" or make a move to begin.</p>
+                    <div class="dialogue-container">
+                        <div class="dialogue-avatar">⚡</div>
+                        <p class="commentary-text" id="oracle-text">"Face off against Heaven's Gate. Pure classical bitboard calculation with zero neural networks. Make your first move."</p>
+                    </div>
                     <div class="move-grade hidden" id="move-grade-badge">
-                        <span class="grade-text">Best Move</span>
+                        <span class="grade-icon">⭐</span>
+                        <span class="grade-text">Master Precision</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel: Match Scoreboard & Streak -->
+            <div class="sidebar-card arena-stats-card" id="card-arena-stats">
+                <div class="card-header">
+                    <span class="card-header-title">📊 Arena Record</span>
+                    <span class="card-tag">H2H</span>
+                </div>
+                <div class="arena-score-grid">
+                    <div class="score-box user-score">
+                        <span class="score-label">YOU</span>
+                        <span class="score-num" id="stat-user-wins">0</span>
+                    </div>
+                    <div class="score-box draw-score">
+                        <span class="score-label">DRAWS</span>
+                        <span class="score-num" id="stat-draws">0</span>
+                    </div>
+                    <div class="score-box boss-score">
+                        <span class="score-label">HEAVEN'S GATE</span>
+                        <span class="score-num" id="stat-boss-wins">0</span>
                     </div>
                 </div>
             </div>
@@ -141,52 +206,62 @@
             <!-- Panel: Move Notation Log -->
             <div class="sidebar-card move-history-card" id="card-history">
                 <div class="card-header">
-                    <span>Notation</span>
+                    <span class="card-header-title">📜 Match Notation</span>
                     <div class="card-actions">
-                        <button class="btn-text" id="copy-pgn-btn">PGN</button>
-                        <button class="btn-text" id="copy-fen-btn">FEN</button>
+                        <button class="btn-text" id="copy-pgn-btn">Copy PGN</button>
+                        <button class="btn-text" id="copy-fen-btn">Copy FEN</button>
                     </div>
                 </div>
                 <div class="history-list" id="move-history">
-                    <div class="empty-notice">No moves played yet.</div>
+                    <div class="empty-notice">No moves played yet. Match awaiting opening.</div>
                 </div>
             </div>
 
-            <!-- Panel: Match Configuration -->
+            <!-- Panel: Face-Off Configuration & Boss Difficulty -->
             <div class="sidebar-card" id="card-config">
                 <div class="card-header">
-                    <span>Settings</span>
+                    <span class="card-header-title">⚙️ Arena Configuration</span>
                 </div>
                 <div class="settings-grid">
                     <div class="setting-row">
-                        <label for="mode-select">Side:</label>
+                        <label for="difficulty-select">Boss Tier:</label>
+                        <select id="difficulty-select" class="select-input">
+                            <option value="sovereign" selected>👑 Sovereign (~3000 Elo - Uncapped)</option>
+                            <option value="grandmaster">⚔️ Grandmaster (~2600 Elo)</option>
+                            <option value="master">🛡️ International Master (~2200 Elo)</option>
+                            <option value="club">🎯 Club Contender (~1800 Elo)</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
+                        <label for="mode-select">Your Side:</label>
                         <select id="mode-select" class="select-input">
-                            <option value="human_white" selected>White vs Engine</option>
-                            <option value="human_black">Black vs Engine</option>
-                            <option value="ai_vs_ai">Spectate Engine</option>
+                            <option value="human_white" selected>White vs Heaven's Gate</option>
+                            <option value="human_black">Black vs Heaven's Gate</option>
+                            <option value="ai_vs_ai">Spectate Engine Self-Play</option>
                         </select>
                     </div>
                     <div class="setting-row">
-                        <label for="tc-select">Clock:</label>
+                        <label for="tc-select">Time Control:</label>
                         <select id="tc-select" class="select-input">
-                            <option value="bullet_1_0">Bullet 1m</option>
-                            <option value="bullet_1_1">Bullet 1m + 1s</option>
-                            <option value="blitz_3_0" selected>Blitz 3m</option>
-                            <option value="blitz_3_2">Blitz 3m + 2s</option>
-                            <option value="rapid_10_0">Rapid 10m</option>
-                            <option value="fixed_depth">Untimed (Fixed Depth)</option>
+                            <option value="bullet_1_0">Bullet 1 min</option>
+                            <option value="bullet_1_1">Bullet 1 min + 1s</option>
+                            <option value="blitz_3_0" selected>Blitz 3 min</option>
+                            <option value="blitz_3_2">Blitz 3 min + 2s</option>
+                            <option value="rapid_10_0">Rapid 10 min</option>
+                            <option value="fixed_depth">Untimed (Infinite Thinking)</option>
                         </select>
                     </div>
                     <div class="setting-row">
-                        <label for="theme-select">Board:</label>
+                        <label for="theme-select">Visual Realm:</label>
                         <select id="theme-select" class="select-input">
-                            <option value="wood" selected>Classical Walnut</option>
-                            <option value="slate">Lichess Slate</option>
-                            <option value="cyber">Dark Obsidian</option>
+                            <option value="celestial" selected>🌌 Celestial Sovereign (Gold & Dark)</option>
+                            <option value="wood">🪵 Classical Walnut</option>
+                            <option value="slate">♟️ Tournament Slate</option>
+                            <option value="cyber">⚡ Dark Obsidian</option>
                         </select>
                     </div>
                     <div class="setting-row">
-                        <label for="pieces-select">Pieces:</label>
+                        <label for="pieces-select">Piece Set:</label>
                         <select id="pieces-select" class="select-input">
                             <option value="cburnett" selected>Tournament (Cburnett)</option>
                             <option value="staunton">Staunton Classical</option>
@@ -197,32 +272,32 @@
                 </div>
             </div>
 
-            <!-- Panel: Tactical Challenges (hidden by default) -->
+            <!-- Panel: Master Tactical Challenges (hidden by default) -->
             <div class="sidebar-card hidden" id="card-puzzles">
                 <div class="card-header">
-                    <span>Tactical Puzzles</span>
+                    <span class="card-header-title">🧩 Master Tactical Trials</span>
                     <span class="card-tag" id="puzzle-progress">1 / 6</span>
                 </div>
                 <div class="card-body">
-                    <h4 id="puzzle-title">Kasparov's Immortal</h4>
+                    <h4 id="puzzle-title">Kasparov's Immortal Attack</h4>
                     <p class="puzzle-sub" id="puzzle-event">Kasparov vs Topalov (1999)</p>
                     <p class="puzzle-desc" id="puzzle-desc">Find the winning combination.</p>
                     <div class="puzzle-btns">
-                        <button class="btn btn-secondary" id="puzzle-hint-btn">Hint</button>
-                        <button class="btn btn-primary" id="puzzle-next-btn">Next</button>
+                        <button class="btn btn-secondary" id="puzzle-hint-btn">💡 Hint</button>
+                        <button class="btn btn-primary" id="puzzle-next-btn">Next Trial ➔</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Panel: Comprehensive Search Telemetry -->
+            <!-- Panel: Full Search Telemetry Lab (hidden by default) -->
             <div class="sidebar-card hidden" id="card-telemetry">
                 <div class="card-header">
-                    <span>Engine Telemetry</span>
-                    <span class="card-tag" id="tele-engine-tag">35.0M NPS</span>
+                    <span class="card-header-title">🔬 Search Lab Telemetry</span>
+                    <span class="card-tag" id="tele-engine-tag">3000 Elo HCE</span>
                 </div>
                 <div class="telemetry-table">
                     <div class="tele-row">
-                        <span>Throughput:</span>
+                        <span>Speed Throughput:</span>
                         <strong id="tele-nps">0 NPS</strong>
                     </div>
                     <div class="tele-row">
@@ -234,11 +309,11 @@
                         <strong id="tele-depth">Depth 12</strong>
                     </div>
                     <div class="tele-row">
-                        <span>Search Time:</span>
+                        <span>Computation Time:</span>
                         <strong id="tele-time">0 ms</strong>
                     </div>
                     <div class="tele-row">
-                        <span>TT Hashfull:</span>
+                        <span>TT Hash Capacity:</span>
                         <strong id="tele-hashfull">0.0%</strong>
                     </div>
                     <div class="tele-row">
@@ -246,7 +321,7 @@
                         <strong id="tele-winchance">50.0%</strong>
                     </div>
                     <div class="tele-row tele-pv-row">
-                        <span>Principal Variation:</span>
+                        <span>Principal Variation (PV):</span>
                         <div class="tele-pv-box" id="tele-pv">--</div>
                     </div>
                 </div>
@@ -256,6 +331,6 @@
 
     </main>
 
-    <script src="app.js?v=21"></script>
+    <script src="app.js?v=30"></script>
 </body>
 </html>
