@@ -121,7 +121,7 @@ void UCI::loop() {
     engine.set_threads(6);
     engine.set_uci_output(true);
 
-    Evaluator::set_mode(EvalMode::SpectralTropical);
+    Evaluator::set_mode(EvalMode::MasterPositional);
     engine.tt().resize(256);
 
     std::thread search_thread;
@@ -158,7 +158,7 @@ void UCI::loop() {
             std::cout << "option name NMP_EvalMargin type spin default 218 min 0 max 1000\n";
             std::cout << "uciok" << std::endl;
         } else if (cmd == "isready") {
-            Evaluator::set_mode(EvalMode::SpectralTropical);
+            Evaluator::set_mode(EvalMode::MasterPositional);
             std::cout << "readyok" << std::endl;
         } else if (cmd == "setoption") {
             std::string token, name, val;
@@ -190,7 +190,7 @@ void UCI::loop() {
             }
         } else if (cmd == "ucinewgame") {
             stop_search();
-            Evaluator::set_mode(EvalMode::SpectralTropical);
+            Evaluator::set_mode(EvalMode::MasterPositional);
             board.clear();
             FEN::parse(FEN::StartPOS, board);
             engine.clear();
