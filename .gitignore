@@ -34,6 +34,7 @@ heavensgate_tropical_BACKUP_*.trm
 
 # Temporary Dev Scripts & Local Workflows
 scratch/
+archive/
 run_continuous_training.ps1
 15
 
