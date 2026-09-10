@@ -1,6 +1,6 @@
 /**
  * HEAVEN'S GATE CHESS ENGINE - WEB APPLICATION
- * Bulletproof Tab Navigation + Real Piece Images + Isolated Game & Puzzle States
+ * Clean Tournament Match & Search Telemetry Sandbox
  */
 
 const PIECE_NAMES = {
@@ -48,69 +48,6 @@ const INITIAL_BOARD = [
     ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
 ];
 
-const DEFAULT_PUZZLES = [
-    {
-        id: 1,
-        title: "Kasparov's Immortal Attack",
-        event: "Kasparov vs Topalov, Wijk aan Zee 1999",
-        fen: "b2r3r/k4p1p/p2q1np1/NppP4/3p1Q2/P4PPB/1PP4P/1K1RR3 w - - 0 1",
-        turn: "w",
-        hint: "Sacrifice the rook to shatter the king's pawn shield!",
-        solution: "d1d4",
-        desc: "Find the immortal rook sacrifice that opens the fatal d-file ray."
-    },
-    {
-        id: 2,
-        title: "The Greek Gift Sacrifice",
-        event: "Classical Tactical Theme",
-        fen: "r1bq1rk1/ppp2ppp/2n1pn2/3p4/2PP4/2NBPN2/PP3PPP/R1BQK2R w KQ - 4 7",
-        turn: "w",
-        hint: "Bxh7+ crashes through the kingside fortress!",
-        solution: "d3h7",
-        desc: "Classic bishop sacrifice on h7 followed by Ng5+ and Qh5."
-    },
-    {
-        id: 3,
-        title: "Mikhail Tal's Knight Sorcery",
-        event: "Tal vs Larsen, Bled 1965",
-        fen: "r1b2rk1/pp1n1ppp/2p1pn2/q2p2B1/2PP4/2P1PN2/P1Q1BPPP/R3K2R w KQ - 3 10",
-        turn: "w",
-        hint: "Break through the center with e4!",
-        solution: "e1g1",
-        desc: "Prepare the central explosion and open tactical diagonal lines."
-    },
-    {
-        id: 4,
-        title: "Opera House Checkmate",
-        event: "Paul Morphy vs Duke of Brunswick, Paris 1858",
-        fen: "4kb1r/p2n1ppp/4q3/4p1B1/4P3/1Q6/PPP2PPP/2KR4 w k - 1 1",
-        turn: "w",
-        hint: "Queen sacrifice on b8 leads to back-rank mate with Rd8#!",
-        solution: "b3b8",
-        desc: "The most famous queen sacrifice in chess history."
-    },
-    {
-        id: 5,
-        title: "Fischer's Game of the Century",
-        event: "Donald Byrne vs Bobby Fischer, New York 1956",
-        fen: "r3r1k1/pp3pbp/1qp1b1p1/4B3/2P5/2N2N1P/PP1Q1PP1/R4RK1 b - - 0 16",
-        turn: "b",
-        hint: "Offer the queen with Be6 to build a lethal discovered attack windmill!",
-        solution: "e6c4",
-        desc: "Fischer's brilliant 13-year-old masterpiece."
-    },
-    {
-        id: 6,
-        title: "Smothered Mate (Philidor's Legacy)",
-        event: "Classical Tactical Motif",
-        fen: "6k1/5ppp/8/8/8/8/1Q4PP/6K1 w - - 0 1",
-        turn: "w",
-        hint: "Queen check on b8 forces back rank mate!",
-        solution: "b2b8",
-        desc: "Deliver the unstoppable back-rank checkmate."
-    }
-];
-
 class SoundFX {
     constructor() { this.ctx = null; }
     init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
@@ -153,6 +90,66 @@ class ChessRulesEngine {
             }
         }
         return null;
+    }
+
+    static getAttackers(r, c, byTurn, board) {
+        const attackers = [];
+        const isAttacker = byTurn === 'w' ? this.isWhite : this.isBlack;
+        const pawnDir = byTurn === 'w' ? 1 : -1;
+        
+        for (const dc of [-1, 1]) {
+            const pr = r + pawnDir, pc = c + dc;
+            if (pr >= 0 && pr < 8 && pc >= 0 && pc < 8) {
+                const p = board[pr][pc];
+                if ((byTurn === 'w' && p === 'P') || (byTurn === 'b' && p === 'p')) {
+                    attackers.push({ r: pr, c: pc, piece: p });
+                }
+            }
+        }
+        const knightD = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+        for (const [dr, dc] of knightD) {
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                const p = board[nr][nc];
+                if ((byTurn === 'w' && p === 'N') || (byTurn === 'b' && p === 'n')) {
+                    attackers.push({ r: nr, c: nc, piece: p });
+                }
+            }
+        }
+        const directions = [
+            [-1, 0, 'R'], [1, 0, 'R'], [0, -1, 'R'], [0, 1, 'R'],
+            [-1, -1, 'B'], [-1, 1, 'B'], [1, -1, 'B'], [1, 1, 'B']
+        ];
+        for (const [dr, dc, type] of directions) {
+            let currR = r + dr, currC = c + dc;
+            while (currR >= 0 && currR < 8 && currC >= 0 && currC < 8) {
+                const p = board[currR][currC];
+                if (p !== '.') {
+                    if (isAttacker.call(this, p)) {
+                        const up = p.toUpperCase();
+                        if (up === 'Q' || up === type) {
+                            attackers.push({ r: currR, c: currC, piece: p });
+                        }
+                    }
+                    break;
+                }
+                currR += dr;
+                currC += dc;
+            }
+        }
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                if (dr === 0 && dc === 0) continue;
+                const kr = r + dr, kc = c + dc;
+                if (kr >= 0 && kr < 8 && kc >= 0 && kc < 8) {
+                    const p = board[kr][kc];
+                    if ((byTurn === 'w' && p === 'K') || (byTurn === 'b' && p === 'k')) {
+                        attackers.push({ r: kr, c: kc, piece: p });
+                    }
+                }
+            }
+        }
+        return attackers;
     }
 
     static isSquareAttacked(r, c, byTurn, board) {
@@ -371,7 +368,7 @@ class ChessApp {
         this.sound = new SoundFX();
         this.pieceSet = 'cburnett';
 
-        // Match Game State (100% Isolated from Puzzles)
+        // Match Game State
         this.gameState = {
             board: ChessRulesEngine.cloneBoard(INITIAL_BOARD),
             turn: 'w',
@@ -392,19 +389,6 @@ class ChessApp {
             blackTime: 180.0,
             increment: 0.0,
             lastEvalScore: 0
-        };
-
-        // Puzzle Game State (100% Isolated from Matches)
-        this.puzzleState = {
-            board: ChessRulesEngine.cloneBoard(INITIAL_BOARD),
-            turn: 'w',
-            castlingRights: { K: false, Q: false, k: false, q: false },
-            enPassantTarget: null,
-            lastMove: null,
-            isFlipped: false,
-            puzzleIdx: 0,
-            isSolved: false,
-            puzzles: DEFAULT_PUZZLES
         };
 
         // Telemetry & Analysis Sandbox State (100% Isolated from Matches)
@@ -430,7 +414,6 @@ class ChessApp {
         this.initDOM();
         this.bindEvents();
         this.initPlayMode();
-        this.fetchServerPuzzles();
     }
 
     initDOM() {
@@ -510,7 +493,6 @@ class ChessApp {
     bindEvents() {
         // Tab switching
         document.getElementById('tab-play').addEventListener('click', () => this.switchTab('play'));
-        document.getElementById('tab-puzzles').addEventListener('click', () => this.switchTab('puzzles'));
         document.getElementById('tab-telemetry').addEventListener('click', () => this.switchTab('telemetry'));
 
         // Match Actions
@@ -544,6 +526,30 @@ class ChessApp {
             this.gameoverModal.classList.add('hidden');
         });
 
+        const settingsToggleBtn = document.getElementById('settings-toggle-btn');
+        const cardConfig = document.getElementById('card-config');
+        const configCloseBtn = document.getElementById('config-close-btn');
+        const configDoneBtn = document.getElementById('config-done-btn');
+
+        if (settingsToggleBtn && cardConfig) {
+            settingsToggleBtn.addEventListener('click', () => {
+                cardConfig.classList.remove('hidden');
+                cardConfig.style.display = 'flex';
+            });
+        }
+        if (configCloseBtn && cardConfig) {
+            configCloseBtn.addEventListener('click', () => {
+                cardConfig.classList.add('hidden');
+                cardConfig.style.display = 'none';
+            });
+        }
+        if (configDoneBtn && cardConfig) {
+            configDoneBtn.addEventListener('click', () => {
+                cardConfig.classList.add('hidden');
+                cardConfig.style.display = 'none';
+            });
+        }
+
         // Global Keyboard Shortcuts
         window.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
@@ -554,7 +560,13 @@ class ChessApp {
             else if (key === 't') this.toggleThreatMap();
             else if (key === 'escape') {
                 this.promotionModal.classList.add('hidden');
+                this.promotionModal.style.display = 'none';
                 this.gameoverModal.classList.add('hidden');
+                this.gameoverModal.style.display = 'none';
+                if (cardConfig) {
+                    cardConfig.classList.add('hidden');
+                    cardConfig.style.display = 'none';
+                }
             }
         });
 
@@ -585,24 +597,6 @@ class ChessApp {
 
         document.getElementById('copy-fen-btn').addEventListener('click', () => this.copyFEN());
         document.getElementById('copy-pgn-btn').addEventListener('click', () => this.copyPGN());
-
-        // Puzzle Controls
-        document.getElementById('puzzle-hint-btn').addEventListener('click', () => this.showPuzzleHint());
-        document.getElementById('puzzle-next-btn').addEventListener('click', () => this.nextPuzzle());
-    }
-
-    async fetchServerPuzzles() {
-        try {
-            const resp = await fetch('/api/puzzles');
-            if (resp.ok) {
-                const data = await resp.json();
-                if (Array.isArray(data) && data.length > 0) {
-                    this.puzzleState.puzzles = data;
-                }
-            }
-        } catch (e) {
-            console.log("Using default embedded puzzles.");
-        }
     }
 
     switchTab(tab) {
@@ -614,40 +608,18 @@ class ChessApp {
         const tabEl = document.getElementById(`tab-${tab}`);
         if (tabEl) tabEl.classList.add('active');
 
-        const cardCommentary = document.getElementById('card-commentary');
-        const cardHistory = document.getElementById('card-history');
-        const cardConfig = document.getElementById('card-config');
-        const cardPuzzles = document.getElementById('card-puzzles');
+        const panelPlay = document.getElementById('panel-play');
         const cardTelemetry = document.getElementById('card-telemetry');
 
         if (tab === 'play') {
             this.stopClock();
-            cardCommentary.classList.remove('hidden');
-            cardHistory.classList.remove('hidden');
-            cardConfig.classList.remove('hidden');
-            cardPuzzles.classList.add('hidden');
-            cardTelemetry.classList.add('hidden');
-
+            if (panelPlay) { panelPlay.classList.remove('hidden'); panelPlay.style.display = 'flex'; }
+            if (cardTelemetry) { cardTelemetry.classList.add('hidden'); cardTelemetry.style.display = 'none'; }
             this.renderPlayView();
-
-        } else if (tab === 'puzzles') {
-            this.stopClock();
-            cardCommentary.classList.add('hidden');
-            cardHistory.classList.add('hidden');
-            cardConfig.classList.add('hidden');
-            cardTelemetry.classList.add('hidden');
-            cardPuzzles.classList.remove('hidden');
-
-            this.renderPuzzleView();
-
         } else if (tab === 'telemetry') {
             this.stopClock();
-            cardCommentary.classList.remove('hidden');
-            cardHistory.classList.remove('hidden');
-            cardConfig.classList.add('hidden');
-            cardPuzzles.classList.add('hidden');
-            cardTelemetry.classList.remove('hidden');
-
+            if (panelPlay) { panelPlay.classList.add('hidden'); panelPlay.style.display = 'none'; }
+            if (cardTelemetry) { cardTelemetry.classList.remove('hidden'); cardTelemetry.style.display = 'flex'; }
             this.renderTelemetryView();
             this.runLiveAnalysis();
         }
@@ -697,11 +669,6 @@ class ChessApp {
         this.runLiveAnalysis();
     }
 
-    renderPuzzleView() {
-        this.setStatus('Tactical Training', false);
-        this.loadPuzzle(this.puzzleState.puzzleIdx);
-    }
-
     initPlayMode() {
         this.stopClock();
         this.gameState.board = ChessRulesEngine.cloneBoard(INITIAL_BOARD);
@@ -748,94 +715,32 @@ class ChessApp {
         }
     }
 
-    loadPuzzle(idx) {
-        const pList = this.puzzleState.puzzles;
-        if (!pList || pList.length === 0) return;
-
-        this.puzzleState.puzzleIdx = idx % pList.length;
-        this.puzzleState.isSolved = false;
-        const p = pList[this.puzzleState.puzzleIdx];
-
-        document.getElementById('puzzle-title').textContent = p.title;
-        document.getElementById('puzzle-event').textContent = p.event;
-        document.getElementById('puzzle-desc').textContent = p.desc;
-        document.getElementById('puzzle-progress').textContent = `${this.puzzleState.puzzleIdx + 1} / ${pList.length}`;
-
-        // Parse Puzzle FEN into puzzleState
-        const parts = p.fen.split(' ');
-        const ranks = parts[0].split('/');
-        const newBoard = [];
-        for (let r = 0; r < 8; r++) {
-            const row = [];
-            for (let i = 0; i < ranks[r].length; i++) {
-                const ch = ranks[r][i];
-                if (ch >= '1' && ch <= '8') {
-                    for (let k = 0; k < parseInt(ch); k++) row.push('.');
-                } else {
-                    row.push(ch);
-                }
-            }
-            newBoard.push(row);
-        }
-
-        this.puzzleState.board = newBoard;
-        this.puzzleState.turn = parts[1] || 'w';
-        this.puzzleState.castlingRights = {
-            K: parts[2] ? parts[2].includes('K') : false,
-            Q: parts[2] ? parts[2].includes('Q') : false,
-            k: parts[2] ? parts[2].includes('k') : false,
-            q: parts[2] ? parts[2].includes('q') : false
-        };
-        this.puzzleState.enPassantTarget = (parts[3] && parts[3] !== '-') ? this.squareToCoords(parts[3]) : null;
-        this.puzzleState.lastMove = null;
-        this.puzzleState.isFlipped = (this.puzzleState.turn === 'b');
-
-        this.selectedSquare = null;
-        this.legalTargets = [];
-        this.renderBoard();
-    }
-
-    showPuzzleHint() {
-        const p = this.puzzleState.puzzles[this.puzzleState.puzzleIdx];
-        if (p) document.getElementById('puzzle-desc').textContent = `Hint: ${p.hint}`;
-    }
-
-    nextPuzzle() {
-        this.loadPuzzle(this.puzzleState.puzzleIdx + 1);
-    }
-
     getCurrentBoard() {
-        if (this.activeTab === 'puzzles') return this.puzzleState.board;
         if (this.activeTab === 'telemetry') return this.telemetryState.board;
         return this.gameState.board;
     }
 
     getCurrentTurn() {
-        if (this.activeTab === 'puzzles') return this.puzzleState.turn;
         if (this.activeTab === 'telemetry') return this.telemetryState.turn;
         return this.gameState.turn;
     }
 
     getCurrentCastling() {
-        if (this.activeTab === 'puzzles') return this.puzzleState.castlingRights;
         if (this.activeTab === 'telemetry') return this.telemetryState.castlingRights;
         return this.gameState.castlingRights;
     }
 
     getCurrentEPTarget() {
-        if (this.activeTab === 'puzzles') return this.puzzleState.enPassantTarget;
         if (this.activeTab === 'telemetry') return this.telemetryState.enPassantTarget;
         return this.gameState.enPassantTarget;
     }
 
     getCurrentLastMove() {
-        if (this.activeTab === 'puzzles') return this.puzzleState.lastMove;
         if (this.activeTab === 'telemetry') return this.telemetryState.lastMove;
         return this.gameState.lastMove;
     }
 
     getIsFlipped() {
-        if (this.activeTab === 'puzzles') return this.puzzleState.isFlipped;
         if (this.activeTab === 'telemetry') return this.telemetryState.isFlipped;
         return this.gameState.isFlipped;
     }
@@ -1021,10 +926,6 @@ class ChessApp {
     }
 
     handleSquareClick(r, c) {
-        if (this.activeTab === 'puzzles') {
-            this.handlePuzzleClick(r, c);
-            return;
-        }
         if (this.activeTab === 'telemetry') {
             this.handleTelemetryClick(r, c);
             return;
@@ -1077,73 +978,6 @@ class ChessApp {
             if (isMyPiece) {
                 this.selectedSquare = [r, c];
                 this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, board, turn, this.gameState.castlingRights, this.gameState.enPassantTarget);
-                this.renderBoard();
-            }
-        }
-    }
-
-    handlePuzzleClick(r, c) {
-        if (this.puzzleState.isSolved) return;
-        const board = this.puzzleState.board;
-        const turn = this.puzzleState.turn;
-        const piece = board[r][c];
-        const isMyPiece = (turn === 'w' && ChessRulesEngine.isWhite(piece)) || (turn === 'b' && ChessRulesEngine.isBlack(piece));
-
-        if (this.selectedSquare) {
-            const [srcR, srcC] = this.selectedSquare;
-            const isTarget = this.legalTargets.some(([tr, tc]) => tr === r && tc === c);
-
-            if (srcR === r && srcC === c) {
-                this.selectedSquare = null;
-                this.legalTargets = [];
-                this.renderBoard();
-                return;
-            }
-
-            if (isMyPiece) {
-                this.selectedSquare = [r, c];
-                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, board, turn, this.puzzleState.castlingRights, this.puzzleState.enPassantTarget);
-                this.renderBoard();
-                return;
-            }
-
-            if (isTarget) {
-                const uciStr = `${this.coordsToSquare(srcR, srcC)}${this.coordsToSquare(r, c)}`;
-                const p = this.puzzleState.puzzles[this.puzzleState.puzzleIdx];
-
-                if (uciStr === p.solution) {
-                    // Correct Solution
-                    board[r][c] = board[srcR][srcC];
-                    board[srcR][srcC] = '.';
-                    this.puzzleState.lastMove = { from: this.coordsToSquare(srcR, srcC), to: this.coordsToSquare(r, c) };
-                    this.puzzleState.isSolved = true;
-                    this.sound.playSuccess();
-                    document.getElementById('puzzle-desc').textContent = "Brilliant! You found the winning tactic.";
-                    this.setStatus("Puzzle Solved", false);
-                } else {
-                    // Incorrect move
-                    board[r][c] = board[srcR][srcC];
-                    board[srcR][srcC] = '.';
-                    this.puzzleState.lastMove = { from: this.coordsToSquare(srcR, srcC), to: this.coordsToSquare(r, c) };
-                    this.sound.playError();
-                    document.getElementById('puzzle-desc').textContent = "Incorrect move. Try again!";
-                    setTimeout(() => {
-                        this.loadPuzzle(this.puzzleState.puzzleIdx);
-                    }, 700);
-                }
-
-                this.selectedSquare = null;
-                this.legalTargets = [];
-                this.renderBoard();
-            } else {
-                this.selectedSquare = null;
-                this.legalTargets = [];
-                this.renderBoard();
-            }
-        } else {
-            if (isMyPiece) {
-                this.selectedSquare = [r, c];
-                this.legalTargets = ChessRulesEngine.getLegalMoves(r, c, board, turn, this.puzzleState.castlingRights, this.puzzleState.enPassantTarget);
                 this.renderBoard();
             }
         }
@@ -1482,7 +1316,7 @@ class ChessApp {
 
         const iconEl = document.getElementById('gameover-icon');
         if (iconEl) {
-            iconEl.textContent = (outcome === 'user') ? '👑' : (outcome === 'draw' ? '🤝' : '⚡');
+            iconEl.textContent = '';
         }
 
         this.recordArenaMatch(outcome);
@@ -1660,22 +1494,22 @@ class ChessApp {
 
             if (wpGain >= 0.18 && moverCurrWp >= 0.65) {
                 this.moveGradeEl.className = 'move-grade brilliant';
-                this.moveGradeEl.innerHTML = `<span class="grade-text">⚡ Brilliant</span>`;
+                this.moveGradeEl.innerHTML = `<span class="grade-text">Brilliant</span>`;
             } else if (wpLoss <= 0.015) {
                 this.moveGradeEl.className = 'move-grade best';
-                this.moveGradeEl.innerHTML = `<span class="grade-text">⭐ Best Move</span>`;
+                this.moveGradeEl.innerHTML = `<span class="grade-text">Best Move</span>`;
             } else if (wpLoss <= 0.045) {
                 this.moveGradeEl.className = 'move-grade good';
-                this.moveGradeEl.innerHTML = `<span class="grade-text">✓ Good</span>`;
+                this.moveGradeEl.innerHTML = `<span class="grade-text">Good</span>`;
             } else if (wpLoss <= 0.10) {
                 this.moveGradeEl.className = 'move-grade inaccuracy';
-                this.moveGradeEl.innerHTML = `<span class="grade-text">? Inaccuracy</span>`;
+                this.moveGradeEl.innerHTML = `<span class="grade-text">Inaccuracy</span>`;
             } else if (wpLoss <= 0.22) {
                 this.moveGradeEl.className = 'move-grade mistake';
-                this.moveGradeEl.innerHTML = `<span class="grade-text">?? Mistake</span>`;
+                this.moveGradeEl.innerHTML = `<span class="grade-text">Mistake</span>`;
             } else {
                 this.moveGradeEl.className = 'move-grade blunder';
-                this.moveGradeEl.innerHTML = `<span class="grade-text">🔴 Blunder</span>`;
+                this.moveGradeEl.innerHTML = `<span class="grade-text">Blunder</span>`;
             }
         } else {
             this.moveGradeEl.classList.add('hidden');
@@ -1716,10 +1550,6 @@ class ChessApp {
     }
 
     async requestHint() {
-        if (this.activeTab === 'puzzles') {
-            this.showPuzzleHint();
-            return;
-        }
         if (this.gameState.isThinking || this.gameState.isGameOver) return;
         const fen = this.getFEN();
         const resp = await fetch('/api/analyze', {
@@ -1735,6 +1565,8 @@ class ChessApp {
 
     toggleThreatMap() {
         this.showThreatMap = !this.showThreatMap;
+        const btn = document.getElementById('threat-toggle-btn');
+        if (btn) btn.classList.toggle('active', this.showThreatMap);
         if (this.showThreatMap) {
             this.heatmapCanvas.classList.remove('hidden');
             this.drawThreatMap();
@@ -1745,41 +1577,189 @@ class ChessApp {
 
     drawThreatMap() {
         const canvas = this.heatmapCanvas;
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        canvas.width = 460;
-        canvas.height = 460;
-        ctx.clearRect(0, 0, 460, 460);
+
+        // Match exact board client dimension for 1:1 pixel sharpness (no blur)
+        const width = this.boardEl.clientWidth || 464;
+        const height = this.boardEl.clientHeight || 464;
+        canvas.width = width;
+        canvas.height = height;
+        ctx.clearRect(0, 0, width, height);
+
+        const threatBtn = document.getElementById('threat-toggle-btn');
+        if (threatBtn) threatBtn.classList.toggle('active', !!this.showThreatMap);
 
         const board = this.getCurrentBoard();
         const isFlipped = this.getIsFlipped();
-        const sqSize = 460 / 8;
+        const sqSize = width / 8;
+
+        const PIECE_VALS = { 'P': 1, 'N': 3, 'B': 3, 'R': 5, 'Q': 9, 'K': 100 };
+
+        // Determine player perspective
+        let myColor;
+        if (this.activeTab === 'telemetry' || this.gameState.playMode === 'pvp') {
+            myColor = this.getCurrentTurn();
+        } else {
+            myColor = (this.gameState.playMode === 'human_black') ? 'b' : 'w';
+        }
+
+        const threats = [];
+        const opportunities = [];
 
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
-                const dr = isFlipped ? 7 - r : r;
-                const dc = isFlipped ? 7 - c : c;
+                const p = board[r][c];
+                if (p === '.') continue;
 
-                const attackedByWhite = ChessRulesEngine.isSquareAttacked(r, c, 'w', board);
-                const attackedByBlack = ChessRulesEngine.isSquareAttacked(r, c, 'b', board);
+                const isWhite = ChessRulesEngine.isWhite(p);
+                const pieceColor = isWhite ? 'w' : 'b';
+                const oppColor = pieceColor === 'w' ? 'b' : 'w';
+                const isFriendly = (pieceColor === myColor);
 
-                if (attackedByWhite && attackedByBlack) {
-                    ctx.fillStyle = 'rgba(168, 85, 247, 0.3)';
-                    ctx.fillRect(dc * sqSize, dr * sqSize, sqSize, sqSize);
-                } else if (attackedByWhite) {
-                    ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
-                    ctx.fillRect(dc * sqSize, dr * sqSize, sqSize, sqSize);
-                } else if (attackedByBlack) {
-                    ctx.fillStyle = 'rgba(244, 63, 94, 0.25)';
-                    ctx.fillRect(dc * sqSize, dr * sqSize, sqSize, sqSize);
+                const attackers = ChessRulesEngine.getAttackers(r, c, oppColor, board);
+                if (attackers.length === 0) continue;
+
+                const defenders = ChessRulesEngine.getAttackers(r, c, pieceColor, board);
+                const isDefended = defenders.length > 0;
+                const victimVal = PIECE_VALS[p.toUpperCase()] || 0;
+
+                // Find lowest-value attacker (primary tactical threat vector)
+                const primaryAttacker = attackers.reduce((min, curr) => {
+                    const cVal = PIECE_VALS[curr.piece.toUpperCase()] || 0;
+                    const mVal = PIECE_VALS[min.piece.toUpperCase()] || 0;
+                    return cVal < mVal ? curr : min;
+                }, attackers[0]);
+                const minAttackerVal = PIECE_VALS[primaryAttacker.piece.toUpperCase()] || 0;
+
+                const isHanging = !isDefended;
+                const isUnfavorable = isDefended && (minAttackerVal < victimVal);
+
+                const item = {
+                    r, c, piece: p, isFriendly, isHanging, isUnfavorable, isDefended,
+                    victimVal, minAttackerVal, primaryAttacker, attackersCount: attackers.length
+                };
+
+                if (isFriendly) {
+                    threats.push(item);
+                } else {
+                    if (isHanging || minAttackerVal < victimVal) {
+                        opportunities.push(item);
+                    }
                 }
             }
+        }
+
+        // 1. Draw dashed attack vector lines from attacker to target
+        for (const item of [...threats, ...opportunities]) {
+            const att = item.primaryAttacker;
+            const fromR = isFlipped ? 7 - att.r : att.r;
+            const fromC = isFlipped ? 7 - att.c : att.c;
+            const toR = isFlipped ? 7 - item.r : item.r;
+            const toC = isFlipped ? 7 - item.c : item.c;
+
+            const fromX = fromC * sqSize + sqSize / 2;
+            const fromY = fromR * sqSize + sqSize / 2;
+            const toX = toC * sqSize + sqSize / 2;
+            const toY = toR * sqSize + sqSize / 2;
+
+            let lineColor;
+            if (item.isFriendly) {
+                lineColor = (item.isHanging || item.isUnfavorable) ? 'rgba(239, 68, 68, 0.85)' : 'rgba(245, 158, 11, 0.7)';
+            } else {
+                lineColor = 'rgba(16, 185, 129, 0.85)';
+            }
+
+            ctx.save();
+            ctx.strokeStyle = lineColor;
+            ctx.fillStyle = lineColor;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 4]);
+
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            const dist = Math.hypot(toX - fromX, toY - fromY);
+            const startOffset = 18;
+            const endOffset = 22;
+
+            if (dist > startOffset + endOffset) {
+                const sx = fromX + Math.cos(angle) * startOffset;
+                const sy = fromY + Math.sin(angle) * startOffset;
+                const ex = toX - Math.cos(angle) * endOffset;
+                const ey = toY - Math.sin(angle) * endOffset;
+
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                ctx.lineTo(ex, ey);
+                ctx.stroke();
+
+                ctx.setLineDash([]);
+                const arrowLen = 8;
+                ctx.beginPath();
+                ctx.moveTo(ex, ey);
+                ctx.lineTo(ex - arrowLen * Math.cos(angle - Math.PI / 6), ey - arrowLen * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(ex - arrowLen * Math.cos(angle + Math.PI / 6), ey - arrowLen * Math.sin(angle + Math.PI / 6));
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        // 2. Draw tactical indicators on threatened piece squares
+        for (const item of [...threats, ...opportunities]) {
+            const dr = isFlipped ? 7 - item.r : item.r;
+            const dc = isFlipped ? 7 - item.c : item.c;
+            const x = dc * sqSize;
+            const y = dr * sqSize;
+            const pad = 4;
+            const boxX = x + pad;
+            const boxY = y + pad;
+            const boxSize = sqSize - pad * 2;
+            const radius = 6;
+
+            let strokeColor, fillColor;
+            if (item.isFriendly) {
+                if (item.isHanging) {
+                    strokeColor = 'rgba(239, 68, 68, 0.95)'; // Crimson Red (Hanging piece)
+                    fillColor = 'rgba(239, 68, 68, 0.16)';
+                } else if (item.isUnfavorable) {
+                    strokeColor = 'rgba(244, 63, 94, 0.9)'; // Rose (Exposed high-value piece)
+                    fillColor = 'rgba(244, 63, 94, 0.13)';
+                } else {
+                    strokeColor = 'rgba(245, 158, 11, 0.75)'; // Amber (Defended piece under attack)
+                    fillColor = 'rgba(245, 158, 11, 0.08)';
+                }
+            } else {
+                strokeColor = 'rgba(16, 185, 129, 0.95)'; // Emerald Green (Free capture target)
+                fillColor = 'rgba(16, 185, 129, 0.15)';
+            }
+
+            ctx.save();
+            ctx.fillStyle = fillColor;
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 2;
+
+            if (ctx.roundRect) {
+                ctx.beginPath();
+                ctx.roundRect(boxX, boxY, boxSize, boxSize, radius);
+                ctx.fill();
+                ctx.stroke();
+            } else {
+                ctx.fillRect(boxX, boxY, boxSize, boxSize);
+                ctx.strokeRect(boxX, boxY, boxSize, boxSize);
+            }
+
+            // Tactical indicator corner pip
+            ctx.fillStyle = strokeColor;
+            ctx.beginPath();
+            ctx.arc(boxX + boxSize - 7, boxY + 7, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
         }
     }
 
     flipBoard() {
-        if (this.activeTab === 'puzzles') {
-            this.puzzleState.isFlipped = !this.puzzleState.isFlipped;
-        } else if (this.activeTab === 'telemetry') {
+        if (this.activeTab === 'telemetry') {
             this.telemetryState.isFlipped = !this.telemetryState.isFlipped;
         } else {
             this.gameState.isFlipped = !this.gameState.isFlipped;
@@ -1788,10 +1768,6 @@ class ChessApp {
     }
 
     undoMove() {
-        if (this.activeTab === 'puzzles') {
-            this.loadPuzzle(this.puzzleState.puzzleIdx);
-            return;
-        }
         if (this.activeTab === 'telemetry') {
             this.initTelemetryMode();
             return;
