@@ -1,0 +1,225 @@
+About 3 months ago, while going through math research written by people much smarter and more knowledgeable than me, I stumbled upon this write-up on spectral graph theory. For some reason, my initial instinct after reading it was that it would make for a great chess engine, due to how well it captured and interpreted 2D spaces. So... that's what I did :)
+
+*cue intro*
+
+Okay, so why spectral graphs? What even are they? Why would they be relevant in chess? Let's tackle these questions one by one.
+
+============================================================
+1. What is a Spectral Graph?
+============================================================
+
+In mathematics, a graph is just two things: nodes (points in space) and edges (lines connecting them).
+
+In chess, it's intuitive to see how this would be represented:
+
+The nodes are the pieces on the board.
+The edges are the tactical lines between them: how the pieces are connected to and affect each other.
+
+[ANIMATION: 8 pieces on a dark board. Tactical lines draw between them, turning the board into a clean network graph]
+
+To do math on this network, we encode all those connections into a table: the Adjacency Matrix, which we call A. If piece i and piece j are connected, we put a number in that row and column: A[i, j] > 0. If they have nothing to do with each other, it's zero.
+
+[ANIMATION: The network of pieces smoothly collapses into an N x N matrix with numerical entries]
+
+Next, we count how many total connections touch each piece. That gives us the Degree Matrix, D, which is just a diagonal matrix recording how heavily integrated each piece is into the game. A queen controlling eight diagonals has a massive degree; a trapped rook in the corner has a degree near zero.
+
+[ANIMATION: The matrix equation L = D - A appears crisply on screen]
+
+Now, when you subtract the adjacency matrix from the degree matrix:
+
+    L = D - A
+
+You get the cornerstone of spectral graph theory: the Graph Laplacian.
+
+In continuous calculus, the Laplacian operator (∇²) measures curvature—how much a point differs from the average of the space around it.
+
+On a discrete graph, this matrix does the exact same thing: for every piece, it calculates the net difference in tactical tension between that piece and all its neighbors.
+
+============================================================
+2. What makes it "Spectral"?
+============================================================
+
+[ANIMATION: The linear transformation L v = λ v rendered with clean coordinate axes]
+
+Normally, when you multiply a matrix by a vector, it stretches the vector and rotates it into a completely new direction:
+
+    L v = w
+
+Except for a few very special directions.
+
+For certain vectors, the matrix doesn't rotate them at all—it only scales them by a single constant factor, which mathematicians call λ (lambda):
+
+    L v = λ v
+
+Those special vectors are eigenvectors, and the scaling factors are eigenvalues.
+
+The entire set of these eigenvalues is called the spectrum of the matrix. Just like an optical prism splits light into its constituent wavelengths, the eigenvalues split the complex, messy geometry of the chessboard into its fundamental spatial frequencies.
+
+============================================================
+3. The 1973 Breakthrough: The Fiedler Vector (λ₂)
+============================================================
+
+[ANIMATION: Archival 1973 Fiedler paper scan with citation tag: "M. Fiedler • Algebraic Connectivity of Graphs"]
+
+In 1973, a Czech mathematician called Miroslav Fiedler published a paper with a profound discovery.
+
+If you line up all the eigenvalues of a graph's Laplacian in ascending order:
+
+    0 = λ₁ ≤ λ₂ ≤ λ₃ ≤ ... ≤ λ_N
+
+The first eigenvalue, λ₁, is always zero. It just represents the whole board as a single baseline.
+
+The second eigenvalue—λ₂—is where the magic happens.
+
+[ANIMATION: A locked pawn center. The board's squares color dynamically: positive values glow cobalt (+0.7), negative values glow ochre (-0.8)]
+
+Fiedler proved that λ₂—what we now call Algebraic Connectivity—measures how hard it is to break the network apart.
+
+In our engine, the Fiedler Vector assigns a real number to every single piece on the board.
+
+Now, how does a single eigenvector actually understand chess geometry?
+
+To find the Fiedler vector, the math is essentially solving a high-dimensional game of tug-of-war.
+
+The Laplacian calculates the difference between every pair of pieces:
+
+    min  ∑ A[i, j] · (v[i] − v[j])²
+    subject to:  ∑ v[i] = 0  and  ||v|| = 1
+
+Notice that term: (v[i] − v[j]). It means whenever two pieces have a strong connection—like a rook backing up a queen, or pawns chained together—the equation heavily penalizes them if they have different numbers. The math itself forcefully pulls coordinated pieces together, giving them almost identical values.
+
+[ANIMATION: A number line appears from -1.0 to +1.0. Pieces with high mutual defense get pulled into tight clusters on the line]
+
+But here’s the catch: the equation has a strict constraint. All the piece values must add up to exactly zero:
+
+∑ v[i] = 0
+That means the board has to split. It’s mathematically impossible for every piece to be positive—some have to go above zero, and some have to go below.
+
+Because the algorithm heavily penalizes separating pieces that protect each other, coordinated groups refuse to split up:
+
+White’s coordinated kingside attack clusters into positive territory (+0.4 to +0.8).
+The disconnected pieces on the queenside get pushed into negative territory (-0.4 to -0.8).
+[ANIMATION: Real chess position with locked center pawns. The zero-line draws itself dynamically straight down the pawn spine. White’s attacking kingside pieces glow cobalt; Black's trapped queenside rook glows deep ochre]
+
+And the zero line falls exactly along the weakest bottleneck on the board.
+
+The engine doesn't need to search millions of moves into the future. Even at depth 0, on the first iteration of calculations, the math instantly diagnoses the board's topology
+
+In order to understand why this is different, lets look at how modern chess engines actually work today. ill try to make this quick and not feel like a history lesson 
+
+For decades, chess engines were built on classical heuristics: programmers manually hardcoding thousands of rigid rules. 
+
+stuff like  "A bishop pair is worth an extra half a pawn." "Keep pawns in front of your king.", "have your pieces cover larger amounts of squares"
+It worked, but it had a hard ceiling. Classical engines were tactical monsters, but positionally blind. They could calculate a 15-move forced checkmate in milliseconds, but they had no real "intuition" for long-term positional harmony.
+
+Then came the first big innovation: Neural Networks
+
+[ANIMATION: Visual timeline: 2017 AlphaZero deep network -> 2020 Stockfish NNUE architecture diagram with input half-kp features connecting to 4-layer accumulator]
+First, AlphaZero in 2017 showed the world that a deep neural network could teach itself chess from scratch and crush classical champions. 
+Then, in 2020, the open-source community pulled off an engineering masterpiece: NNUE—Efficiently Updatable Neural Networks. 
+Instead of requiring giant power-hungry GPUs, NNUE crammed a lightweight neural network directly onto the CPU. It evaluated positions at tens of millions of nodes per second, capturing subtle, non-linear relationships between pieces that humans could never hand-code into an evaluation function.
+After that, every top engine adopted NNUE. It added over 150 Elo in a single leap. It became the undisputed gold standard of computer chess.
+And yet... it came with a cost.
+
+[ANIMATION: A neural network glowing as an opaque dark cube. Millions of floating-point numbers streaming through hidden layers—a total black box]
+Neural networks are statistical approximators. They don't actually "know" anything about the spatial physics of a chessboard. 
+Instead, they are giant matrices of millions of floating-point weights trained on billions of self-play games. When Stockfish, which is the best chess engine right now, decides that one move is +0.3 and another is -0.2, it does so off of pure raw data, through calculating the results of all the games and positions in the database. There's no actual reasoning going on.
+More importantly: because neural nets are trained on statistical patterns, they have notorious blind spots. 
+In locked, closed positions—where no captures are happening, neural networks often suffer from "horizon drift." Material is equal. Nothing is under attack. So the network evaluates the position as dead even (0.00), completely unaware that one side is structurally doomed 25 moves down the road.
+Which brings us to the core experiment of this engine:
+What happens if you replace that trained statistical black box... with exact analytical mathematics?
+
+
+[ANIMATION: Side-by-side split screen: Left side shows a sprawling, dense neural network (Opaque / 4 Million Weights). Right side shows the clean Graph Laplacian matrix collapsing into the Fiedler spectrum (Analytical / 0 Weights)]
+When you evaluate a chess position using Spectral Graph Theory, three fundamental things change:
+"First: The Feature Space is Derived, Not Learned.
+In NNUE, the network has to spend billions of positions learning what a 'pawn chain' or 'flank separation' even means from scratch across 4.3 million weights.
+With the Graph Laplacian, the spatial connectivity is calculated analytically at Depth 0 with zero training data. The physics are derived directly from linear algebra.
+
+...Which brought us to the million-dollar question: If the math gives us the geometry for free, how do we translate that geometry into a chess score without falling into the exact same training trap as the neural networks?
+
+Well... I tried. And it led me into a 2 month long training nightmare."
+
+Second: Complete Interpretability (The "White Box").
+If a neural network misjudges a position, it’s a silent black box. 
+With spectral graphs, the engine's intuition is 100% visible and explainable. We can inspect the eigenvector directly:
+- White’s attack cluster has an algebraic weight of +0.74.
+- Black’s trapped defender has an algebraic weight of -0.82.
+- The zero-crossing cut cleanly slices between the d and e pawns.
+We are no longer guessing what the engine thinks. It hands us a literal topological map of the chessboard.
+
+Third: Depth 0 Topological Vision.
+Because neural nets rely on lookahead search to verify long-term plans, a locked center can waste millions of compute cycles searching meaningless shuffling moves.
+Spectral graph theory diagnoses the bottleneck instantly, at Depth 0, in a single matrix eigensolve. It sees the board has severed into two independent subgames before the search algorithm even begins looking at candidate moves.
+Instead of trying to approximate human chess intuition through brute statistical training... we let the geometry of the network speak for itself.
+
+============================================================
+6. The Complexity Trap: Why "Smarter" Isn't Better
+============================================================
+
+So... spectral graph theory is elegant. It’s interpretable. It understands spatial topology from pure first principles. On paper, it sounds like the ultimate chess engine evaluator.
+
+Which brings us to the most brutal, painful lesson I learned while building this project:
+
+In computer chess, being smarter does not mean being better.
+
+[ANIMATION: Split screen: Left side shows a simple, crude stick figure calculating 15 moves ahead. Right side shows a glowing galaxy brain calculating only 4 moves ahead. The stick figure easily checkmates the galaxy brain]
+
+There is an unwritten iron law in chess programming: Search depth beats evaluation subtlety every single time.
+
+An engine that evaluates positions using crude, primitive arithmetic—but can search 15 moves into the future—will completely obliterate an engine that understands high-level topological physics but can only calculate 5 moves ahead. 
+
+If your opponent is calculating a forced tactical refutation on ply 11, your elegant, zero-weight Fiedler vector sitting at ply 5 isn’t going to save you. You're just going to blunder a piece.
+
+And this is where our mathematical dream slammed directly into a computational brick wall.
+
+[ANIMATION: A speedometer gauge labeled "ENGINE EFFICIENCY". On the left: a green lightning bolt labeled "Movegen: O(1) [3 CPU Cycles]". On the right: a massive red warning block labeled "Eigensolver: O(N^3) [260,000 Operations]"]
+
+To understand why, you have to look at the two extremes of algorithmic complexity running inside this engine.
+
+On one side, you have the move generator.
+
+In standard chess engines, figuring out where sliding pieces—like rooks and bishops—can move is done with "ray casting." You start at the piece and step square-by-square along the board until you hit an obstacle or the edge. It takes loops, boundary checks, and branching instructions that burn dozens of CPU cycles per piece.
+
+To bypass that, we implemented something called Magic Bitboards.
+
+[ANIMATION: The 64-bit board occupancy bitwise-ANDed with a mask, multiplied by a 64-bit magic constant, shifted right, and instantly returning a precomputed attack bitboard in 3 clock cycles]
+
+Instead of looping through rays, Magic Bitboards use 64-bit precomputed "magic multipliers" that act as a perfect hash function. 
+You take the board state, multiply it by the magic number, bit-shift it, and boom: you instantly look up the precomputed attack bitboard in a single memory array. 
+
+It takes zero loops and zero branching. 
+It runs in pure O(1) constant time—about 3 CPU clock cycles. 
+Our move generator was casually firing off over 40 million moves per second.
+
+And then... we plugged in the Graph Laplacian.
+
+[ANIMATION: An N x N matrix exploding with floating-point calculations. Text overlays: "QR Eigensolver: O(N^3)". Counter ticks rapidly up to 262,144 operations]
+
+In linear algebra, if you have an N x N matrix and you want to compute its eigenvalues and eigenvectors, standard textbook algorithms—like the QR algorithm or Jacobi rotation—run in O(N^3) computational complexity.
+
+Let's do the math on what O(N^3) actually means inside an engine:
+
+Our board has 64 squares. 
+64 cubed is 262,144 floating-point operations. 
+
+If your engine searches at a modest master-level speed of one million positions per second, running a full textbook eigensolver at every node means your CPU has to execute:
+
+1,000,000 * 262,144 ≈ 262 Billion FLOPs per second.
+
+A modern high-end CPU core can only handle around 3 to 4 billion instructions per second. 
+
+The math wasn't just heavy—it was computationally impossible.
+
+[ANIMATION: A terminal benchmark test running. The node counter crawls painfully slow: 15,000 NPS... 22,000 NPS... 30,000 NPS. Search depth cuts off at Depth 5 with a bright red "TIMEOUT" indicator]
+
+The moment we ran our first real tournament benchmark, our search speed didn't just drop—it cratered.
+We went from blistering millions of nodes per second straight down to thirty thousand NPS. 
+
+While opposing engines were casually sailing to Depth 14 in under a second, our engine was sitting there at Depth 5, sweating profusely, doing 260,000 floating-point matrix multiplications just to tell us that a pawn was chained to another pawn.
+
+Our algorithm was a genius. And it was playing chess like a complete idiot.
+
+If Heaven's Gate was ever going to survive in the real world, I couldn't just rely on pretty blackboard math. I had to wage an all-out war against computational complexity.
+
+And that... led to the first of many terrible, terrible ideas.

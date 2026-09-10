@@ -37,6 +37,7 @@ scratch/
 archive/
 run_continuous_training.ps1
 15
+videos/
 
 # Dev tools & Toolchains
 tools/w64devkit/
