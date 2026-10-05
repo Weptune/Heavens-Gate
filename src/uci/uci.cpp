@@ -5,6 +5,7 @@
 #include "../core/polyglot.hpp"
 #include "../evaluation/eval.hpp"
 #include "../search/search_params.hpp"
+#include "../benchmark/sts.hpp"
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -101,13 +102,19 @@ void UCI::handle_go(const std::string& line, Board& board, SearchEngine& engine)
         int my_inc  = (board.side_to_move() == Color::White) ? winc  : binc;
         int moves_expected = (movestogo > 0) ? std::min(movestogo, 35) : 35;
         double alloc = (static_cast<double>(my_time) / moves_expected) + (my_inc * 0.8);
-        time_ms = std::min(alloc, my_time * 0.8);
+        double opt_time = std::min(alloc, my_time * 0.5);
+        time_ms = std::min(alloc * 3.5, my_time * 0.85);
 
         // Smart Opening Time Allocation: moves 1-5 use fast 150-350ms development
         if (board.fullmove_number() <= 5) {
-            time_ms = std::min(time_ms * 0.35, 350.0);
-            time_ms = std::max(time_ms, 120.0);
+            opt_time = std::min(opt_time * 0.35, 350.0);
+            opt_time = std::max(opt_time, 120.0);
+            time_ms  = opt_time * 2.0;
         }
+
+        SearchResult res = engine.search_iterative_deepening(board, depth, time_ms, max_nodes, opt_time);
+        std::cout << "bestmove " << move_to_uci(res.best_move) << std::endl;
+        return;
     }
 
     SearchResult res = engine.search_iterative_deepening(board, depth, time_ms, max_nodes);
@@ -156,6 +163,8 @@ void UCI::loop() {
             std::cout << "option name SEE_BadCaptureSlope type spin default 124 min 0 max 500\n";
             std::cout << "option name SEE_QuietSlope type spin default 15 min 0 max 500\n";
             std::cout << "option name NMP_EvalMargin type spin default 218 min 0 max 1000\n";
+            std::cout << "option name Singular_Margin type spin default 2 min 0 max 20\n";
+            std::cout << "option name Aspiration_Window_Delta type spin default 25 min 5 max 100\n";
             std::cout << "uciok" << std::endl;
         } else if (cmd == "isready") {
             Evaluator::set_mode(EvalMode::MasterPositional);
@@ -187,6 +196,10 @@ void UCI::loop() {
                 g_search_params.see_quiet_slope = std::stoi(val);
             } else if (name == "NMP_EvalMargin" && !val.empty()) {
                 g_search_params.nmp_eval_margin = std::stoi(val);
+            } else if (name == "Singular_Margin" && !val.empty()) {
+                g_search_params.singular_margin = std::stoi(val);
+            } else if (name == "Aspiration_Window_Delta" && !val.empty()) {
+                g_search_params.aspiration_window_delta = std::stoi(val);
             }
         } else if (cmd == "ucinewgame") {
             stop_search();
@@ -237,31 +250,55 @@ void UCI::loop() {
                 else if (token == "infinite") infinite = true;
             }
 
+            double opt_time = 0.0;
             if (infinite) {
                 depth = 64;
                 time_ms = 0.0;
             } else if (movetime > 0) {
                 time_ms = movetime;
+                opt_time = movetime;
             } else if (wtime > 0 || btime > 0) {
                 int my_time = (board.side_to_move() == Color::White) ? wtime : btime;
                 int my_inc  = (board.side_to_move() == Color::White) ? winc  : binc;
                 int moves_expected = (movestogo > 0) ? std::min(movestogo, 35) : 35;
                 double alloc = (static_cast<double>(my_time) / moves_expected) + (my_inc * 0.8);
-                time_ms = std::min(alloc, my_time * 0.8);
+                opt_time = std::min(alloc, my_time * 0.5);
+                time_ms = std::min(alloc * 3.5, my_time * 0.85);
 
                 // Smart Opening Time Allocation: moves 1-5 use fast 150-350ms development
                 if (board.fullmove_number() <= 5) {
-                    time_ms = std::min(time_ms * 0.35, 350.0);
-                    time_ms = std::max(time_ms, 120.0);
+                    opt_time = std::min(opt_time * 0.35, 350.0);
+                    opt_time = std::max(opt_time, 120.0);
+                    time_ms  = opt_time * 2.0;
                 }
             }
 
             is_searching.store(true, std::memory_order_relaxed);
-            search_thread = std::thread([&engine, search_board = board, depth, time_ms, max_nodes, &is_searching]() mutable {
-                SearchResult res = engine.search_iterative_deepening(search_board, depth, time_ms, max_nodes);
+            search_thread = std::thread([&engine, search_board = board, depth, time_ms, max_nodes, opt_time, &is_searching]() mutable {
+                SearchResult res = engine.search_iterative_deepening(search_board, depth, time_ms, max_nodes, opt_time);
                 std::cout << "bestmove " << move_to_uci(res.best_move) << std::endl;
                 is_searching.store(false, std::memory_order_relaxed);
             });
+        } else if (cmd == "sts") {
+            stop_search();
+            int time_ms = 1000;
+            int depth = 0;
+            int threads = 6;
+            std::string epd_path = "";
+            try {
+                std::stringstream ss(line);
+                std::string c;
+                ss >> c;
+                if (ss >> time_ms) {
+                    if (ss >> depth) {
+                        if (ss >> threads) {
+                            ss >> epd_path;
+                        }
+                    }
+                }
+            } catch (...) {}
+            STSOverallResult res = STSRunner::run_suite(epd_path, time_ms, depth, threads);
+            std::cout << res.format_report() << std::endl;
         } else if (cmd == "quit") {
             stop_search();
             break;

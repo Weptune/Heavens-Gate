@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>try your hand against heaven's gate :)</title>
-    <link rel="icon" href="pieces/wK.svg" type="image/svg+xml">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="alternate icon" href="favicon.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=2026091004">
+    <link rel="stylesheet" href="style.css?v=2026091303">
     <style>
         /* CRITICAL RESET & ZERO-BLEED STYLES */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -36,6 +37,7 @@
     <!-- Top Minimalist Navbar -->
     <header class="navbar">
         <div class="brand">
+            <img src="favicon.svg" alt="Heaven's Gate" class="brand-logo">
             <h1 class="brand-title">try your hand against heaven's gate :)</h1>
         </div>
         <nav class="nav-tabs" aria-label="Game Modes">
@@ -57,7 +59,7 @@
             <!-- Top Player Strip: Heaven's Gate -->
             <div class="player-strip boss-strip" id="top-hud">
                 <div class="player-info">
-                    <div class="avatar boss-avatar" id="top-avatar">HG</div>
+                    <div class="avatar boss-avatar" id="top-avatar"><img src="favicon.svg" alt="HG" class="avatar-img"></div>
                     <div class="player-details">
                         <span class="player-name" id="top-player-name">Heaven's Gate</span>
                         <span class="player-rating" id="top-player-rating">3000</span>
@@ -72,7 +74,7 @@
 
             <!-- Chessboard + Advantage Gauge -->
             <div class="board-wrapper">
-                <div class="eval-gauge" title="Advantage Gauge">
+                <div class="eval-gauge" id="eval-gauge" title="Advantage Gauge">
                     <div class="eval-fill" id="eval-fill"></div>
                     <span class="eval-text" id="eval-badge">0.0</span>
                 </div>
@@ -176,6 +178,28 @@
                     </div>
                 </div>
 
+                <!-- Quick Time Control Selector Matrix (2x6 Grid - Zero Cutoff) -->
+                <div class="tc-bar" id="tc-bar">
+                    <div class="tc-bar-header">
+                        <span class="tc-title"><span class="tc-icon">⏱</span> Time Control</span>
+                        <span class="tc-active-name" id="tc-active-name">Blitz 3 min</span>
+                    </div>
+                    <div class="tc-grid" id="tc-grid">
+                        <button class="tc-pill" data-tc="bullet_1_0" title="Bullet 1 min (1+0)">1+0</button>
+                        <button class="tc-pill" data-tc="bullet_1_1" title="Bullet 1 min + 1s (1+1)">1+1</button>
+                        <button class="tc-pill" data-tc="bullet_2_1" title="Bullet 2 min + 1s (2+1)">2+1</button>
+                        <button class="tc-pill active" data-tc="blitz_3_0" title="Blitz 3 min (3+0)">3+0</button>
+                        <button class="tc-pill" data-tc="blitz_3_2" title="Blitz 3 min + 2s (3+2)">3+2</button>
+                        <button class="tc-pill" data-tc="blitz_5_0" title="Blitz 5 min (5+0)">5+0</button>
+                        <button class="tc-pill" data-tc="blitz_5_3" title="Blitz 5 min + 3s (5+3)">5+3</button>
+                        <button class="tc-pill" data-tc="rapid_10_0" title="Rapid 10 min (10+0)">10+0</button>
+                        <button class="tc-pill" data-tc="rapid_15_10" title="Rapid 15 min + 10s (15+10)">15+10</button>
+                        <button class="tc-pill" data-tc="classical_30_0" title="Classical 30 min (30+0)">30+0</button>
+                        <button class="tc-pill" data-tc="movetime_3" title="Fixed 3.0s / Move">3s/mv</button>
+                        <button class="tc-pill" data-tc="fixed_depth" title="Untimed / Infinite">∞</button>
+                    </div>
+                </div>
+
                 <!-- Move Notation Log -->
                 <div class="notation-panel" id="card-history">
                     <div class="notation-toolbar">
@@ -269,12 +293,33 @@
                 <div class="setting-row">
                     <label for="tc-select">Time Control</label>
                     <select id="tc-select" class="select-input">
-                        <option value="bullet_1_0">Bullet 1 min</option>
-                        <option value="bullet_1_1">Bullet 1 min + 1s</option>
-                        <option value="blitz_3_0" selected>Blitz 3 min</option>
-                        <option value="blitz_3_2">Blitz 3 min + 2s</option>
-                        <option value="rapid_10_0">Rapid 10 min</option>
-                        <option value="fixed_depth">Untimed (Infinite)</option>
+                        <optgroup label="Bullet">
+                            <option value="bullet_1_0">Bullet 1 min (1+0)</option>
+                            <option value="bullet_1_1">Bullet 1 min + 1s (1+1)</option>
+                            <option value="bullet_2_1">Bullet 2 min + 1s (2+1)</option>
+                        </optgroup>
+                        <optgroup label="Blitz">
+                            <option value="blitz_3_0" selected>Blitz 3 min (3+0)</option>
+                            <option value="blitz_3_2">Blitz 3 min + 2s (3+2)</option>
+                            <option value="blitz_5_0">Blitz 5 min (5+0)</option>
+                            <option value="blitz_5_3">Blitz 5 min + 3s (5+3)</option>
+                        </optgroup>
+                        <optgroup label="Rapid">
+                            <option value="rapid_10_0">Rapid 10 min (10+0)</option>
+                            <option value="rapid_15_10">Rapid 15 min + 10s (15+10)</option>
+                        </optgroup>
+                        <optgroup label="Classical">
+                            <option value="classical_30_0">Classical 30 min (30+0)</option>
+                            <option value="classical_60_0">Classical 60 min (60+0)</option>
+                        </optgroup>
+                        <optgroup label="Fixed Thinking Time">
+                            <option value="movetime_1">Fixed 1.0s / Move</option>
+                            <option value="movetime_3">Fixed 3.0s / Move</option>
+                            <option value="movetime_5">Fixed 5.0s / Move</option>
+                        </optgroup>
+                        <optgroup label="Untimed">
+                            <option value="fixed_depth">Untimed (Infinite Thinking / Depth 14)</option>
+                        </optgroup>
                     </select>
                 </div>
                 <div class="setting-row">
@@ -300,6 +345,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=2026091004"></script>
+    <script src="app.js?v=2026091303"></script>
 </body>
 </html>

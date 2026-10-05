@@ -132,21 +132,39 @@ class EngineBridge:
                     break
 
             import math
-            # Standard logistic chess win probability formula
-            win_chance = 50.0 + 50.0 * (2.0 / (1.0 + math.exp(-0.00368208 * eval_score)) - 1.0)
-            win_chance = max(0.0, min(100.0, win_chance))
+            fen_parts = fen.strip().split()
+            side_to_move = fen_parts[1] if len(fen_parts) > 1 else 'w'
+
+            # Standard Negamax inversion: UCI score is relative to side_to_move.
+            # Convert to White's perspective (+ = White advantage, - = Black advantage)
+            if side_to_move == 'b':
+                score_white = -eval_score
+                mate_in_white = -mate_in if is_mate else 0
+            else:
+                score_white = eval_score
+                mate_in_white = mate_in if is_mate else 0
+
+            # Standard logistic chess win probability formula relative to White
+            if is_mate:
+                win_chance_white = 100.0 if mate_in_white > 0 else 0.0
+            else:
+                win_chance_white = 50.0 + 50.0 * (2.0 / (1.0 + math.exp(-0.00368208 * score_white)) - 1.0)
+                win_chance_white = max(0.0, min(100.0, win_chance_white))
 
             return {
                 "best_move": best_move,
                 "score": eval_score,
+                "score_white": score_white,
                 "is_mate": is_mate,
                 "mate_in": mate_in,
+                "mate_in_white": mate_in_white,
+                "side_to_move": side_to_move,
                 "depth": completed_depth,
                 "nodes": nodes,
                 "nps": nps,
                 "time_ms": time_ms,
                 "hashfull": hashfull,
-                "win_chance": round(win_chance, 1),
+                "win_chance": round(win_chance_white, 1),
                 "pv": pv
             }
 

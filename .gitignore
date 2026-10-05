@@ -6,12 +6,16 @@
 *.so
 *.dylib
 build/
+build2/
+build_temp/
+temp_reference/
 heavensgate
 heavensgate.exe
 heavensgate_tests.exe
 train_spectral_tropical.exe
 train_tensor_net.exe
 train_tensor_nnue.exe
+tools/tune_classical_texel.exe
 
 # Large Binary Weight & Model Files
 *.nnue
@@ -38,6 +42,19 @@ archive/
 run_continuous_training.ps1
 15
 videos/
+voiceover/
+*.aup3
+assets/verify_scene*/
+concat_list.txt
+cmds.txt
+*report*.txt
+scratch_*.txt
+scratch_*.md
+subagent_reports.txt
+find_*.py
+inspect_*.py
+extract_*.py
+check_book.py
 
 # Dev tools & Toolchains
 tools/w64devkit/

@@ -69,6 +69,7 @@ private:
     int quiescence_search(Board& board, int alpha, int beta, int ply);
     int negamax_minimax(Board& board, int depth, int ply, TreeNodeJSON* json_node);
     int negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move = Move(), TreeNodeJSON* json_node = nullptr, int prev_eval = -ScoreInfinity, Move excluded_move = Move());
+    void iterative_deepening_root(Board& board, int max_depth, uint64_t max_nodes, SearchResult& final_result);
 
     bool is_time_up() {
         if (time_stop_flag_.load(std::memory_order_relaxed)) return true;
@@ -97,6 +98,7 @@ private:
     std::array<std::array<int, 4096>, 2> major_corr_history_{};
     std::array<int, 256> eval_stack_{};
     std::array<Move, 256> move_stack_{};
+    std::array<Piece, 256> piece_stack_{};
     int num_threads_{6};
     bool uci_output_{false};
 
@@ -112,6 +114,7 @@ public:
         major_corr_history_.fill({});
         eval_stack_.fill(-ScoreInfinity);
         move_stack_.fill(Move{});
+        piece_stack_.fill(Piece::None);
         node_count_ = 0;
         time_stop_flag_.store(false, std::memory_order_relaxed);
     }

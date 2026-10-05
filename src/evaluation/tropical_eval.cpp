@@ -6,6 +6,33 @@
 #include <algorithm>
 #include <cmath>
 
+#if defined(__AVX2__)
+#include <immintrin.h>
+static inline float dot22(const float* __restrict w, const float* __restrict x, float bias) {
+    __m256 vw0 = _mm256_loadu_ps(w);
+    __m256 vx0 = _mm256_loadu_ps(x);
+    __m256 acc0 = _mm256_mul_ps(vw0, vx0);
+
+    __m256 vw1 = _mm256_loadu_ps(w + 8);
+    __m256 vx1 = _mm256_loadu_ps(x + 8);
+    acc0 = _mm256_fmadd_ps(vw1, vx1, acc0);
+
+    alignas(32) float tmp[8];
+    _mm256_storeu_ps(tmp, acc0);
+    float sum = bias + tmp[0] + tmp[1] + tmp[2] + tmp[3] + tmp[4] + tmp[5] + tmp[6] + tmp[7];
+    sum += w[16] * x[16] + w[17] * x[17] + w[18] * x[18] + w[19] * x[19] + w[20] * x[20] + w[21] * x[21];
+    return sum;
+}
+#else
+static inline float dot22(const float* w, const float* x, float bias) {
+    float val = bias;
+    for (size_t i = 0; i < 22; i++) {
+        val += w[i] * x[i];
+    }
+    return val;
+}
+#endif
+
 namespace heavensgate {
 
 TropicalEvaluator::TropicalEvaluator() {
@@ -235,10 +262,7 @@ TropicalEvaluator::EvalResult TropicalEvaluator::evaluate_detailed(const Board& 
 
     for (size_t j = 0; j < NUM_SECTORS_PER_BUCKET; j++) {
         const auto& sec = sectors_[base_sec_idx + j];
-        float val = sec.b;
-        for (size_t i = 0; i < NUM_FEATURES; i++) {
-            val += sec.w[i] * x[i];
-        }
+        float val = dot22(sec.w.data(), x.data(), sec.b);
         sector_vals[j] = val;
         if (val > max_val) {
             max_val = val;
@@ -284,10 +308,7 @@ TropicalEvaluator::EvalResult TropicalEvaluator::evaluate_detailed_from_features
 
     for (size_t j = 0; j < NUM_SECTORS_PER_BUCKET; j++) {
         const auto& sec = sectors_[base_sec_idx + j];
-        float val = sec.b;
-        for (size_t i = 0; i < NUM_FEATURES; i++) {
-            val += sec.w[i] * x[i];
-        }
+        float val = dot22(sec.w.data(), x.data(), sec.b);
         sector_vals[j] = val;
         if (val > max_val) {
             max_val = val;

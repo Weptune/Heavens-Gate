@@ -2,7 +2,6 @@
 
 #include "../core/types.hpp"
 #include "eval_features.hpp"
-#include "nnue.hpp"
 
 namespace heavensgate {
 
@@ -17,8 +16,6 @@ constexpr int QueenValue  = 900;
 enum class EvalMode {
     MaterialOnly,
     MasterPositional,
-    NNUE,
-    TensorNetwork,
     SpectralTropical
 };
 

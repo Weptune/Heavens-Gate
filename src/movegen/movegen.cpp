@@ -46,142 +46,7 @@ bool MoveGenerator::in_check(const Board& board, Color c) {
     return is_square_attacked(board, ksq, ~c);
 }
 
-void MoveGenerator::generate_legal_moves(const Board& board, MoveList& moves) {
-    moves.clear();
-    Color us = board.side_to_move();
-    Color them = ~us;
-
-    Bitboard us_pieces   = board.pieces(us);
-    Bitboard them_pieces = board.pieces(them);
-    Bitboard empty_sqs   = ~board.occupied();
-
-    // 1. Pawns
-    Piece pawn = make_piece(us, PieceType::Pawn);
-    Bitboard pawns = board.pieces(pawn);
-
-    Rank promo_rank = (us == Color::White) ? Rank::Rank8 : Rank::Rank1;
-    Rank double_rank = (us == Color::White) ? Rank::Rank2 : Rank::Rank7;
-
-    while (pawns) {
-        Square from = pop_lsb(pawns);
-        Bitboard from_bb = square_bb(from);
-
-        // Single push
-        Bitboard push_bb = (us == Color::White) ? (shift<Direction::North>(from_bb) & empty_sqs)
-                                                : (shift<Direction::South>(from_bb) & empty_sqs);
-        if (push_bb) {
-            Square to = lsb(push_bb);
-            if (rank_of(to) == promo_rank) {
-                moves.push_back(Move(from, to, MoveType::PromoQueen));
-                moves.push_back(Move(from, to, MoveType::PromoRook));
-                moves.push_back(Move(from, to, MoveType::PromoKnight));
-                moves.push_back(Move(from, to, MoveType::PromoBishop));
-            } else {
-                moves.push_back(Move(from, to, MoveType::Quiet));
-
-                // Double push
-                if (rank_of(from) == double_rank) {
-                    Bitboard dbl_bb = (us == Color::White) ? (shift<Direction::North>(push_bb) & empty_sqs)
-                                                           : (shift<Direction::South>(push_bb) & empty_sqs);
-                    if (dbl_bb) {
-                        moves.push_back(Move(from, lsb(dbl_bb), MoveType::DoublePawnPush));
-                    }
-                }
-            }
-        }
-
-        // Captures
-        Bitboard atk_bb = AttackMasks::pawn_attacks(us, from);
-        Bitboard cap_bb = atk_bb & them_pieces;
-
-        while (cap_bb) {
-            Square to = pop_lsb(cap_bb);
-            if (rank_of(to) == promo_rank) {
-                moves.push_back(Move(from, to, MoveType::PromoCaptureQueen));
-                moves.push_back(Move(from, to, MoveType::PromoCaptureRook));
-                moves.push_back(Move(from, to, MoveType::PromoCaptureKnight));
-                moves.push_back(Move(from, to, MoveType::PromoCaptureBishop));
-            } else {
-                moves.push_back(Move(from, to, MoveType::Capture));
-            }
-        }
-
-        // En Passant
-        Square ep_sq = board.en_passant_sq();
-        if (ep_sq != Square::None) {
-            Bitboard ep_atk = AttackMasks::pawn_attacks(us, from) & square_bb(ep_sq);
-            if (ep_atk) {
-                moves.push_back(Move(from, ep_sq, MoveType::EnPassant));
-            }
-        }
-    }
-
-    // Helper for piece moves
-    auto gen_piece_moves = [&](PieceType pt, auto attack_fn) {
-        Piece p = make_piece(us, pt);
-        Bitboard bb = board.pieces(p);
-        while (bb) {
-            Square from = pop_lsb(bb);
-            Bitboard atks = attack_fn(from, board.occupied());
-            Bitboard valid_atks = atks & ~us_pieces;
-
-            while (valid_atks) {
-                Square to = pop_lsb(valid_atks);
-                MoveType type = test_bit(them_pieces, to) ? MoveType::Capture : MoveType::Quiet;
-                moves.push_back(Move(from, to, type));
-            }
-        }
-    };
-
-    gen_piece_moves(PieceType::Knight, [](Square s, Bitboard) { return AttackMasks::knight_attacks(s); });
-    gen_piece_moves(PieceType::Bishop, [](Square s, Bitboard occ) { return AttackMasks::bishop_attacks(s, occ); });
-    gen_piece_moves(PieceType::Rook,   [](Square s, Bitboard occ) { return AttackMasks::rook_attacks(s, occ); });
-    gen_piece_moves(PieceType::Queen,  [](Square s, Bitboard occ) { return AttackMasks::queen_attacks(s, occ); });
-    gen_piece_moves(PieceType::King,   [](Square s, Bitboard) { return AttackMasks::king_attacks(s); });
-
-    // Castling
-    if (!in_check(board, us)) {
-        CastlingRights cr = board.castling_rights();
-        if (us == Color::White) {
-            if ((cr & WhiteOO) && !test_bit(board.occupied(), Square::f1) && !test_bit(board.occupied(), Square::g1)) {
-                if (!is_square_attacked(board, Square::f1, Color::Black) && !is_square_attacked(board, Square::g1, Color::Black)) {
-                    moves.push_back(Move(Square::e1, Square::g1, MoveType::KingCastle));
-                }
-            }
-            if ((cr & WhiteOOO) && !test_bit(board.occupied(), Square::d1) && !test_bit(board.occupied(), Square::c1) && !test_bit(board.occupied(), Square::b1)) {
-                if (!is_square_attacked(board, Square::d1, Color::Black) && !is_square_attacked(board, Square::c1, Color::Black)) {
-                    moves.push_back(Move(Square::e1, Square::c1, MoveType::QueenCastle));
-                }
-            }
-        } else {
-            if ((cr & BlackOO) && !test_bit(board.occupied(), Square::f8) && !test_bit(board.occupied(), Square::g8)) {
-                if (!is_square_attacked(board, Square::f8, Color::White) && !is_square_attacked(board, Square::g8, Color::White)) {
-                    moves.push_back(Move(Square::e8, Square::g8, MoveType::KingCastle));
-                }
-            }
-            if ((cr & BlackOOO) && !test_bit(board.occupied(), Square::d8) && !test_bit(board.occupied(), Square::c8) && !test_bit(board.occupied(), Square::b8)) {
-                if (!is_square_attacked(board, Square::d8, Color::White) && !is_square_attacked(board, Square::c8, Color::White)) {
-                    moves.push_back(Move(Square::e8, Square::c8, MoveType::QueenCastle));
-                }
-            }
-        }
-    }
-
-    // Filter out illegal moves that leave king in check
-    MoveList legal_moves;
-    Board& mut_board = const_cast<Board&>(board);
-    for (size_t i = 0; i < moves.size(); ++i) {
-        mut_board.make_move(moves[i]);
-        if (!in_check(mut_board, us)) {
-            legal_moves.push_back(moves[i]);
-        }
-        mut_board.unmake_move(moves[i]);
-    }
-
-    moves = legal_moves;
-}
-
-void MoveGenerator::generate_capture_moves(const Board& board, MoveList& moves) {
+void MoveGenerator::generate_pseudo_legal_captures(const Board& board, MoveList& moves) {
     moves.clear();
     Color us = board.side_to_move();
     Color them = ~us;
@@ -258,19 +123,266 @@ void MoveGenerator::generate_capture_moves(const Board& board, MoveList& moves) 
     gen_piece_captures(PieceType::Rook,   [](Square s, Bitboard occ) { return AttackMasks::rook_attacks(s, occ); });
     gen_piece_captures(PieceType::Queen,  [](Square s, Bitboard occ) { return AttackMasks::queen_attacks(s, occ); });
     gen_piece_captures(PieceType::King,   [](Square s, Bitboard) { return AttackMasks::king_attacks(s); });
+}
 
-    // Filter out illegal captures that leave king in check
-    MoveList legal_captures;
-    Board& mut_board = const_cast<Board&>(board);
-    for (size_t i = 0; i < moves.size(); ++i) {
-        mut_board.make_move(moves[i]);
-        if (!in_check(mut_board, us)) {
-            legal_captures.push_back(moves[i]);
+void MoveGenerator::generate_pawn_pushes_to_7th(const Board& board, MoveList& moves) {
+    Color us = board.side_to_move();
+    Piece pawn = make_piece(us, PieceType::Pawn);
+    Bitboard pawns = board.pieces(pawn);
+    Bitboard empty_sqs = ~board.occupied();
+    Rank target_rank = (us == Color::White) ? Rank::Rank7 : Rank::Rank2;
+
+    while (pawns) {
+        Square from = pop_lsb(pawns);
+        Bitboard from_bb = square_bb(from);
+        Bitboard push_bb = (us == Color::White) ? (shift<Direction::North>(from_bb) & empty_sqs)
+                                                : (shift<Direction::South>(from_bb) & empty_sqs);
+        if (push_bb) {
+            Square to = lsb(push_bb);
+            if (rank_of(to) == target_rank) {
+                moves.push_back(Move(from, to, MoveType::Quiet));
+            }
         }
-        mut_board.unmake_move(moves[i]);
+    }
+}
+
+void MoveGenerator::generate_pseudo_legal_quiets(const Board& board, MoveList& moves) {
+    moves.clear();
+    Color us = board.side_to_move();
+
+    Bitboard empty_sqs = ~board.occupied();
+
+    // 1. Pawns (Single non-promo pushes, Double pushes)
+    Piece pawn = make_piece(us, PieceType::Pawn);
+    Bitboard pawns = board.pieces(pawn);
+
+    Rank promo_rank = (us == Color::White) ? Rank::Rank8 : Rank::Rank1;
+    Rank double_rank = (us == Color::White) ? Rank::Rank2 : Rank::Rank7;
+
+    while (pawns) {
+        Square from = pop_lsb(pawns);
+        Bitboard from_bb = square_bb(from);
+
+        Bitboard push_bb = (us == Color::White) ? (shift<Direction::North>(from_bb) & empty_sqs)
+                                                : (shift<Direction::South>(from_bb) & empty_sqs);
+        if (push_bb) {
+            Square to = lsb(push_bb);
+            if (rank_of(to) != promo_rank) {
+                moves.push_back(Move(from, to, MoveType::Quiet));
+
+                // Double push
+                if (rank_of(from) == double_rank) {
+                    Bitboard dbl_bb = (us == Color::White) ? (shift<Direction::North>(push_bb) & empty_sqs)
+                                                           : (shift<Direction::South>(push_bb) & empty_sqs);
+                    if (dbl_bb) {
+                        moves.push_back(Move(from, lsb(dbl_bb), MoveType::DoublePawnPush));
+                    }
+                }
+            }
+        }
     }
 
-    moves = legal_captures;
+    // Helper for piece quiets
+    auto gen_piece_quiets = [&](PieceType pt, auto attack_fn) {
+        Piece p = make_piece(us, pt);
+        Bitboard bb = board.pieces(p);
+        while (bb) {
+            Square from = pop_lsb(bb);
+            Bitboard quiet_atks = attack_fn(from, board.occupied()) & empty_sqs;
+
+            while (quiet_atks) {
+                Square to = pop_lsb(quiet_atks);
+                moves.push_back(Move(from, to, MoveType::Quiet));
+            }
+        }
+    };
+
+    gen_piece_quiets(PieceType::Knight, [](Square s, Bitboard) { return AttackMasks::knight_attacks(s); });
+    gen_piece_quiets(PieceType::Bishop, [](Square s, Bitboard occ) { return AttackMasks::bishop_attacks(s, occ); });
+    gen_piece_quiets(PieceType::Rook,   [](Square s, Bitboard occ) { return AttackMasks::rook_attacks(s, occ); });
+    gen_piece_quiets(PieceType::Queen,  [](Square s, Bitboard occ) { return AttackMasks::queen_attacks(s, occ); });
+    gen_piece_quiets(PieceType::King,   [](Square s, Bitboard) { return AttackMasks::king_attacks(s); });
+
+    // Castling
+    if (!in_check(board, us)) {
+        CastlingRights cr = board.castling_rights();
+        if (us == Color::White) {
+            if ((cr & WhiteOO) && !test_bit(board.occupied(), Square::f1) && !test_bit(board.occupied(), Square::g1)) {
+                if (!is_square_attacked(board, Square::f1, Color::Black) && !is_square_attacked(board, Square::g1, Color::Black)) {
+                    moves.push_back(Move(Square::e1, Square::g1, MoveType::KingCastle));
+                }
+            }
+            if ((cr & WhiteOOO) && !test_bit(board.occupied(), Square::d1) && !test_bit(board.occupied(), Square::c1) && !test_bit(board.occupied(), Square::b1)) {
+                if (!is_square_attacked(board, Square::d1, Color::Black) && !is_square_attacked(board, Square::c1, Color::Black)) {
+                    moves.push_back(Move(Square::e1, Square::c1, MoveType::QueenCastle));
+                }
+            }
+        } else {
+            if ((cr & BlackOO) && !test_bit(board.occupied(), Square::f8) && !test_bit(board.occupied(), Square::g8)) {
+                if (!is_square_attacked(board, Square::f8, Color::White) && !is_square_attacked(board, Square::g8, Color::White)) {
+                    moves.push_back(Move(Square::e8, Square::g8, MoveType::KingCastle));
+                }
+            }
+            if ((cr & BlackOOO) && !test_bit(board.occupied(), Square::d8) && !test_bit(board.occupied(), Square::c8) && !test_bit(board.occupied(), Square::b8)) {
+                if (!is_square_attacked(board, Square::d8, Color::White) && !is_square_attacked(board, Square::c8, Color::White)) {
+                    moves.push_back(Move(Square::e8, Square::c8, MoveType::QueenCastle));
+                }
+            }
+        }
+    }
+}
+
+void MoveGenerator::generate_pseudo_legal_moves(const Board& board, MoveList& moves) {
+    moves.clear();
+    MoveList quiets;
+    generate_pseudo_legal_captures(board, moves);
+    generate_pseudo_legal_quiets(board, quiets);
+    for (size_t i = 0; i < quiets.size(); ++i) {
+        moves.push_back(quiets[i]);
+    }
+}
+
+void MoveGenerator::generate_legal_moves(const Board& board, MoveList& moves) {
+    MoveList pseudo_moves;
+    generate_pseudo_legal_moves(board, pseudo_moves);
+
+    moves.clear();
+    Color us = board.side_to_move();
+    Board& mut_board = const_cast<Board&>(board);
+    for (size_t i = 0; i < pseudo_moves.size(); ++i) {
+        mut_board.make_move(pseudo_moves[i]);
+        if (!in_check(mut_board, us)) {
+            moves.push_back(pseudo_moves[i]);
+        }
+        mut_board.unmake_move(pseudo_moves[i]);
+    }
+}
+
+void MoveGenerator::generate_capture_moves(const Board& board, MoveList& moves) {
+    MoveList pseudo_caps;
+    generate_pseudo_legal_captures(board, pseudo_caps);
+
+    moves.clear();
+    Color us = board.side_to_move();
+    Board& mut_board = const_cast<Board&>(board);
+    for (size_t i = 0; i < pseudo_caps.size(); ++i) {
+        mut_board.make_move(pseudo_caps[i]);
+        if (!in_check(mut_board, us)) {
+            moves.push_back(pseudo_caps[i]);
+        }
+        mut_board.unmake_move(pseudo_caps[i]);
+    }
+}
+
+bool MoveGenerator::is_pseudo_legal(const Board& board, Move m) {
+    Square from = m.from();
+    Square to = m.to();
+    if (from == Square::None || to == Square::None || from == to) return false;
+
+    Piece p = board.piece_at(from);
+    if (p == Piece::None) return false;
+    Color us = board.side_to_move();
+    if (color_of(p) != us) return false;
+
+    Piece target_p = board.piece_at(to);
+    if (target_p != Piece::None && color_of(target_p) == us) return false;
+
+    PieceType pt = piece_type_of(p);
+    Bitboard occ = board.occupied();
+
+    if (pt == PieceType::Pawn) {
+        Rank promo_rank = (us == Color::White) ? Rank::Rank8 : Rank::Rank1;
+        Rank start_rank = (us == Color::White) ? Rank::Rank2 : Rank::Rank7;
+        int forward_dir = (us == Color::White) ? 8 : -8;
+
+        if (m.is_ep()) {
+            Square ep_sq = board.en_passant_sq();
+            if (ep_sq == Square::None || to != ep_sq) return false;
+            return (AttackMasks::pawn_attacks(us, from) & square_bb(to)) != EmptyBB;
+        }
+
+        // Push
+        if (file_of(from) == file_of(to)) {
+            if (target_p != Piece::None) return false;
+            if (m.is_capture()) return false;
+            if (static_cast<int>(to) - static_cast<int>(from) == forward_dir) {
+                if (rank_of(to) == promo_rank) return m.is_promotion();
+                return !m.is_promotion();
+            }
+            if (rank_of(from) == start_rank && static_cast<int>(to) - static_cast<int>(from) == 2 * forward_dir) {
+                Square mid_sq = static_cast<Square>(static_cast<int>(from) + forward_dir);
+                return board.piece_at(mid_sq) == Piece::None && !m.is_promotion();
+            }
+            return false;
+        }
+
+        // Capture
+        if ((AttackMasks::pawn_attacks(us, from) & square_bb(to)) && target_p != Piece::None) {
+            if (!m.is_capture()) return false;
+            if (rank_of(to) == promo_rank) return m.is_promotion();
+            return !m.is_promotion();
+        }
+        return false;
+    }
+
+    // For non-pawn pieces, target square occupancy must match capture flag
+    if (target_p != Piece::None) {
+        if (!m.is_capture()) return false;
+    } else {
+        if (m.is_capture()) return false;
+    }
+    if (m.is_promotion()) return false;
+
+    if (pt == PieceType::Knight) {
+        return (AttackMasks::knight_attacks(from) & square_bb(to)) != EmptyBB;
+    }
+
+    if (pt == PieceType::Bishop) {
+        return (AttackMasks::bishop_attacks(from, occ) & square_bb(to)) != EmptyBB;
+    }
+
+    if (pt == PieceType::Rook) {
+        return (AttackMasks::rook_attacks(from, occ) & square_bb(to)) != EmptyBB;
+    }
+
+    if (pt == PieceType::Queen) {
+        return (AttackMasks::queen_attacks(from, occ) & square_bb(to)) != EmptyBB;
+    }
+
+    if (pt == PieceType::King) {
+        if (m.is_castle()) {
+            if (in_check(board, us)) return false;
+            if (from != (us == Color::White ? Square::e1 : Square::e8)) return false;
+            CastlingRights cr = board.castling_rights();
+            if (us == Color::White) {
+                if (to == Square::g1) {
+                    return (cr & WhiteOO) && !test_bit(occ, Square::f1) && !test_bit(occ, Square::g1)
+                        && !is_square_attacked(board, Square::f1, Color::Black)
+                        && !is_square_attacked(board, Square::g1, Color::Black);
+                }
+                if (to == Square::c1) {
+                    return (cr & WhiteOOO) && !test_bit(occ, Square::d1) && !test_bit(occ, Square::c1) && !test_bit(occ, Square::b1)
+                        && !is_square_attacked(board, Square::d1, Color::Black)
+                        && !is_square_attacked(board, Square::c1, Color::Black);
+                }
+            } else {
+                if (to == Square::g8) {
+                    return (cr & BlackOO) && !test_bit(occ, Square::f8) && !test_bit(occ, Square::g8)
+                        && !is_square_attacked(board, Square::f8, Color::White)
+                        && !is_square_attacked(board, Square::g8, Color::White);
+                }
+                if (to == Square::c8) {
+                    return (cr & BlackOOO) && !test_bit(occ, Square::d8) && !test_bit(occ, Square::c8) && !test_bit(occ, Square::b8)
+                        && !is_square_attacked(board, Square::d8, Color::White)
+                        && !is_square_attacked(board, Square::c8, Color::White);
+                }
+            }
+            return false;
+        }
+        return (AttackMasks::king_attacks(from) & square_bb(to)) != EmptyBB;
+    }
+
+    return false;
 }
 
 bool MoveGenerator::gives_check(const Board& board, Move m) {

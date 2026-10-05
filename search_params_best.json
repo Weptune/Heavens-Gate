@@ -1,0 +1,15 @@
+{
+    "score": 4520.0,
+    "params": {
+        "lmr_divisor": 4.0,
+        "lmr_hist_bonus": 391,
+        "lmr_hist_malus": 54,
+        "rfp_margin": 150,
+        "futility_margin": 194,
+        "see_bad_capture_slope": 137,
+        "see_quiet_slope": 5,
+        "nmp_eval_margin": 205,
+        "singular_margin": 6,
+        "aspiration_window_delta": 38
+    }
+}

@@ -8,11 +8,6 @@
 
 namespace heavensgate {
 
-struct Accumulator {
-    std::array<int16_t, 256> v[2]; // 0: White, 1: Black
-    bool computed[2]{ false, false };
-};
-
 struct StateInfo {
     Piece captured_piece = Piece::None;
     CastlingRights castling_rights = CastlingNone;
@@ -72,10 +67,6 @@ public:
     bool is_insufficient_material() const;
     std::string to_ascii() const;
 
-    // NNUE Accumulator accessor
-    Accumulator& accumulator() { return accumulator_; }
-    const Accumulator& accumulator() const { return accumulator_; }
-
     // Incremental Material, PST & Phase Accessors (O(1) Evaluation)
     int mg_material(Color c) const noexcept { return mg_material_[static_cast<size_t>(c)]; }
     int eg_material(Color c) const noexcept { return eg_material_[static_cast<size_t>(c)]; }
@@ -109,8 +100,6 @@ private:
 
     std::vector<StateInfo> history_;
     std::vector<uint64_t> pos_history_;
-
-    Accumulator accumulator_;
 };
 
 } // namespace heavensgate

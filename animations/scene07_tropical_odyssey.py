@@ -1,15 +1,23 @@
 """
 Heaven's Gate Documentary - Scene 07: The Tropical Semiring & The 66-Round Marathon
-Runtime: ~85 seconds | Resolution: 1920x1080 | 60 fps
-Aesthetic: Pure High-Density 3Blue1Brown (ManimGL)
-Features:
-- Layer 0: Grounding tech blueprint grid (NumberPlane)
-- Beat 1: The Dilemma & The Tropical Semiring (R U {-inf}, max, +)
-- Beat 2: Faceted Minimax Hyperplane Envelope & Log-Sum-Exp Temperature Surface
-- Beat 3: 10 Spatial King Buckets (640 topological sector parameters)
-- Beat 4: The 66-Round Continuous Training Marathon HUD (run_continuous_training.ps1)
-          Replay buffer swelling from 50k -> 500k -> 2,000,000 positions
-- Beat 5: Impending Collapse forewarning transition
+Standard: Broadcast Grade (3Blue1Brown / vcubingx standard)
+Resolution: 1920x1080 | 60 fps
+Aesthetic: Pure Mathematical Systems & Convex Geometry (Luminous Jewel Palette)
+
+Frame 0 Continuity:
+- 100% pixel-perfect inheritance of Scene 06 terminal frame:
+  Crashed tachometer gauge at 30,412 NPS, depth 5 warning, and climax quote.
+
+Beats:
+- Beat 1: The Max-Plus Tropical Semiring (0s - 12s)
+  Replacing matrix multiplication with addition and maximum operations.
+- Beat 2: Faceted Minimax Hyperplanes & Temperature Smoothing (12s - 24s)
+  Convex faceted upper envelope morphing smoothly under Log-Sum-Exp.
+- Beat 3: Spatial King Bucketing: 640 Topological Sector Parameters (24s - 36s)
+  10 King safety zones on the BroadcastChessBoard with dynamic weight dispatch.
+- Beat 4: The 66-Round Training Marathon & The Loss Plateau (36s - 50s)
+  Autonomous self-play loop and the stubborn 66-round loss plateau.
+- Terminal Frame: Held in stillness for Scene 08 (Hall of Shame).
 """
 
 import sys
@@ -17,386 +25,405 @@ from pathlib import Path
 import numpy as np
 from manimlib import *
 
-# Ensure animations directory is importable
 sys.path.append(str(Path(__file__).parent))
 from chessboard_widget import BroadcastChessBoard
+from cm_math import CMTex
+from theme import *
 
-BG_DARK       = "#070b12"
-GRID_COLOR    = "#1e293b"
-TEXT_BRIGHT   = "#f8fafc"
-TEXT_MUTED    = "#94a3b8"
-TEXT_DIM      = "#475569"
-
-ACCENT_CYAN   = "#38bdf8"
-ACCENT_BLUE   = "#0ea5e9"
-ACCENT_VIOLET = "#a78bfa"
-ACCENT_GOLD   = "#fbbf24"
-ACCENT_RED    = "#f43f5e"
-ACCENT_GREEN  = "#34d399"
-ACCENT_ORANGE = "#fb923c"
 
 class Scene07TropicalOdyssey(Scene):
     def construct(self):
-        # -------------------------------------------------------------
-        # LAYER 0: GROUNDING ARCHITECTURAL BLUEPRINT GRID
-        # -------------------------------------------------------------
-        bg = Rectangle(width=28, height=18, fill_color=BG_DARK, fill_opacity=1.0).set_stroke(width=0)
-        self.add(bg)
+        # =============================================================
+        # LAYER 0: OBSIDIAN CANVAS & TECHNICAL DRAFTING MAT
+        # =============================================================
+        drafting_mat = create_drafting_mat()
+        self.add(drafting_mat)
 
-        tech_grid = NumberPlane(
-            x_range=[-14, 14, 1],
-            y_range=[-9, 9, 1],
-            width=28,
-            height=18,
-            axis_config={
-                "stroke_color": "#1e293b",
-                "stroke_width": 0.8,
-                "stroke_opacity": 0.4,
-            },
-            background_line_style={
-                "stroke_color": GRID_COLOR,
-                "stroke_width": 0.7,
-                "stroke_opacity": 0.35,
-            },
-            faded_line_style={
-                "stroke_color": "#121b2a",
-                "stroke_width": 0.4,
-                "stroke_opacity": 0.20,
-            }
-        )
-        self.add(tech_grid)
+        # =============================================================
+        # FRAME 0 CONTINUITY: 100% PIXEL MATCH WITH SCENE 06 TERMINAL STATE
+        # =============================================================
+        title_scene06 = CMTex(
+            r"\text{6. The Complexity Trap: Why ``Smarter'' Isn't Better}",
+            fontsize=28,
+            height=0.42,
+            color=JEWEL_GOLD
+        ).to_corner(UL, buff=0.6)
 
-        # -------------------------------------------------------------
-        # BEAT 1: TITLE BANNER (0s - 8s)
-        # -------------------------------------------------------------
-        head_card = RoundedRectangle(
-            width=11.2, height=1.1, corner_radius=0.10,
-            fill_color="#0f172a", fill_opacity=0.92,
-            stroke_color="#334155", stroke_width=1.5
-        ).move_to(UP * 3.2)
+        title_gauge = CMTex(r"\text{Engine Search Throughput: The Eigensolver Bottleneck}", fontsize=22, height=0.30, color=JEWEL_GOLD).move_to(UP * 2.45)
+        sub_gauge = CMTex(r"\text{Measuring Nodes Per Second (NPS) under full alpha-beta tree search}", fontsize=15, height=0.20, color=TEXT_MUTED).next_to(title_gauge, DOWN, buff=0.12)
+        gauge_header = VGroup(title_gauge, sub_gauge)
 
-        head_t1 = Text("CHAPTER 05 // THE WILD MATHEMATICAL EXPERIMENT", font="Bahnschrift", color=ACCENT_VIOLET).scale(0.24)
-        head_t2 = Text("7. The Tropical Semiring & The 66-Round Marathon", font="Bahnschrift", color=TEXT_BRIGHT).scale(0.40)
-        head_text = VGroup(head_t1, head_t2).arrange(DOWN, buff=0.08).move_to(head_card.get_center())
-        header_group = VGroup(head_card, head_text)
+        g_center = DOWN * 0.55
+        r_dial = 1.85
 
-        self.play(FadeIn(header_group, UP * 0.3), run_time=1.0)
-        self.wait(1.5)
+        outer_ring = Arc(radius=r_dial + 0.30, start_angle=210 * DEGREES, angle=-240 * DEGREES, stroke_color="#334155", stroke_width=2.2, arc_center=g_center)
+        inner_ring = Arc(radius=r_dial - 0.22, start_angle=210 * DEGREES, angle=-240 * DEGREES, stroke_color="#1e293b", stroke_width=1.4, arc_center=g_center)
 
-        # -------------------------------------------------------------
-        # BEAT 2: THE TROPICAL SEMIRING ALGEBRA (8s - 28s)
-        # -------------------------------------------------------------
-        # Left Panel: Mathematical Definition
-        semiring_card = RoundedRectangle(
-            width=5.8, height=4.6, corner_radius=0.12,
-            fill_color="#0b1120", fill_opacity=0.92,
-            stroke_color="#38bdf8", stroke_width=1.8
-        ).move_to(LEFT * 3.4 + DOWN * 0.2)
+        arc_red    = Arc(radius=r_dial, start_angle=210 * DEGREES, angle=-45 * DEGREES, stroke_color=JEWEL_CORAL, stroke_width=7.0, arc_center=g_center)
+        arc_yellow = Arc(radius=r_dial, start_angle=165 * DEGREES, angle=-65 * DEGREES, stroke_color=JEWEL_GOLD, stroke_width=7.0, arc_center=g_center)
+        arc_green  = Arc(radius=r_dial, start_angle=100 * DEGREES, angle=-130 * DEGREES, stroke_color=JEWEL_GREEN, stroke_width=7.0, arc_center=g_center)
 
-        badge_sr = RoundedRectangle(
-            width=3.2, height=0.45, corner_radius=0.08,
-            fill_color="#0284c7", fill_opacity=0.35,
-            stroke_color="#38bdf8", stroke_width=1.2
-        ).move_to(semiring_card.get_top() + DOWN * 0.35)
-        badge_sr_text = Text("MAX-PLUS ALGEBRA", font="Bahnschrift", color=ACCENT_CYAN).scale(0.26).move_to(badge_sr.get_center())
+        hub_outer = Circle(radius=0.28, fill_color="#0f172a", fill_opacity=1.0, stroke_color=JEWEL_GOLD, stroke_width=1.8).move_to(g_center)
+        hub_inner = Circle(radius=0.12, fill_color=JEWEL_GOLD, fill_opacity=1.0).set_stroke(width=0).move_to(g_center)
 
-        sr_def_t1 = Text("The Tropical Semiring:", font="Bahnschrift", color=TEXT_MUTED).scale(0.32)
-        sr_def_sym = Text("(R U {-inf}, max, +)", font="Consolas", color=ACCENT_GOLD).scale(0.44)
-        sr_def_box = VGroup(sr_def_t1, sr_def_sym).arrange(DOWN, buff=0.12).move_to(semiring_card.get_center() + UP * 1.0)
+        lbl_30k = CMTex(r"30\text{K}", fontsize=15, height=0.18, color=JEWEL_CORAL).move_to(g_center + np.array([-1.95, 0.35, 0]))
+        lbl_1m  = CMTex(r"1\text{M}", fontsize=15, height=0.18, color=TEXT_MUTED).move_to(g_center + np.array([-1.15, 1.45, 0]))
+        lbl_10m = CMTex(r"10\text{M}", fontsize=15, height=0.18, color=TEXT_MUTED).move_to(g_center + np.array([0.0, 1.85, 0]))
+        lbl_40m = CMTex(r"40\text{M}", fontsize=16, height=0.20, color=JEWEL_GREEN).move_to(g_center + np.array([1.80, -0.60, 0]))
+        dial_labels = VGroup(lbl_30k, lbl_1m, lbl_10m, lbl_40m)
 
-        div_line = Line(LEFT * 2.4, RIGHT * 2.4, stroke_color="#1e293b", stroke_width=1.2).move_to(semiring_card.get_center() + UP * 0.3)
+        gauge_group = VGroup(outer_ring, inner_ring, arc_red, arc_yellow, arc_green, hub_outer, hub_inner, dial_labels)
 
-        op1_lbl = Text("Tropical Addition:", font="Bahnschrift", color=TEXT_MUTED).scale(0.28)
-        op1_eq  = Text("x (+) y  =  max(x, y)", font="Consolas", color=ACCENT_CYAN).scale(0.38)
-        op1_grp = VGroup(op1_lbl, op1_eq).arrange(DOWN, buff=0.08)
+        def make_needle(angle_deg, col=JEWEL_CORAL):
+            rad = angle_deg * DEGREES
+            tip = g_center + np.array([np.cos(rad) * (r_dial + 0.10), np.sin(rad) * (r_dial + 0.10), 0])
+            n_perp = np.array([-np.sin(rad) * 0.07, np.cos(rad) * 0.07, 0])
+            poly = Polygon(g_center - n_perp * 1.4, tip, g_center + n_perp * 1.4)
+            poly.set_fill(col, opacity=1.0).set_stroke(color="#ffffff", width=0.8, opacity=0.8)
+            return poly
 
-        op2_lbl = Text("Tropical Multiplication:", font="Bahnschrift", color=TEXT_MUTED).scale(0.28)
-        op2_eq  = Text("x (*) y  =  x + y", font="Consolas", color=ACCENT_GREEN).scale(0.38)
-        op2_grp = VGroup(op2_lbl, op2_eq).arrange(DOWN, buff=0.08)
+        crashed_needle = make_needle(195, col=JEWEL_CORAL)
+        hud_crashed = CMTex(r"\text{30,412 NPS (CRASHED: Eigensolver Active)}", fontsize=19, height=0.26, color=JEWEL_CORAL).move_to(DOWN * 2.15)
+        depth_warning = CMTex(r"\text{Search Depth: } 14 \to 5 \quad (\text{Timeout Warning})", fontsize=16, height=0.21, color=JEWEL_CORAL).move_to(DOWN * 2.62)
+        climax_quote = CMTex(
+            r"\text{``Our algorithm was a genius... and it was playing chess like a complete idiot.''}",
+            fontsize=17,
+            height=0.24,
+            color=TEXT_WHITE
+        ).move_to(DOWN * 3.12)
 
-        ops_group = VGroup(op1_grp, op2_grp).arrange(DOWN, buff=0.25).move_to(semiring_card.get_center() + DOWN * 0.9)
+        inherited_state = VGroup(title_scene06, gauge_header, gauge_group, crashed_needle, hud_crashed, depth_warning, climax_quote)
+        self.add(inherited_state)
+        self.wait(0.6)
 
-        semiring_panel = VGroup(semiring_card, badge_sr, badge_sr_text, sr_def_box, div_line, ops_group)
+        # =============================================================
+        # BEAT 1: THE TROPICAL MORPH (0s - 12s)
+        # Narrator: "If Heaven's Gate was ever going to survive, I had to wage an all-out war against computational complexity.
+        # And that led to the first of many terrible ideas: The Max-Plus Tropical Semiring."
+        # =============================================================
+        title_scene07 = CMTex(
+            r"\text{7. The Tropical Odyssey: Max-Plus \& The 66-Round Marathon}",
+            fontsize=28,
+            height=0.42,
+            color=JEWEL_GOLD
+        ).to_corner(UL, buff=0.6)
 
-        # Right Panel: Why Minimax is Tropical
-        insight_card = RoundedRectangle(
-            width=6.2, height=4.6, corner_radius=0.12,
-            fill_color="#0b1120", fill_opacity=0.92,
-            stroke_color="#a78bfa", stroke_width=1.8
-        ).move_to(RIGHT * 3.3 + DOWN * 0.2)
-
-        badge_in = RoundedRectangle(
-            width=3.6, height=0.45, corner_radius=0.08,
-            fill_color="#7c3aed", fill_opacity=0.35,
-            stroke_color="#a78bfa", stroke_width=1.2
-        ).move_to(insight_card.get_top() + DOWN * 0.35)
-        badge_in_text = Text("WHY CHESS IS TROPICAL", font="Bahnschrift", color=ACCENT_VIOLET).scale(0.26).move_to(badge_in.get_center())
-
-        in_text1 = Text("Minimax computes upper & lower envelopes:", font="Bahnschrift", color=TEXT_MUTED).scale(0.28)
-        in_eq1   = Text("Eval(s) = max_i ( w_i * x + b_i )", font="Consolas", color=ACCENT_GOLD).scale(0.36)
-
-        # Visual of piecewise linear envelope
-        plane_axes = Axes(
-            x_range=[-3, 3, 1],
-            y_range=[-1, 4, 1],
-            width=4.8,
-            height=2.0,
-            axis_config={"stroke_color": "#334155", "stroke_width": 1.0}
-        ).move_to(insight_card.get_center() + DOWN * 0.5)
-
-        line1 = plane_axes.get_graph(lambda x: 0.5 * x + 1.2, x_range=[-2.5, 2.5], color="#475569").set_stroke(width=1.5)
-        line2 = plane_axes.get_graph(lambda x: -0.8 * x + 1.8, x_range=[-2.5, 2.5], color="#475569").set_stroke(width=1.5)
-        line3 = plane_axes.get_graph(lambda x: 1.4 * x - 0.2, x_range=[-2.5, 2.5], color="#475569").set_stroke(width=1.5)
-
-        # Upper envelope in bright luminous gold
-        def upper_env(x):
-            return max(0.5 * x + 1.2, -0.8 * x + 1.8, 1.4 * x - 0.2)
-
-        env_curve = plane_axes.get_graph(upper_env, x_range=[-2.2, 2.2], color=ACCENT_GOLD).set_stroke(width=3.2)
-        env_label = Text("Faceted Minimax Envelope", font="Bahnschrift", color=ACCENT_GOLD).scale(0.24).next_to(plane_axes, UP, buff=0.1)
-
-        insight_group = VGroup(
-            insight_card, badge_in, badge_in_text,
-            VGroup(in_text1, in_eq1).arrange(DOWN, buff=0.08).move_to(insight_card.get_center() + UP * 1.3),
-            plane_axes, line1, line2, line3, env_curve, env_label
-        )
-
-        self.play(FadeIn(semiring_panel, LEFT * 0.4), run_time=1.2)
-        self.wait(1.0)
-        self.play(FadeIn(insight_group, RIGHT * 0.4), run_time=1.2)
-        self.wait(2.0)
-
-        # Highlight smoothing: Log-Sum-Exp temperature
-        smooth_box = RoundedRectangle(
-            width=5.2, height=0.75, corner_radius=0.08,
-            fill_color="#1e1b4b", fill_opacity=0.95,
-            stroke_color="#818cf8", stroke_width=1.4
-        ).move_to(insight_card.get_bottom() + UP * 0.55)
-        smooth_text = Text("Log-Sum-Exp Smooth Max:  tau * ln( sum exp(w*x / tau) )", font="Consolas", color="#c7d2fe").scale(0.24).move_to(smooth_box.get_center())
-        smooth_group = VGroup(smooth_box, smooth_text)
-
-        self.play(FadeIn(smooth_group, UP * 0.2), run_time=0.8)
-        self.wait(2.5)
-
-        # -------------------------------------------------------------
-        # BEAT 3: 10 SPATIAL KING BUCKETS (28s - 48s)
-        # -------------------------------------------------------------
-        self.play(
-            FadeOut(semiring_panel, LEFT * 0.4),
-            FadeOut(insight_group, RIGHT * 0.4),
-            FadeOut(smooth_group, DOWN * 0.3),
-            run_time=1.0
-        )
-
-        bucket_header = Text("SPATIAL KING BUCKETING: 640 TOPOLOGICAL SECTOR WEIGHTS", font="Bahnschrift", color=ACCENT_CYAN).scale(0.32).move_to(UP * 2.2)
-        self.play(FadeIn(bucket_header, DOWN * 0.2), run_time=0.8)
-
-        # Draw 8x8 Chessboard divided into King Buckets
-        board_container = RoundedRectangle(
-            width=5.4, height=5.4, corner_radius=0.12,
-            fill_color="#0b1120", fill_opacity=0.95,
-            stroke_color="#334155", stroke_width=1.5
-        ).move_to(LEFT * 3.5 + DOWN * 0.6)
-
-        sq_w = 4.6 / 8.0
-        cb = BroadcastChessBoard(center=board_container.get_center(), sq_size=sq_w)
-        wk_piece = cb.create_piece("wK", 4, 0)
-
-        # White Kingside Castle Zone (files E-H, ranks 1-2)
-        z1 = Rectangle(width=4*sq_w, height=2*sq_w, fill_color=ACCENT_CYAN, fill_opacity=0.30, stroke_color=ACCENT_CYAN, stroke_width=1.5)
-        z1.move_to(cb.get_center() + RIGHT * (2*sq_w) + DOWN * (2*sq_w))
-        z1_lbl = Text("Bucket #1: White O-O", font="Bahnschrift", color=ACCENT_CYAN).scale(0.20).move_to(z1.get_center())
-
-        # White Queenside Castle Zone (files A-D, ranks 1-2)
-        z2 = Rectangle(width=4*sq_w, height=2*sq_w, fill_color=ACCENT_VIOLET, fill_opacity=0.30, stroke_color=ACCENT_VIOLET, stroke_width=1.5)
-        z2.move_to(cb.get_center() + LEFT * (2*sq_w) + DOWN * (2*sq_w))
-        z2_lbl = Text("Bucket #2: White O-O-O", font="Bahnschrift", color=ACCENT_VIOLET).scale(0.20).move_to(z2.get_center())
-
-        # Central Sector (ranks 3-5)
-        z3 = Rectangle(width=6*sq_w, height=3*sq_w, fill_color=ACCENT_GOLD, fill_opacity=0.25, stroke_color=ACCENT_GOLD, stroke_width=1.5)
-        z3.move_to(cb.get_center() + DOWN * (0.5*sq_w))
-        z3_lbl = Text("Bucket #5: Open Center / Endgame", font="Bahnschrift", color=ACCENT_GOLD).scale(0.22).move_to(z3.get_center())
-
-        zone_group = VGroup(z1, z1_lbl, z2, z2_lbl, z3, z3_lbl)
-
-        # Right Card: Bucket Telemetry
-        bucket_info = RoundedRectangle(
-            width=6.2, height=5.2, corner_radius=0.12,
-            fill_color="#0f172a", fill_opacity=0.92,
-            stroke_color="#38bdf8", stroke_width=1.5
-        ).move_to(RIGHT * 3.2 + DOWN * 0.6)
-
-        bi_title = Text("DYNAMIC SECTOR PARAMETER DISPATCH", font="Bahnschrift", color=ACCENT_CYAN).scale(0.28).move_to(bucket_info.get_top() + DOWN * 0.4)
-
-        b_stat1 = Text("• 10 Spatial King Envelopes", font="Bahnschrift", color=TEXT_BRIGHT).scale(0.28)
-        b_stat2 = Text("• 64 Base Features per Sector (Fiedler, Degrees, PST)", font="Bahnschrift", color=TEXT_MUTED).scale(0.25)
-        b_stat3 = Text("• Total Model Parameters: 640 Weights", font="Consolas", color=ACCENT_GOLD).scale(0.30)
-        b_stat4 = Text("• King Position selects active hyperplane envelope", font="Bahnschrift", color=TEXT_MUTED).scale(0.25)
-
-        b_stats = VGroup(b_stat1, b_stat2, b_stat3, b_stat4).arrange(DOWN, buff=0.22, aligned_edge=LEFT).move_to(bucket_info.get_center() + UP * 0.6)
-
-        # Active Sector readout box
-        sector_hud = RoundedRectangle(
-            width=5.4, height=1.4, corner_radius=0.08,
-            fill_color="#070d18", fill_opacity=0.95,
-            stroke_color="#0284c7", stroke_width=1.2
-        ).move_to(bucket_info.get_bottom() + UP * 1.1)
-
-        hud_label = Text("ACTIVE EVALUATION SLICE", font="Bahnschrift", color=TEXT_DIM).scale(0.20).move_to(sector_hud.get_top() + DOWN * 0.22)
-        hud_active = Text("King: e1 -> SECTOR 01 (Kingside Shielded)", font="Consolas", color=ACCENT_CYAN).scale(0.28).move_to(sector_hud.get_center() + DOWN * 0.05)
-        hud_weights = Text("Loaded 64 Weights | Bias: +14.2 cp | Temp tau: 1.25", font="Consolas", color=TEXT_MUTED).scale(0.22).move_to(sector_hud.get_bottom() + UP * 0.25)
-        sector_hud_group = VGroup(sector_hud, hud_label, hud_active, hud_weights)
-
-        self.play(FadeIn(board_container), FadeIn(cb), FadeIn(wk_piece), FadeIn(zone_group), FadeIn(bucket_info), FadeIn(bi_title), FadeIn(b_stats), FadeIn(sector_hud_group), run_time=1.4)
-        self.wait(2.5)
-
-        # -------------------------------------------------------------
-        # BEAT 4: THE 66-ROUND CONTINUOUS TRAINING MARATHON (48s - 72s)
-        # -------------------------------------------------------------
-        self.play(
-            FadeOut(board_container),
-            FadeOut(cb),
-            FadeOut(wk_piece),
-            FadeOut(zone_group),
-            FadeOut(bucket_info),
-            FadeOut(bi_title),
-            FadeOut(b_stats),
-            FadeOut(sector_hud_group),
-            FadeOut(bucket_header),
-            run_time=1.0
-        )
-
-        # Terminal UI Card
-        term_card = RoundedRectangle(
-            width=11.6, height=5.4, corner_radius=0.12,
-            fill_color="#050811", fill_opacity=0.96,
-            stroke_color="#334155", stroke_width=1.6
-        ).move_to(DOWN * 0.4)
-
-        # Terminal Top Bar
-        term_bar = RoundedRectangle(
-            width=11.6, height=0.45, corner_radius=0.08,
-            fill_color="#0f172a", fill_opacity=1.0,
-            stroke_color="#334155", stroke_width=1.0
-        ).move_to(term_card.get_top() + DOWN * 0.225)
-
-        dot_r = Circle(radius=0.08, fill_color="#ef4444", fill_opacity=1.0).set_stroke(width=0).move_to(term_bar.get_left() + RIGHT * 0.3)
-        dot_y = Circle(radius=0.08, fill_color="#f59e0b", fill_opacity=1.0).set_stroke(width=0).next_to(dot_r, RIGHT, buff=0.12)
-        dot_g = Circle(radius=0.08, fill_color="#10b981", fill_opacity=1.0).set_stroke(width=0).next_to(dot_y, RIGHT, buff=0.12)
-        term_title = Text("PowerShell - run_continuous_training.ps1 [24/7 AUTONOMOUS RIG]", font="Consolas", color=TEXT_MUTED).scale(0.24).move_to(term_bar.get_center())
-        term_header = VGroup(term_bar, dot_r, dot_y, dot_g, term_title)
-
-        # Terminal lines
-        cmd_text = Text("PS C:\\heavensgate> .\\run_continuous_training.ps1 -Rounds 66 -SelfPlayDepth 6 -AdamEpochs 300", font="Consolas", color=ACCENT_CYAN).scale(0.26)
-        cmd_text.move_to(term_card.get_top() + DOWN * 0.75 + LEFT * 0.8)
-
-        # Left Column: Round Counter & Pipeline Stages
-        round_badge = RoundedRectangle(
-            width=4.8, height=1.6, corner_radius=0.10,
-            fill_color="#0d1527", fill_opacity=0.9,
-            stroke_color=ACCENT_GOLD, stroke_width=1.6
-        ).move_to(term_card.get_left() + RIGHT * 3.0 + DOWN * 0.5)
-
-        round_lbl = Text("MARATHON CYCLE PROGRESS", font="Bahnschrift", color=TEXT_MUTED).scale(0.20).move_to(round_badge.get_top() + DOWN * 0.25)
-        round_num = Text("ROUND 01 / 66", font="Consolas", color=ACCENT_GOLD).scale(0.55).move_to(round_badge.get_center() + DOWN * 0.05)
-        round_sub = Text("Status: 500 Self-Play Games Running (16 Threads)", font="Consolas", color=ACCENT_GREEN).scale(0.19).move_to(round_badge.get_bottom() + UP * 0.22)
-        round_box = VGroup(round_badge, round_lbl, round_num, round_sub)
-
-        # Pipeline stages diagram below
-        p_step1 = Text("[1] 500 Self-Play Games", font="Consolas", color=TEXT_MUTED).scale(0.22)
-        p_step2 = Text("[2] Adam SGD (300 Epochs)", font="Consolas", color=TEXT_MUTED).scale(0.22)
-        p_step3 = Text("[3] 100-Game Benchmark", font="Consolas", color=TEXT_MUTED).scale(0.22)
-        pipeline_box = VGroup(p_step1, p_step2, p_step3).arrange(DOWN, buff=0.14, aligned_edge=LEFT).next_to(round_badge, DOWN, buff=0.25)
-
-        # Right Column: Replay Buffer Swell Visualization
-        replay_box = RoundedRectangle(
-            width=5.6, height=3.6, corner_radius=0.10,
-            fill_color="#0d1527", fill_opacity=0.9,
-            stroke_color=ACCENT_CYAN, stroke_width=1.4
-        ).move_to(term_card.get_right() + LEFT * 3.4 + DOWN * 0.7)
-
-        rep_title = Text("EXPERIENCE REPLAY MEMORY BUFFER", font="Bahnschrift", color=ACCENT_CYAN).scale(0.24).move_to(replay_box.get_top() + DOWN * 0.3)
-
-        # Progress bar container
-        bar_bg = RoundedRectangle(
-            width=4.8, height=0.5, corner_radius=0.06,
-            fill_color="#1e293b", fill_opacity=1.0,
-            stroke_color="#475569", stroke_width=1.0
-        ).move_to(replay_box.get_center() + UP * 0.5)
-
-        bar_fill = RoundedRectangle(
-            width=0.48, height=0.46, corner_radius=0.05,
-            fill_color=ACCENT_BLUE, fill_opacity=0.95
-        ).set_stroke(width=0).align_to(bar_bg, LEFT)
-
-        rep_count = Text("50,000 Positions Loaded", font="Consolas", color=TEXT_BRIGHT).scale(0.30).next_to(bar_bg, DOWN, buff=0.25)
-
-        rep_spec1 = Text("• Max Capacity: 2,000,000 FEN States", font="Consolas", color=TEXT_MUTED).scale(0.22)
-        rep_spec2 = Text("• MSE Loss Target: < 0.042 cp²", font="Consolas", color=TEXT_MUTED).scale(0.22)
-        rep_spec3 = Text("• Hardware: 16-Core Continuous Self-Play", font="Consolas", color=TEXT_MUTED).scale(0.22)
-        rep_specs = VGroup(rep_spec1, rep_spec2, rep_spec3).arrange(DOWN, buff=0.12, aligned_edge=LEFT).next_to(rep_count, DOWN, buff=0.25)
-
-        replay_group = VGroup(replay_box, rep_title, bar_bg, bar_fill, rep_count, rep_specs)
-
-        self.play(FadeIn(term_card), FadeIn(term_header), FadeIn(cmd_text), FadeIn(round_box), FadeIn(pipeline_box), FadeIn(replay_group), run_time=1.2)
-        self.wait(1.5)
-
-        # Animate round ticking and buffer swell: Round 01 -> Round 17 -> Round 66
-        # Step 1: Round 17
-        round_num_17 = Text("ROUND 17 / 66", font="Consolas", color=ACCENT_GOLD).scale(0.55).move_to(round_num.get_center())
-        bar_fill_17 = RoundedRectangle(
-            width=2.4, height=0.46, corner_radius=0.05,
-            fill_color=ACCENT_CYAN, fill_opacity=0.95
-        ).set_stroke(width=0).align_to(bar_bg, LEFT)
-        rep_count_17 = Text("500,000 Positions Loaded", font="Consolas", color=ACCENT_CYAN).scale(0.30).next_to(bar_bg, DOWN, buff=0.25)
+        sr_title = CMTex(r"\text{The Max-Plus Tropical Semiring}", fontsize=24, height=0.34, color=JEWEL_GOLD).move_to(UP * 2.45)
+        sr_sub = CMTex(r"\text{Translating discrete minimax search into continuous convex linear algebra}", fontsize=15, height=0.20, color=TEXT_MUTED).next_to(sr_title, DOWN, buff=0.12)
+        sr_header = VGroup(sr_title, sr_sub)
 
         self.play(
-            Transform(round_num, round_num_17),
-            Transform(bar_fill, bar_fill_17),
-            Transform(rep_count, rep_count_17),
+            FadeOut(inherited_state),
+            FadeIn(title_scene07, UP * 0.1),
+            FadeIn(sr_header, DOWN * 0.1),
+            run_time=1.0,
+            rate_func=smooth
+        )
+
+        # Left Column: Classical Field (R, +, *)
+        c_left = LEFT * 3.5 + DOWN * 0.3
+        card_cf = RoundedRectangle(
+            width=5.6, height=4.2, corner_radius=0.14,
+            fill_color="#070c16", fill_opacity=0.92,
+            stroke_color="#223048", stroke_width=1.5
+        ).move_to(c_left)
+
+        lbl_cf = CMTex(r"\text{Classical Field } (\mathbb{R}, +, \times)", fontsize=18, height=0.24, color=TEXT_WHITE).move_to(c_left + UP * 1.5)
+        op_add_c = CMTex(r"\text{Addition: } a + b", fontsize=16, height=0.22, color=TEXT_MUTED).next_to(lbl_cf, DOWN, buff=0.45)
+        op_mul_c = CMTex(r"\text{Multiplication: } a \times b", fontsize=16, height=0.22, color=TEXT_MUTED).next_to(op_add_c, DOWN, buff=0.35)
+        cf_group = VGroup(card_cf, lbl_cf, op_add_c, op_mul_c)
+
+        # Right Column: Tropical Semiring (R U {-inf}, oplus, otimes)
+        c_right = RIGHT * 3.5 + DOWN * 0.3
+        card_ts = RoundedRectangle(
+            width=5.6, height=4.2, corner_radius=0.14,
+            fill_color="#071312", fill_opacity=0.92,
+            stroke_color=JEWEL_CYAN, stroke_width=1.6
+        ).move_to(c_right)
+
+        lbl_ts = CMTex(r"\text{Tropical Semiring } (\mathbb{R} \cup \{-\infty\}, \oplus, \otimes)", fontsize=18, height=0.24, color=JEWEL_CYAN).move_to(c_right + UP * 1.5)
+        op_add_t = CMTex(r"a \oplus b = \max(a, b)", fontsize=16, height=0.22, color=JEWEL_GOLD).next_to(lbl_ts, DOWN, buff=0.45)
+        op_mul_t = CMTex(r"a \otimes b = a + b", fontsize=16, height=0.22, color=JEWEL_GREEN).next_to(op_add_t, DOWN, buff=0.35)
+        ts_group = VGroup(card_ts, lbl_ts, op_add_t, op_mul_t)
+
+        # Center Morph Arrows
+        arr_add = CMTex(r"\longrightarrow", fontsize=22, height=0.24, color=JEWEL_CYAN).move_to(UP * 0.15)
+        arr_mul = CMTex(r"\longrightarrow", fontsize=22, height=0.24, color=JEWEL_CYAN).move_to(DOWN * 0.45)
+        arr_group = VGroup(arr_add, arr_mul)
+
+        insight_banner = CMTex(
+            r"\text{Minimax game-tree optimization is literally linear algebra over the Tropical Semiring.}",
+            fontsize=16,
+            height=0.22,
+            color=TEXT_BRIGHT
+        ).move_to(DOWN * 2.85)
+
+        self.play(
+            FadeIn(cf_group, LEFT * 0.15),
+            ShowCreation(arr_group),
+            FadeIn(ts_group, RIGHT * 0.15),
+            FadeIn(insight_banner, UP * 0.1),
+            run_time=1.4,
+            rate_func=smooth
+        )
+        self.wait(3.2)
+
+        # =============================================================
+        # BEAT 2: FACETED MINIMAX HYPERPLANES & LOG-SUM-EXP (12s - 24s)
+        # =============================================================
+        self.play(
+            FadeOut(sr_header),
+            FadeOut(cf_group),
+            FadeOut(arr_group),
+            FadeOut(ts_group),
+            FadeOut(insight_banner),
+            run_time=0.8,
+            rate_func=smooth
+        )
+
+        title_geom = CMTex(r"\text{Faceted Minimax Hyperplanes \& Temperature Smoothing}", fontsize=22, height=0.30, color=JEWEL_CYAN).move_to(UP * 2.45)
+        sub_geom = CMTex(r"\mathrm{Eval}(s) = \max_i (w_i^\top x + b_i) \quad \text{forms a non-differentiable convex upper envelope}", fontsize=15, height=0.20, color=TEXT_MUTED).next_to(title_geom, DOWN, buff=0.12)
+        geom_header = VGroup(title_geom, sub_geom)
+        self.play(FadeIn(geom_header, DOWN * 0.1), run_time=0.6)
+
+        axes = Axes(
+            x_range=[-3.0, 3.0, 1.0],
+            y_range=[-0.5, 4.0, 1.0],
+            width=6.8,
+            height=3.6,
+            axis_config={"stroke_color": "#2a364f", "stroke_width": 1.4}
+        ).move_to(LEFT * 1.5 + DOWN * 0.5)
+
+        x_lbl = CMTex(r"\text{Topological Feature Vector } x", fontsize=14, height=0.17, color=TEXT_MUTED).next_to(axes.x_axis, DOWN, buff=0.12)
+        y_lbl = CMTex(r"\text{Evaluation Score}", fontsize=14, height=0.17, color=TEXT_MUTED).next_to(axes.y_axis, LEFT, buff=0.12)
+
+        line1 = axes.get_graph(lambda x: 0.45 * x + 1.2, x_range=[-2.8, 2.8], color="#2b3a52").set_stroke(width=1.5)
+        line2 = axes.get_graph(lambda x: -0.75 * x + 1.7, x_range=[-2.8, 2.8], color="#2b3a52").set_stroke(width=1.5)
+        line3 = axes.get_graph(lambda x: 1.30 * x - 0.4, x_range=[-2.8, 2.8], color="#2b3a52").set_stroke(width=1.5)
+
+        def envelope_fn(x):
+            return max(0.45 * x + 1.2, -0.75 * x + 1.7, 1.30 * x - 0.4)
+
+        env_graph = axes.get_graph(envelope_fn, x_range=[-2.6, 2.6], color=JEWEL_GOLD).set_stroke(width=3.4)
+
+        env_badge = RoundedRectangle(width=4.4, height=0.45, corner_radius=0.08, fill_color="#181408", fill_opacity=0.95, stroke_color=JEWEL_GOLD, stroke_width=1.4).move_to(RIGHT * 4.2 + UP * 0.8)
+        env_badge_txt = CMTex(r"\text{Max-Plus Upper Envelope}", fontsize=15, height=0.18, color=JEWEL_GOLD).move_to(env_badge.get_center())
+        env_desc = CMTex(r"\text{Sharp non-differentiable corners}", fontsize=14, height=0.17, color=TEXT_MUTED).next_to(env_badge, DOWN, buff=0.12)
+        env_grp = VGroup(env_badge, env_badge_txt, env_desc)
+
+        self.play(
+            ShowCreation(axes),
+            FadeIn(x_lbl), FadeIn(y_lbl),
+            ShowCreation(line1), ShowCreation(line2), ShowCreation(line3),
+            ShowCreation(env_graph),
+            FadeIn(env_grp, RIGHT * 0.15),
             run_time=1.4
         )
-        self.wait(1.0)
+        self.wait(1.5)
 
-        # Step 2: Round 66 (Max Capacity: 2 Million)
-        round_num_66 = Text("ROUND 66 / 66", font="Consolas", color=ACCENT_ORANGE).scale(0.55).move_to(round_num.get_center())
-        bar_fill_66 = RoundedRectangle(
-            width=4.76, height=0.46, corner_radius=0.05,
-            fill_color=ACCENT_GOLD, fill_opacity=0.95
-        ).set_stroke(width=0).align_to(bar_bg, LEFT)
-        rep_count_66 = Text("2,000,000 Positions Loaded (MAX)", font="Consolas", color=ACCENT_GOLD).scale(0.30).next_to(bar_bg, DOWN, buff=0.25)
+        def logsumexp_fn(x, tau=0.35):
+            z1 = (0.45 * x + 1.2) / tau
+            z2 = (-0.75 * x + 1.7) / tau
+            z3 = (1.30 * x - 0.4) / tau
+            m = max(z1, z2, z3)
+            return tau * (m + np.log(np.exp(z1 - m) + np.exp(z2 - m) + np.exp(z3 - m)))
+
+        smooth_graph = axes.get_graph(lambda x: logsumexp_fn(x, 0.35), x_range=[-2.6, 2.6], color=JEWEL_CYAN).set_stroke(width=3.4)
+
+        smooth_badge = RoundedRectangle(width=4.4, height=0.45, corner_radius=0.08, fill_color="#071418", fill_opacity=0.95, stroke_color=JEWEL_CYAN, stroke_width=1.4).move_to(RIGHT * 4.2 + DOWN * 0.8)
+        smooth_badge_txt = CMTex(r"\text{Log-Sum-Exp Smooth Max}", fontsize=15, height=0.18, color=JEWEL_CYAN).move_to(smooth_badge.get_center())
+        smooth_eq = CMTex(r"S_\tau(z) = \tau \ln \left( \sum_i \exp(z_i / \tau) \right)", fontsize=14, height=0.18, color=TEXT_WHITE).next_to(smooth_badge, DOWN, buff=0.12)
+        smooth_desc = CMTex(r"\tau \to 0 \Rightarrow \text{Approaches exact minimax}", fontsize=13, height=0.16, color=TEXT_MUTED).next_to(smooth_eq, DOWN, buff=0.10)
+        smooth_grp = VGroup(smooth_badge, smooth_badge_txt, smooth_eq, smooth_desc)
 
         self.play(
-            Transform(round_num, round_num_66),
-            Transform(bar_fill, bar_fill_66),
-            Transform(rep_count, rep_count_66),
+            Transform(env_graph, smooth_graph),
+            FadeIn(smooth_grp, RIGHT * 0.15),
             run_time=1.6
         )
-        self.wait(2.0)
+        self.wait(2.5)
 
-        # -------------------------------------------------------------
-        # BEAT 5: THE FOREBODING CLIMAX / COLLAPSE TEASER (72s - 85s)
-        # -------------------------------------------------------------
-        fail_badge = RoundedRectangle(
-            width=10.4, height=1.5, corner_radius=0.12,
-            fill_color="#1c070d", fill_opacity=0.96,
-            stroke_color=ACCENT_RED, stroke_width=2.0
-        ).move_to(DOWN * 0.4)
-
-        fail_t1 = Text("WARNING: PARADIGM INSTABILITY DETECTED", font="Bahnschrift", color=ACCENT_RED).scale(0.28)
-        fail_t2 = Text("\"And it failed in almost every way imaginable.\"", font="Bahnschrift", color=TEXT_BRIGHT).scale(0.42)
-        fail_t3 = Text("NEXT: THE HALL OF SHAME • 5 DISASTERS, SACRIFICED QUEENS, AND THE GREAT REVERT", font="Consolas", color="#fca5a5").scale(0.20)
-        fail_content = VGroup(fail_t1, fail_t2, fail_t3).arrange(DOWN, buff=0.12).move_to(fail_badge.get_center())
-
-        fail_group = VGroup(fail_badge, fail_content)
-
-        # Red alert pulse
+        # =============================================================
+        # BEAT 3: 10 SPATIAL KING BUCKETS (24s - 36s)
+        # =============================================================
         self.play(
-            FadeOut(round_box),
-            FadeOut(pipeline_box),
-            FadeOut(replay_group),
-            FadeIn(fail_group, scale=0.95),
-            term_card.animate.set_stroke(color=ACCENT_RED, width=2.0),
-            run_time=1.2
+            FadeOut(geom_header),
+            FadeOut(axes),
+            FadeOut(x_lbl), FadeOut(y_lbl),
+            FadeOut(line1), FadeOut(line2), FadeOut(line3),
+            FadeOut(env_graph),
+            FadeOut(env_grp),
+            FadeOut(smooth_grp),
+            run_time=0.8,
+            rate_func=smooth
         )
-        self.wait(3.0)
+
+        title_buck = CMTex(r"\text{Spatial King Bucketing: 640 Topological Sector Parameters}", fontsize=22, height=0.30, color=JEWEL_GOLD).move_to(UP * 2.45)
+        sub_buck = CMTex(r"\text{10 distinct king zones allocate specialized hyperplane weights to match board topology}", fontsize=15, height=0.20, color=TEXT_MUTED).next_to(title_buck, DOWN, buff=0.12)
+        buck_header = VGroup(title_buck, sub_buck)
+        self.play(FadeIn(buck_header, DOWN * 0.1), run_time=0.6)
+
+        cb_center = LEFT * 3.4 + DOWN * 0.5
+        sq_size = 0.42
+        cb = BroadcastChessBoard(center=cb_center, sq_size=sq_size, show_coords=True)
+        king_piece = cb.create_piece("wK", 4, 0)
+
+        self.play(FadeIn(cb), FadeIn(king_piece), run_time=1.0)
+
+        z1 = Rectangle(width=4 * sq_size, height=2 * sq_size, fill_color=JEWEL_CYAN, fill_opacity=0.28, stroke_color=JEWEL_CYAN, stroke_width=1.5)
+        z1.move_to(cb.get_center() + RIGHT * (2 * sq_size) + DOWN * (2 * sq_size))
+        z1_lbl = CMTex(r"\text{Zone 1: O-O}", fontsize=13, height=0.16, color=JEWEL_CYAN).move_to(z1.get_center())
+
+        z2 = Rectangle(width=4 * sq_size, height=2 * sq_size, fill_color=JEWEL_BLUE, fill_opacity=0.28, stroke_color=JEWEL_BLUE, stroke_width=1.5)
+        z2.move_to(cb.get_center() + LEFT * (2 * sq_size) + DOWN * (2 * sq_size))
+        z2_lbl = CMTex(r"\text{Zone 2: O-O-O}", fontsize=13, height=0.16, color=JEWEL_BLUE).move_to(z2.get_center())
+
+        z5 = Rectangle(width=4 * sq_size, height=4 * sq_size, fill_color=JEWEL_GOLD, fill_opacity=0.22, stroke_color=JEWEL_GOLD, stroke_width=1.5)
+        z5.move_to(cb.get_center() + UP * 0.0)
+        z5_lbl = CMTex(r"\text{Zone 5: Active Center}", fontsize=13, height=0.16, color=JEWEL_GOLD).move_to(z5.get_center())
+
+        zones_group = VGroup(z1, z1_lbl, z2, z2_lbl, z5, z5_lbl)
+        self.play(FadeIn(zones_group), run_time=0.9)
+
+        r_side = RIGHT * 2.8 + DOWN * 0.5
+        card_weights = RoundedRectangle(
+            width=5.8, height=4.2, corner_radius=0.14,
+            fill_color="#070c16", fill_opacity=0.92,
+            stroke_color="#223048", stroke_width=1.5
+        ).move_to(r_side)
+
+        active_zone_lbl = CMTex(r"\text{ACTIVE SECTOR: 01 (Castled Kingside)}", fontsize=16, height=0.22, color=JEWEL_CYAN).move_to(r_side + UP * 1.5)
+        param_dispatch = CMTex(r"\text{Dispatching 64 weights (Fiedler, Degrees, PST)}", fontsize=14, height=0.18, color=TEXT_MUTED).next_to(active_zone_lbl, DOWN, buff=0.10)
+
+        np.random.seed(42)
+        initial_weights = np.random.uniform(0.25, 1.35, 14)
+        bar_group = VGroup()
+        for i, w in enumerate(initial_weights):
+            bar = Line(r_side + LEFT * 2.0 + RIGHT * (i * 0.30) + DOWN * 0.6, r_side + LEFT * 2.0 + RIGHT * (i * 0.30) + DOWN * 0.6 + UP * (w * 1.0), color=JEWEL_CYAN, stroke_width=5.0)
+            bar_group.add(bar)
+
+        spec_lbl = CMTex(r"\text{Topological Sector Weight Amplitudes } (w_1 \dots w_{64})", fontsize=13, height=0.16, color=TEXT_MUTED).next_to(bar_group, DOWN, buff=0.25)
+        hist_grp = VGroup(card_weights, active_zone_lbl, param_dispatch, bar_group, spec_lbl)
+
+        self.play(FadeIn(hist_grp), run_time=1.2)
+        self.wait(1.0)
+
+        # King moves to center -> Dynamic sector weight change
+        sq_e4_pos = cb.get_square_pos(4, 3)
+        target_zone_lbl = CMTex(r"\text{ACTIVE SECTOR: 05 (Central Endgame)}", fontsize=16, height=0.22, color=JEWEL_GOLD).move_to(r_side + UP * 1.5)
+
+        np.random.seed(99)
+        new_weights = np.random.uniform(0.35, 1.55, 14)
+        new_bar_group = VGroup()
+        for i, w in enumerate(new_weights):
+            bar = Line(r_side + LEFT * 2.0 + RIGHT * (i * 0.30) + DOWN * 0.6, r_side + LEFT * 2.0 + RIGHT * (i * 0.30) + DOWN * 0.6 + UP * (w * 1.0), color=JEWEL_GOLD, stroke_width=5.0)
+            new_bar_group.add(bar)
+
+        self.play(
+            king_piece.animate.move_to(sq_e4_pos),
+            FadeOut(active_zone_lbl),
+            FadeIn(target_zone_lbl),
+            Transform(bar_group, new_bar_group),
+            run_time=1.4
+        )
+        self.wait(2.2)
+
+        # =============================================================
+        # BEAT 4: THE 66-ROUND CONTINUOUS MARATHON & PLATEAU (36s - 50s)
+        # =============================================================
+        self.play(
+            FadeOut(buck_header),
+            FadeOut(cb),
+            FadeOut(king_piece),
+            FadeOut(zones_group),
+            FadeOut(hist_grp),
+            run_time=0.8,
+            rate_func=smooth
+        )
+
+        title_train = CMTex(r"\text{The 66-Round Training Marathon \& The Loss Plateau}", fontsize=22, height=0.30, color=JEWEL_CORAL).move_to(UP * 2.45)
+        sub_train = CMTex(r"\text{24/7 Autonomous Self-Play Rig } \bullet \text{ 2,000,000 FEN Replay Buffer } \bullet \text{ Adam SGD}", fontsize=15, height=0.20, color=TEXT_MUTED).next_to(title_train, DOWN, buff=0.12)
+        train_header = VGroup(title_train, sub_train)
+        self.play(FadeIn(train_header, DOWN * 0.1), run_time=0.6)
+
+        # Pipeline diagram card
+        c_pipe = LEFT * 3.5 + DOWN * 0.4
+        card_pipe = RoundedRectangle(
+            width=5.6, height=4.2, corner_radius=0.14,
+            fill_color="#070c16", fill_opacity=0.92,
+            stroke_color="#223048", stroke_width=1.5
+        ).move_to(c_pipe)
+
+        n1 = CMTex(r"[1] \text{ 500 Self-Play Games (16 Threads)}", fontsize=14, height=0.18, color=JEWEL_CYAN).move_to(c_pipe + UP * 1.3)
+        n2 = CMTex(r"[2] \text{ Replay Buffer (2,000,000 FENs)}", fontsize=14, height=0.18, color=JEWEL_GOLD).move_to(c_pipe + UP * 0.0)
+        n3 = CMTex(r"[3] \text{ Adam SGD (300 Epochs / Round)}", fontsize=14, height=0.18, color=JEWEL_GREEN).move_to(c_pipe + DOWN * 1.3)
+
+        arr1 = Arrow(
+            n1.get_bottom(), n2.get_top(),
+            buff=0.12,
+            fill_color="#475569",
+            fill_opacity=1.0,
+            stroke_color="#475569",
+            stroke_width=0.0,
+            thickness=2.0,
+            tip_width_ratio=3.2,
+            tip_angle=PI / 3.5,
+        )
+        arr2 = Arrow(
+            n2.get_bottom(), n3.get_top(),
+            buff=0.12,
+            fill_color="#475569",
+            fill_opacity=1.0,
+            stroke_color="#475569",
+            stroke_width=0.0,
+            thickness=2.0,
+            tip_width_ratio=3.2,
+            tip_angle=PI / 3.5,
+        )
+        loop_arrow = ArcBetweenPoints(n3.get_left() + LEFT * 0.1, n1.get_left() + LEFT * 0.1, angle=TAU * 0.35, color=JEWEL_CORAL).set_stroke(width=1.6)
+        loop_lbl = CMTex(r"\text{Continuous Iteration}", fontsize=13, height=0.16, color=JEWEL_CORAL).next_to(loop_arrow, LEFT, buff=0.10)
+
+        pipe_grp = VGroup(card_pipe, n1, n2, n3, arr1, arr2, loop_arrow, loop_lbl)
+        self.play(FadeIn(pipe_grp), run_time=1.2)
+
+        # Loss plateau plot
+        loss_axes = Axes(
+            x_range=[0, 66, 11],
+            y_range=[0.0, 1.0, 0.2],
+            width=5.8,
+            height=3.4,
+            axis_config={"stroke_color": "#2a364f", "stroke_width": 1.4}
+        ).move_to(RIGHT * 3.4 + DOWN * 0.4)
+
+        x_loss = CMTex(r"\text{Training Rounds } (1 - 66)", fontsize=13, height=0.16, color=TEXT_MUTED).next_to(loss_axes.x_axis, DOWN, buff=0.12)
+        y_loss = CMTex(r"\text{MSE Loss } (\mathrm{cp}^2)", fontsize=13, height=0.16, color=TEXT_MUTED).next_to(loss_axes.y_axis, LEFT, buff=0.12)
+
+        def loss_fn(r):
+            if r < 12:
+                return 0.85 * np.exp(-r / 3.5) + 0.25
+            else:
+                return 0.28 + 0.03 * np.sin(r * 1.8) + 0.015 * np.cos(r * 3.7)
+
+        loss_curve = loss_axes.get_graph(loss_fn, x_range=[0, 66], color=JEWEL_CORAL).set_stroke(width=2.8)
+
+        plateau_badge = RoundedRectangle(width=4.2, height=0.42, corner_radius=0.08, fill_color="#180a0e", fill_opacity=0.95, stroke_color=JEWEL_CORAL, stroke_width=1.4).move_to(loss_axes.c2p(38, 0.52))
+        plateau_lbl = CMTex(r"\text{Inescapable Non-Convex Plateau}", fontsize=14, height=0.18, color=JEWEL_CORAL).move_to(plateau_badge.get_center())
+        plateau_grp = VGroup(plateau_badge, plateau_lbl)
+
+        self.play(ShowCreation(loss_axes), FadeIn(x_loss), FadeIn(y_loss), run_time=1.0)
+        self.play(ShowCreation(loss_curve), FadeIn(plateau_grp), run_time=1.6)
+
+        climax_quote = CMTex(
+            r"\text{``And it failed in almost every way imaginable.''}",
+            fontsize=18,
+            height=0.26,
+            color=TEXT_WHITE
+        ).move_to(DOWN * 3.12)
+
+        self.play(FadeIn(climax_quote, UP * 0.08), run_time=1.0)
+        self.wait(1.5)
+
+        # =============================================================
+        # TERMINAL FRAME PRESERVATION (Seamless Scene 08 Handoff)
+        # =============================================================
+        self.wait(2.5)

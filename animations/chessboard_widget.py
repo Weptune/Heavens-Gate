@@ -103,7 +103,7 @@ class BroadcastChessBoard(VGroup):
     def create_piece(self, piece_name, col, row):
         """
         Loads and styles SVG pieces so Black pieces have high-contrast contour
-        and White pieces have crisp vector clarity.
+        and White pieces have crisp, radiant vector clarity.
         """
         p_path = Path(f"web/pieces/cburnett/{piece_name}.svg")
         if not p_path.exists():
@@ -114,12 +114,12 @@ class BroadcastChessBoard(VGroup):
         # Style pieces for maximum contrast
         if piece_name.startswith("b"):
             for sub in p_svg.family_members_with_points():
-                sub.set_stroke(color="#f8fafc", width=1.8)
+                sub.set_stroke(color="#f8fafc", width=1.4)
         else:
             for sub in p_svg.family_members_with_points():
-                sub.set_stroke(color="#0f172a", width=1.4)
+                sub.set_stroke(color="#0f172a", width=0.8)
 
-        p_svg.set_height(self.sq_size * 0.72)
+        p_svg.set_height(self.sq_size * 0.74)
         p_svg.move_to(self.get_square_pos(col, row))
         return p_svg
 
@@ -231,3 +231,32 @@ class BroadcastChessBoard(VGroup):
         
         badge_group = VGroup(badge, badge_txt)
         return VGroup(glow, dash, badge_group)
+
+    def create_fiedler_labels(self, spec_data):
+        """
+        Creates floating algebraic weight labels (+0.74, -0.82) above pieces
+        using authentic Fiedler vector values from spectral_math.py.
+        """
+        labels = VGroup()
+        for item in spec_data['partition']:
+            p = item['piece']
+            val = item['fiedler_val']
+            col, row = p['col'], p['row']
+            board_r = 7 - row
+            pos = self.get_square_pos(col, board_r)
+
+            val_str = f"{val:+.2f}"
+            color = FIEDLER_POS_COLOR if val >= 0 else FIEDLER_NEG_COLOR
+
+            pill = RoundedRectangle(
+                width=0.48, height=0.22, corner_radius=0.06,
+                fill_color="#080c14", fill_opacity=0.9,
+                stroke_color=color, stroke_width=1.0
+            )
+            pill.move_to(pos + DOWN * (self.sq_size * 0.32))
+
+            txt = Text(val_str, font="Consolas", color=color).scale(0.16)
+            txt.move_to(pill.get_center())
+
+            labels.add(VGroup(pill, txt))
+        return labels

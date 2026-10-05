@@ -2,4 +2,4 @@ hi um this is my chess engine hopefully it doesnt suck too bad
 
 its built off a spectral tropical hybrid system as the main mathematical foundation
 
-its rated ~3500 elo right now, ill try to train it to be the best it possibly can be before launching it publically
+For the complete technical architecture, empirical rating calibration (2711 Elo verified vs Stockfish 2800), reproduction commands, and development roadmap to 3000+ Elo, see [MASTER_PROJECT_DOCUMENTATION.md](MASTER_PROJECT_DOCUMENTATION.md).

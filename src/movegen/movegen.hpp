@@ -13,7 +13,12 @@ public:
     static void init();
 
     static void generate_legal_moves(const Board& board, MoveList& moves);
+    static void generate_pseudo_legal_moves(const Board& board, MoveList& moves);
     static void generate_capture_moves(const Board& board, MoveList& moves);
+    static void generate_pseudo_legal_captures(const Board& board, MoveList& moves);
+    static void generate_pseudo_legal_quiets(const Board& board, MoveList& moves);
+    static void generate_pawn_pushes_to_7th(const Board& board, MoveList& moves);
+    static bool is_pseudo_legal(const Board& board, Move m);
     static bool in_check(const Board& board, Color side);
     static bool gives_check(const Board& board, Move m);
     static bool is_square_attacked(const Board& board, Square sq, Color attacker_color);

@@ -1,48 +1,88 @@
 """
-Heaven's Gate Manim Animation Theme — Muted Editorial Palette
-Sophisticated, low-saturation, high-craft documentary aesthetic.
-Refined slate, warm ochre, muted steel blue, dusty terracotta, and sage.
+Heaven's Gate Manim Animation Theme — Luminous Technical Jewel Palette
+Inspired by the broadcast craft standards of 3Blue1Brown, vcubingx, and Reducible.
+Pure obsidian canvas with high-contrast, translucent glowing jewel accents.
 """
 
 from manimlib import *
 
-# 1. Backgrounds & Drafting Mat
-BG_COLOR       = "#0b0f17"     # Deep matte obsidian (warm charcoal, zero glare)
-SURFACE_COLOR  = "#131824"     # Subpanel slate
-CARD_BORDER    = "#222c3c"     # Hairline subtle border
-GRID_LINE      = "#161f2e"     # Drafting grid (low contrast)
-GRID_FADED     = "#0f1520"     # Minor grid
+# 1. Canvas & Structural Grids
+BG_COLOR       = "#000000"     # Pure pitch black canvas (3b1b / vcubingx standard)
+SURFACE_COLOR  = "#0a0e18"     # Translucent subpanel obsidian
+CARD_BORDER    = "#1c2538"     # Subtle technical grid lines
+GRID_LINE      = "#141c2c"     # Primary coordinate grid
+GRID_FADED     = "#0d1320"     # Faded micro grid
 
-# 2. Refined Muted Editorial Accents (Low Saturation, High Craft)
-# Sand / Ochre (Engine Hero, Fiedler, Invariant Axes)
-COLOR_GOLD       = "#c89b58"   # Warm muted brass / ochre
-COLOR_GOLD_LIGHT = "#dfb67a"   # Soft champagne
-COLOR_GOLD_MUTED = "#8f6e3c"   # Deep antique bronze
+# 2. Luminous Jewel Accents (High Luminescence & Backlit Glow)
+# Reducible / 3b1b Jewel Standards:
+JEWEL_VIOLET   = "#8c4dfb"     # Electric amethyst (Eigenvectors, spectral operators)
+JEWEL_LAVENDER = "#d7b5fe"     # Soft glowing violet (Secondary harmonics, citations)
+JEWEL_CYAN     = "#08B6CE"     # Cyber teal (Tactical rays, matrix entries, bitboards)
+JEWEL_BLUE     = "#4d88ff"     # Deep royal electric blue
+JEWEL_GREEN    = "#00cc70"     # Luminous neon sage (Row sum verification, Elo leaps)
+JEWEL_GOLD     = "#ffff5c"     # Electric laser gold (Fiedler highlight, degree diagonals)
+JEWEL_ORANGE   = "#ff9933"     # Warm amber
+JEWEL_CORAL    = "#FF5752"     # Coral crimson (Pruning, horizon cliff, negative weights)
 
-# Steel / Slate Blue (Tactics, Math, Bitboards, Coordinates)
-COLOR_CYAN       = "#6889b5"   # Refined steel slate
-COLOR_CYAN_LIGHT = "#92aecd"   # Soft dusty sky
-COLOR_CYAN_MUTED = "#456184"   # Deep steel
+# 3. Typography & Text Hierarchy
+TEXT_WHITE     = "#ffffff"     # Pure radiant white for key formulas
+TEXT_BRIGHT    = "#e8edf5"     # Soft ivory white for body labels
+TEXT_MUTED     = "#8fa0b5"     # Technical annotation slate
+TEXT_DIM       = "#4a5a70"     # Minor dimensional coordinates
 
-# Dusty Terracotta / Crimson (Tension, Threats, Pruning, Cutoffs)
-COLOR_RED        = "#b55a58"   # Dusty terracotta / brick
-COLOR_RED_LIGHT  = "#cb7c7a"   # Soft rose clay
+# 4. Chessboard Architectural Neutrals
+BOARD_LIGHT_SQ = "#c8d4e4"     # Luminous silver-slate
+BOARD_DARK_SQ  = "#344256"     # Deep architectural slate-blue
+BOARD_FRAME_BG = "#0c111a"     # Recessed matte frame
+BOARD_FRAME_STRK = "#1e283a"   # Chamfered hairline border
 
-# Sage / Muted Pine (Soundness, Benchmarks, Row Sum Verification)
-COLOR_GREEN      = "#5e9472"   # Muted sage
-COLOR_GREEN_LIGHT= "#7fad90"   # Pale eucalyptus
+# 5. Legacy & Harmonization Aliases
+COLOR_GOLD       = JEWEL_GOLD
+COLOR_GOLD_LIGHT = "#ffff8d"
+COLOR_CYAN       = JEWEL_CYAN
+COLOR_CYAN_LIGHT = "#40d9f0"
+COLOR_RED        = JEWEL_CORAL
+COLOR_RED_LIGHT  = "#ff8a86"
+COLOR_GREEN      = JEWEL_GREEN
+COLOR_GREEN_LIGHT= "#40e699"
+COLOR_VIOLET     = JEWEL_VIOLET
+COLOR_VIOLET_LIGHT = JEWEL_LAVENDER
 
-# Dusty Lavender / Slate Violet (Degrees, Complex Modules)
-COLOR_VIOLET     = "#7d7896"   # Muted slate lavender
-COLOR_VIOLET_LIGHT = "#9f9ab8" # Soft dusty mauve
+AQUA         = JEWEL_CYAN
+LAVENDER     = JEWEL_LAVENDER
+SALMON       = JEWEL_CORAL
+SLATE_BLUE   = JEWEL_BLUE
+SOFT_YELLOW  = JEWEL_GOLD
+SOFT_ORANGE  = JEWEL_ORANGE
+MUTED_GREEN  = JEWEL_GREEN
+WARM_OCHRE   = JEWEL_GOLD
 
-# 3. Typography & Board Neutrals
-TEXT_WHITE     = "#e8edf5"     # Soft ivory white (not piercing #ffffff)
-TEXT_MUTED     = "#8fa0b5"     # Refined secondary slate
-TEXT_DIM       = "#526276"     # Quiet annotations
-LINE_MUTED     = "#2e3a4e"     # Structural connectors
+BG_DARK       = BG_COLOR
+GRID_COLOR    = CARD_BORDER
 
-BOARD_LIGHT_SQ = "#c8d2de"     # Soft matte silver-slate
-BOARD_DARK_SQ  = "#516075"     # Architectural muted slate-blue
-BOARD_FRAME_BG = "#101622"     # Frame border background
-BOARD_FRAME_STRK = "#253142"   # Beveled frame border
+
+def create_drafting_mat():
+    """Create a high-craft pitch-black drafting canvas with hairline technical grid."""
+    bg = FullScreenRectangle(fill_color=BG_COLOR, fill_opacity=1.0).set_stroke(width=0)
+    grid = NumberPlane(
+        x_range=[-16, 16, 1],
+        y_range=[-10, 10, 1],
+        width=32,
+        height=20,
+        axis_config={
+            "stroke_color": CARD_BORDER,
+            "stroke_width": 0.7,
+            "stroke_opacity": 0.40,
+        },
+        background_line_style={
+            "stroke_color": GRID_LINE,
+            "stroke_width": 0.5,
+            "stroke_opacity": 0.25,
+        },
+        faded_line_style={
+            "stroke_color": GRID_FADED,
+            "stroke_width": 0.3,
+            "stroke_opacity": 0.15,
+        }
+    )
+    return VGroup(bg, grid)

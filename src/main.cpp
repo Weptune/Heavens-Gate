@@ -6,9 +6,8 @@
 #include "movegen/movegen.hpp"
 #include "movegen/perft.hpp"
 #include "evaluation/eval.hpp"
-#include "evaluation/tensor_eval.hpp"
-#include "evaluation/tensor_train.hpp"
 #include "search/search.hpp"
+#include "search/search_params.hpp"
 #include "search/syzygy.hpp"
 #include "benchmark/metrics.hpp"
 #include "benchmark/sts.hpp"
@@ -189,13 +188,15 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
             bool current_is_master = (board.side_to_move() == Color::White) ? a_is_white : !a_is_white;
             int active_clock_ms = (board.side_to_move() == Color::White) ? white_clock_ms : black_clock_ms;
             double time_alloc = is_fixed_movetime ? fixed_movetime_ms : (is_time_control ? std::max(200.0, std::min((active_clock_ms / 35.0) + (inc_ms * 0.8), active_clock_ms * 0.8)) : 0.0);
+            double opt_time = is_fixed_movetime ? fixed_movetime_ms : (is_time_control ? std::min(time_alloc, active_clock_ms * 0.50) : 0.0);
+            double max_time = is_fixed_movetime ? fixed_movetime_ms : (is_time_control ? std::min(time_alloc * 3.5, active_clock_ms * 0.85) : 0.0);
 
             auto move_start = std::chrono::high_resolution_clock::now();
             SearchResult res;
             Move chosen_move;
 
             if (current_is_master) {
-                res = master_engine.search_iterative_deepening(board, is_fixed_depth ? target_fixed_depth : 64, (is_fixed_movetime || is_time_control) ? time_alloc : 0.0);
+                res = master_engine.search_iterative_deepening(board, is_fixed_depth ? target_fixed_depth : 64, (is_fixed_movetime || is_time_control) ? max_time : 0.0, 0, (is_fixed_movetime || is_time_control) ? opt_time : 0.0);
                 chosen_move = res.best_move;
             } else {
                 if (is_fixed_movetime || is_time_control) {
@@ -435,7 +436,7 @@ int main(int argc, char* argv[]) {
         if (!std::getline(std::cin, raw_line)) break;
 
         std::string line = trim(raw_line);
-        if (line == "exit") break;
+        if (line == "exit" || line == "quit") break;
         if (line.empty()) continue;
 
         if (line == "uci") {
@@ -445,6 +446,39 @@ int main(int argc, char* argv[]) {
             std::cout << "uciok" << std::endl;
             UCI::loop();
             break;
+        } else if (line.rfind("setoption", 0) == 0) {
+            std::string name, val;
+            size_t name_pos = line.find("name ");
+            size_t val_pos = line.find(" value ");
+            if (name_pos != std::string::npos && val_pos != std::string::npos) {
+                name = line.substr(name_pos + 5, val_pos - (name_pos + 5));
+                val = line.substr(val_pos + 7);
+                name = trim(name);
+                val = trim(val);
+                if (name == "LMR_Divisor" && !val.empty()) {
+                    g_search_params.lmr_divisor = std::stof(val);
+                    SearchEngine::init_lmr_table(g_search_params.lmr_divisor);
+                } else if (name == "LMR_HistBonus" && !val.empty()) {
+                    g_search_params.lmr_hist_bonus = std::stoi(val);
+                } else if (name == "LMR_HistMalus" && !val.empty()) {
+                    g_search_params.lmr_hist_malus = std::stoi(val);
+                } else if (name == "RFP_Margin" && !val.empty()) {
+                    g_search_params.rfp_margin = std::stoi(val);
+                } else if (name == "Futility_Margin" && !val.empty()) {
+                    g_search_params.futility_margin = std::stoi(val);
+                } else if (name == "SEE_BadCaptureSlope" && !val.empty()) {
+                    g_search_params.see_bad_capture_slope = std::stoi(val);
+                } else if (name == "SEE_QuietSlope" && !val.empty()) {
+                    g_search_params.see_quiet_slope = std::stoi(val);
+                } else if (name == "NMP_EvalMargin" && !val.empty()) {
+                    g_search_params.nmp_eval_margin = std::stoi(val);
+                } else if (name == "Singular_Margin" && !val.empty()) {
+                    g_search_params.singular_margin = std::stoi(val);
+                } else if (name == "Aspiration_Window_Delta" && !val.empty()) {
+                    g_search_params.aspiration_window_delta = std::stoi(val);
+                }
+                std::cout << "[Option] " << name << " = " << val << "\n";
+            }
         } else if (line.rfind("tournament", 0) == 0) {
             int games = 100;
             int depth = 8;
@@ -558,62 +592,18 @@ int main(int argc, char* argv[]) {
             Perft::run_verification_suite(4);
         } else if (line.rfind("eval_mode", 0) == 0) {
             std::string mode_str = trim(line.substr(9));
-            if (mode_str == "tn" || mode_str == "tensor" || mode_str == "tensornetwork") {
-                Evaluator::set_mode(EvalMode::TensorNetwork);
-                std::cout << "[Eval] Evaluation mode set to TensorNetwork (MPS)\n";
-            } else if (mode_str == "nnue") {
-                Evaluator::set_mode(EvalMode::NNUE);
-                std::cout << "[Eval] Evaluation mode set to NNUE\n";
-            } else if (mode_str == "hce" || mode_str == "positional") {
+            if (mode_str == "hce" || mode_str == "positional") {
                 Evaluator::set_mode(EvalMode::MasterPositional);
                 std::cout << "[Eval] Evaluation mode set to MasterPositional (HCE)\n";
+            } else if (mode_str == "spectral" || mode_str == "graph") {
+                Evaluator::set_mode(EvalMode::SpectralTropical);
+                std::cout << "[Eval] Evaluation mode set to SpectralTropical (Fiedler Graph Physics)\n";
             } else if (mode_str == "material") {
                 Evaluator::set_mode(EvalMode::MaterialOnly);
                 std::cout << "[Eval] Evaluation mode set to MaterialOnly\n";
             } else {
-                std::cout << "Usage: eval_mode <tn|nnue|hce|material>\n";
+                std::cout << "Usage: eval_mode <hce|spectral|material>\n";
             }
-        } else if (line.rfind("train_tn", 0) == 0) {
-            int bond = 16;
-            int epochs = 10;
-            std::stringstream ss(line.substr(8));
-            if (ss >> bond) ss >> epochs;
-
-            std::cout << "Training Tensor Network MPS (Bond D=" << bond << ", Epochs=" << epochs << ") ...\n";
-            TensorMPS model(bond);
-            model.initialize_random(42);
-
-            std::vector<TrainingSample> dataset;
-            std::vector<std::string> sample_fens = {
-                "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
-                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-                "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
-                "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
-            };
-
-            Board b;
-            Evaluator::set_mode(EvalMode::MasterPositional);
-            for (const auto& fen : sample_fens) {
-                if (FEN::parse(fen, b)) {
-                    float target = static_cast<float>(Evaluator::evaluate(b));
-                    dataset.push_back(TensorTrainer::create_sample(b, target));
-                }
-            }
-
-            TensorTrainer::Config cfg;
-            cfg.bond_dim = bond;
-            cfg.epochs = epochs;
-            cfg.batch_size = 8;
-            cfg.learning_rate = 0.003f;
-
-            TensorTrainer trainer(model, cfg);
-            trainer.train(dataset, 0.0f);
-
-            if (model.save_weights("heavensgate.tnw")) {
-                std::cout << "Saved trained Tensor Network weights to heavensgate.tnw\n";
-            }
-            Evaluator::set_mode(EvalMode::TensorNetwork);
         } else if (line == "d" || line == "display") {
             std::cout << board.to_ascii() << "\n";
         } else if (line.rfind("fen ", 0) == 0) {
@@ -624,7 +614,7 @@ int main(int argc, char* argv[]) {
                 std::cout << "Failed to parse FEN string.\n";
             }
         } else {
-            std::cout << "Unknown command. Available: uci, tournament [games] [d], id <d> [time], ab <d>, compare <d>, minimax <d>, eval_mode <tn|nnue|hce>, train_tn [D] [epochs], perft, exit\n";
+            std::cout << "Unknown command. Available: uci, tournament [games] [d], id <d> [time], ab <d>, compare <d>, minimax <d>, eval_mode <hce|spectral|material>, perft, exit\n";
         }
     }
 

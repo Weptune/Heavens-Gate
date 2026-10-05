@@ -11,6 +11,8 @@ struct SearchParams {
     int see_bad_capture_slope = 124;
     int see_quiet_slope = 15;
     int nmp_eval_margin = 218;
+    int singular_margin = 2;
+    int aspiration_window_delta = 25;
 
     void reset() noexcept {
         lmr_divisor = 3.2000f;
@@ -21,6 +23,8 @@ struct SearchParams {
         see_bad_capture_slope = 124;
         see_quiet_slope = 15;
         nmp_eval_margin = 218;
+        singular_margin = 2;
+        aspiration_window_delta = 25;
     }
 };
 

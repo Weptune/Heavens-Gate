@@ -59,7 +59,9 @@ static bool test_alphabeta_node_reduction() {
 static bool test_move_ordering_reduction() {
     MoveGenerator::init();
     Board board;
-    FEN::parse(FEN::StartPOS, board);
+    // Use a deterministic non-book position. Startpos probes performance.bin
+    // and returns zero searched nodes for both runs, making 0 < 0 impossible.
+    FEN::parse("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", board);
 
     SearchEngine engine;
     SearchResult ab_unordered = engine.search_alphabeta(board, 4, false, false);
@@ -90,7 +92,9 @@ static bool test_zobrist_incremental_correctness() {
 static bool test_transposition_table_cutoffs() {
     MoveGenerator::init();
     Board board;
-    FEN::parse(FEN::StartPOS, board);
+    // Avoid the start-position PolyGlot shortcut so this test actually enters
+    // alpha-beta and can observe transposition-table hits.
+    FEN::parse("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", board);
 
     SearchEngine engine;
     SearchResult res = engine.search_alphabeta(board, 4, true, true);
@@ -151,6 +155,34 @@ static bool test_capture_history() {
     int updated_score = mp.get_capture_history(attacker, to, victim);
 
     return (initial_score == 0) && (updated_score == 16);
+}
+
+static bool test_history_aging() {
+    MovePicker mp;
+
+    Move quiet(Square::e2, Square::e4, MoveType::Quiet);
+    mp.add_history_score(Color::White, quiet, 4);
+
+    Board board;
+    FEN::parse(FEN::StartPOS, board);
+    Move prev(Square::e2, Square::e4, MoveType::Quiet);
+    Move curr(Square::g8, Square::f6, MoveType::Quiet);
+    board.make_move(prev);
+    mp.add_continuation_history(board, prev, curr, 4);
+
+    Piece attacker = Piece::WhiteKnight;
+    mp.add_capture_history(attacker, Square::e5, PieceType::Pawn, 4);
+
+    const bool seeded = mp.get_history_score(Color::White, quiet) == 16 &&
+        mp.get_continuation_history(board, prev, curr) == 16 &&
+        mp.get_capture_history(attacker, Square::e5, PieceType::Pawn) == 16;
+
+    mp.age_history();
+
+    return seeded &&
+        mp.get_history_score(Color::White, quiet) == 8 &&
+        mp.get_continuation_history(board, prev, curr) == 8 &&
+        mp.get_capture_history(attacker, Square::e5, PieceType::Pawn) == 8;
 }
 
 static bool test_singular_extension_search() {
@@ -265,6 +297,10 @@ void test_search() {
 
     std::cout << "[RUN] Search: Capture History Table Recording ... " << std::flush;
     HEAVENSGATE_ASSERT(test::test_capture_history(), "Capture history failed to record or retrieve score!");
+    std::cout << "PASSED" << std::endl;
+
+    std::cout << "[RUN] Search: Iterative History Aging (50% gravity) ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_history_aging(), "History aging failed to halve main, continuation, or capture history!");
     std::cout << "PASSED" << std::endl;
 
     std::cout << "[RUN] Search: Singular Extensions Deep Search (Depth 7) ... " << std::flush;

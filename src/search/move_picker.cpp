@@ -139,11 +139,11 @@ void MovePicker::add_countermove(Move prev_move, Move move) noexcept {
     countermoves_[from_idx][to_idx] = move;
 }
 
-void MovePicker::add_continuation_history(const Board& board, Move prev_move, Move curr_move, int depth) noexcept {
+void MovePicker::add_continuation_history(const Board& board, Move prev_move, Move curr_move, int depth, Piece prev_p, Piece curr_p) noexcept {
     if (!cont_tables_ || !static_cast<bool>(prev_move) || !static_cast<bool>(curr_move)) return;
 
-    Piece curr_p = board.piece_at(curr_move.from());
-    Piece prev_p = board.piece_at(prev_move.to());
+    if (curr_p == Piece::None) curr_p = board.piece_at(curr_move.from());
+    if (prev_p == Piece::None) prev_p = board.piece_at(prev_move.to());
     if (curr_p == Piece::None || prev_p == Piece::None) return;
 
     size_t curr_p_idx = static_cast<size_t>(curr_p);
@@ -158,11 +158,11 @@ void MovePicker::add_continuation_history(const Board& board, Move prev_move, Mo
     }
 }
 
-void MovePicker::sub_continuation_history(const Board& board, Move prev_move, Move curr_move, int depth) noexcept {
+void MovePicker::sub_continuation_history(const Board& board, Move prev_move, Move curr_move, int depth, Piece prev_p, Piece curr_p) noexcept {
     if (!cont_tables_ || !static_cast<bool>(prev_move) || !static_cast<bool>(curr_move)) return;
 
-    Piece curr_p = board.piece_at(curr_move.from());
-    Piece prev_p = board.piece_at(prev_move.to());
+    if (curr_p == Piece::None) curr_p = board.piece_at(curr_move.from());
+    if (prev_p == Piece::None) prev_p = board.piece_at(prev_move.to());
     if (curr_p == Piece::None || prev_p == Piece::None) return;
 
     size_t curr_p_idx = static_cast<size_t>(curr_p);
@@ -177,11 +177,11 @@ void MovePicker::sub_continuation_history(const Board& board, Move prev_move, Mo
     }
 }
 
-int MovePicker::get_continuation_history(const Board& board, Move prev_move, Move curr_move) const noexcept {
+int MovePicker::get_continuation_history(const Board& board, Move prev_move, Move curr_move, Piece prev_p, Piece curr_p) const noexcept {
     if (!cont_tables_ || !static_cast<bool>(prev_move) || !static_cast<bool>(curr_move)) return 0;
 
-    Piece curr_p = board.piece_at(curr_move.from());
-    Piece prev_p = board.piece_at(prev_move.to());
+    if (curr_p == Piece::None) curr_p = board.piece_at(curr_move.from());
+    if (prev_p == Piece::None) prev_p = board.piece_at(prev_move.to());
     if (curr_p == Piece::None || prev_p == Piece::None) return 0;
 
     size_t curr_p_idx = static_cast<size_t>(curr_p);
@@ -195,11 +195,11 @@ int MovePicker::get_continuation_history(const Board& board, Move prev_move, Mov
     return 0;
 }
 
-void MovePicker::add_continuation_history_2(const Board& board, Move prev2_move, Move curr_move, int depth) noexcept {
+void MovePicker::add_continuation_history_2(const Board& board, Move prev2_move, Move curr_move, int depth, Piece prev2_p, Piece curr_p) noexcept {
     if (!cont_tables_ || !static_cast<bool>(prev2_move) || !static_cast<bool>(curr_move)) return;
 
-    Piece curr_p = board.piece_at(curr_move.from());
-    Piece prev2_p = board.piece_at(prev2_move.to());
+    if (curr_p == Piece::None) curr_p = board.piece_at(curr_move.from());
+    if (prev2_p == Piece::None) prev2_p = board.piece_at(prev2_move.to());
     if (curr_p == Piece::None || prev2_p == Piece::None) return;
 
     size_t curr_p_idx = static_cast<size_t>(curr_p);
@@ -214,11 +214,11 @@ void MovePicker::add_continuation_history_2(const Board& board, Move prev2_move,
     }
 }
 
-void MovePicker::sub_continuation_history_2(const Board& board, Move prev2_move, Move curr_move, int depth) noexcept {
+void MovePicker::sub_continuation_history_2(const Board& board, Move prev2_move, Move curr_move, int depth, Piece prev2_p, Piece curr_p) noexcept {
     if (!cont_tables_ || !static_cast<bool>(prev2_move) || !static_cast<bool>(curr_move)) return;
 
-    Piece curr_p = board.piece_at(curr_move.from());
-    Piece prev2_p = board.piece_at(prev2_move.to());
+    if (curr_p == Piece::None) curr_p = board.piece_at(curr_move.from());
+    if (prev2_p == Piece::None) prev2_p = board.piece_at(prev2_move.to());
     if (curr_p == Piece::None || prev2_p == Piece::None) return;
 
     size_t curr_p_idx = static_cast<size_t>(curr_p);
@@ -233,11 +233,11 @@ void MovePicker::sub_continuation_history_2(const Board& board, Move prev2_move,
     }
 }
 
-int MovePicker::get_continuation_history_2(const Board& board, Move prev2_move, Move curr_move) const noexcept {
+int MovePicker::get_continuation_history_2(const Board& board, Move prev2_move, Move curr_move, Piece prev2_p, Piece curr_p) const noexcept {
     if (!cont_tables_ || !static_cast<bool>(prev2_move) || !static_cast<bool>(curr_move)) return 0;
 
-    Piece curr_p = board.piece_at(curr_move.from());
-    Piece prev2_p = board.piece_at(prev2_move.to());
+    if (curr_p == Piece::None) curr_p = board.piece_at(curr_move.from());
+    if (prev2_p == Piece::None) prev2_p = board.piece_at(prev2_move.to());
     if (curr_p == Piece::None || prev2_p == Piece::None) return 0;
 
     size_t curr_p_idx = static_cast<size_t>(curr_p);
@@ -251,11 +251,11 @@ int MovePicker::get_continuation_history_2(const Board& board, Move prev2_move, 
     return 0;
 }
 
-void MovePicker::add_continuation_history_4(const Board& board, Move prev4_move, Move curr_move, int depth) noexcept {
+void MovePicker::add_continuation_history_4(const Board& board, Move prev4_move, Move curr_move, int depth, Piece prev4_p, Piece curr_p) noexcept {
     if (!cont_tables_ || !static_cast<bool>(prev4_move) || !static_cast<bool>(curr_move)) return;
 
-    Piece curr_p = board.piece_at(curr_move.from());
-    Piece prev4_p = board.piece_at(prev4_move.to());
+    if (curr_p == Piece::None) curr_p = board.piece_at(curr_move.from());
+    if (prev4_p == Piece::None) prev4_p = board.piece_at(prev4_move.to());
     if (curr_p == Piece::None || prev4_p == Piece::None) return;
 
     size_t curr_p_idx = static_cast<size_t>(curr_p);
@@ -270,11 +270,11 @@ void MovePicker::add_continuation_history_4(const Board& board, Move prev4_move,
     }
 }
 
-void MovePicker::sub_continuation_history_4(const Board& board, Move prev4_move, Move curr_move, int depth) noexcept {
+void MovePicker::sub_continuation_history_4(const Board& board, Move prev4_move, Move curr_move, int depth, Piece prev4_p, Piece curr_p) noexcept {
     if (!cont_tables_ || !static_cast<bool>(prev4_move) || !static_cast<bool>(curr_move)) return;
 
-    Piece curr_p = board.piece_at(curr_move.from());
-    Piece prev4_p = board.piece_at(prev4_move.to());
+    if (curr_p == Piece::None) curr_p = board.piece_at(curr_move.from());
+    if (prev4_p == Piece::None) prev4_p = board.piece_at(prev4_move.to());
     if (curr_p == Piece::None || prev4_p == Piece::None) return;
 
     size_t curr_p_idx = static_cast<size_t>(curr_p);
@@ -289,11 +289,11 @@ void MovePicker::sub_continuation_history_4(const Board& board, Move prev4_move,
     }
 }
 
-int MovePicker::get_continuation_history_4(const Board& board, Move prev4_move, Move curr_move) const noexcept {
+int MovePicker::get_continuation_history_4(const Board& board, Move prev4_move, Move curr_move, Piece prev4_p, Piece curr_p) const noexcept {
     if (!cont_tables_ || !static_cast<bool>(prev4_move) || !static_cast<bool>(curr_move)) return 0;
 
-    Piece curr_p = board.piece_at(curr_move.from());
-    Piece prev4_p = board.piece_at(prev4_move.to());
+    if (curr_p == Piece::None) curr_p = board.piece_at(curr_move.from());
+    if (prev4_p == Piece::None) prev4_p = board.piece_at(prev4_move.to());
     if (curr_p == Piece::None || prev4_p == Piece::None) return 0;
 
     size_t curr_p_idx = static_cast<size_t>(curr_p);
@@ -307,11 +307,11 @@ int MovePicker::get_continuation_history_4(const Board& board, Move prev4_move, 
     return 0;
 }
 
-void MovePicker::add_continuation_history_6(const Board& board, Move prev6_move, Move curr_move, int depth) noexcept {
+void MovePicker::add_continuation_history_6(const Board& board, Move prev6_move, Move curr_move, int depth, Piece prev6_p, Piece curr_p) noexcept {
     if (!cont_tables_ || !static_cast<bool>(prev6_move) || !static_cast<bool>(curr_move)) return;
 
-    Piece curr_p = board.piece_at(curr_move.from());
-    Piece prev6_p = board.piece_at(prev6_move.to());
+    if (curr_p == Piece::None) curr_p = board.piece_at(curr_move.from());
+    if (prev6_p == Piece::None) prev6_p = board.piece_at(prev6_move.to());
     if (curr_p == Piece::None || prev6_p == Piece::None) return;
 
     size_t curr_p_idx = static_cast<size_t>(curr_p);
@@ -326,11 +326,11 @@ void MovePicker::add_continuation_history_6(const Board& board, Move prev6_move,
     }
 }
 
-void MovePicker::sub_continuation_history_6(const Board& board, Move prev6_move, Move curr_move, int depth) noexcept {
+void MovePicker::sub_continuation_history_6(const Board& board, Move prev6_move, Move curr_move, int depth, Piece prev6_p, Piece curr_p) noexcept {
     if (!cont_tables_ || !static_cast<bool>(prev6_move) || !static_cast<bool>(curr_move)) return;
 
-    Piece curr_p = board.piece_at(curr_move.from());
-    Piece prev6_p = board.piece_at(prev6_move.to());
+    if (curr_p == Piece::None) curr_p = board.piece_at(curr_move.from());
+    if (prev6_p == Piece::None) prev6_p = board.piece_at(prev6_move.to());
     if (curr_p == Piece::None || prev6_p == Piece::None) return;
 
     size_t curr_p_idx = static_cast<size_t>(curr_p);
@@ -345,11 +345,11 @@ void MovePicker::sub_continuation_history_6(const Board& board, Move prev6_move,
     }
 }
 
-int MovePicker::get_continuation_history_6(const Board& board, Move prev6_move, Move curr_move) const noexcept {
+int MovePicker::get_continuation_history_6(const Board& board, Move prev6_move, Move curr_move, Piece prev6_p, Piece curr_p) const noexcept {
     if (!cont_tables_ || !static_cast<bool>(prev6_move) || !static_cast<bool>(curr_move)) return 0;
 
-    Piece curr_p = board.piece_at(curr_move.from());
-    Piece prev6_p = board.piece_at(prev6_move.to());
+    if (curr_p == Piece::None) curr_p = board.piece_at(curr_move.from());
+    if (prev6_p == Piece::None) prev6_p = board.piece_at(prev6_move.to());
     if (curr_p == Piece::None || prev6_p == Piece::None) return 0;
 
     size_t curr_p_idx = static_cast<size_t>(curr_p);
@@ -388,7 +388,7 @@ int MovePicker::get_capture_history(Piece attacker, Square to, PieceType victim)
     return 0;
 }
 
-void MovePicker::score_moves(const Board& board, MoveList& moves, std::array<int, 256>& scores, int ply, Move tt_move, Move prev_move, Move prev2_move, Move prev4_move, Move prev6_move) const noexcept {
+void MovePicker::score_moves(const Board& board, MoveList& moves, std::array<int, 256>& scores, int ply, Move pv_move, Move prev_move, Move prev2_move, Move prev4_move, Move prev6_move, Piece prev_piece, Piece prev2_piece, Piece prev4_piece, Piece prev6_piece) const noexcept {
     Move killer1 = (ply < 256) ? killer_moves_[static_cast<size_t>(ply)][0] : Move();
     Move killer2 = (ply < 256) ? killer_moves_[static_cast<size_t>(ply)][1] : Move();
 
@@ -405,18 +405,21 @@ void MovePicker::score_moves(const Board& board, MoveList& moves, std::array<int
     for (size_t i = 0; i < moves.size(); ++i) {
         Move m = moves[i];
 
-        if (m == tt_move) {
+        if (m == pv_move) {
             scores[i] = 2000000;
-        } else if (m.type() == MoveType::PromoQueen || m.type() == MoveType::PromoCaptureQueen) {
-            scores[i] = 950000;
+        } else if (m.type() == MoveType::PromoCaptureQueen) {
+            scores[i] = 1500000;
+        } else if (m.type() == MoveType::PromoQueen) {
+            scores[i] = 1400000;
         } else if (m.is_promotion()) {
             scores[i] = 200000;
         } else if (m.is_capture()) {
             Piece attacker = board.piece_at(m.from());
             Piece victim   = board.piece_at(m.to());
+            PieceType vic_pt = m.is_ep() ? PieceType::Pawn : piece_type_of(victim);
 
             int victim_val = PawnValue;
-            switch (piece_type_of(victim)) {
+            switch (vic_pt) {
                 case PieceType::Pawn:   victim_val = PawnValue; break;
                 case PieceType::Knight: victim_val = KnightValue; break;
                 case PieceType::Bishop: victim_val = BishopValue; break;
@@ -436,24 +439,24 @@ void MovePicker::score_moves(const Board& board, MoveList& moves, std::array<int
             }
 
             bool is_good_see = see_ge(board, m, 0);
-            int cap_hist = get_capture_history(attacker, m.to(), piece_type_of(victim));
+            int cap_hist = get_capture_history(attacker, m.to(), vic_pt);
             scores[i] = (is_good_see ? 1000000 : -100000) + (victim_val * 10 - attacker_val) + cap_hist;
-        } else if (m.type() == MoveType::KingCastle || m.type() == MoveType::QueenCastle) {
-            scores[i] = 850000;
         } else if (m == killer1) {
             scores[i] = 800000;
         } else if (m == killer2) {
             scores[i] = 750000;
         } else if (m == countermove) {
             scores[i] = 700000;
+        } else if (m.type() == MoveType::KingCastle || m.type() == MoveType::QueenCastle) {
+            scores[i] = 650000;
         } else {
             size_t from = static_cast<size_t>(m.from());
             size_t to   = static_cast<size_t>(m.to());
             int hist  = history_scores_[c_idx][from][to];
-            int cont1 = get_continuation_history(board, prev_move, m);
-            int cont2 = get_continuation_history_2(board, prev2_move, m);
-            int cont4 = get_continuation_history_4(board, prev4_move, m);
-            int cont6 = get_continuation_history_6(board, prev6_move, m);
+            int cont1 = get_continuation_history(board, prev_move, m, prev_piece);
+            int cont2 = get_continuation_history_2(board, prev2_move, m, prev2_piece);
+            int cont4 = get_continuation_history_4(board, prev4_move, m, prev4_piece);
+            int cont6 = get_continuation_history_6(board, prev6_move, m, prev6_piece);
             scores[i] = hist + 2 * cont1 + cont2 + cont4 + (cont6 / 2);
         }
     }
@@ -466,8 +469,12 @@ void MovePicker::score_captures_only(const Board& board, MoveList& moves, std::a
             scores[i] = 2000000;
             continue;
         }
-        if (m.type() == MoveType::PromoQueen || m.type() == MoveType::PromoCaptureQueen) {
-            scores[i] = 950000;
+        if (m.type() == MoveType::PromoCaptureQueen) {
+            scores[i] = 1500000;
+            continue;
+        }
+        if (m.type() == MoveType::PromoQueen) {
+            scores[i] = 1400000;
             continue;
         }
         if (m.is_promotion()) {
@@ -476,9 +483,10 @@ void MovePicker::score_captures_only(const Board& board, MoveList& moves, std::a
         }
         Piece attacker = board.piece_at(m.from());
         Piece victim   = board.piece_at(m.to());
+        PieceType vic_pt = m.is_ep() ? PieceType::Pawn : piece_type_of(victim);
 
         int victim_val = PawnValue;
-        switch (piece_type_of(victim)) {
+        switch (vic_pt) {
             case PieceType::Pawn:   victim_val = PawnValue; break;
             case PieceType::Knight: victim_val = KnightValue; break;
             case PieceType::Bishop: victim_val = BishopValue; break;
@@ -498,7 +506,7 @@ void MovePicker::score_captures_only(const Board& board, MoveList& moves, std::a
         }
 
         bool is_good_see = see_ge(board, m, 0);
-        int cap_hist = get_capture_history(attacker, m.to(), piece_type_of(victim));
+        int cap_hist = get_capture_history(attacker, m.to(), vic_pt);
         scores[i] = (is_good_see ? 1000000 : -100000) + (victim_val * 10 - attacker_val) + cap_hist;
     }
 }
@@ -519,9 +527,9 @@ void MovePicker::pick_best(MoveList& moves, std::array<int, 256>& scores, size_t
     }
 }
 
-void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move tt_move, Move prev_move, Move prev2_move, Move prev4_move, Move prev6_move) const noexcept {
+void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int ply, Move pv_move, Move prev_move, Move prev2_move, Move prev4_move, Move prev6_move, Piece prev_piece, Piece prev2_piece, Piece prev4_piece, Piece prev6_piece) const noexcept {
     std::array<int, 256> scores{};
-    score_moves(board, moves, scores, ply, tt_move, prev_move, prev2_move, prev4_move, prev6_move);
+    score_moves(board, moves, scores, ply, pv_move, prev_move, prev2_move, prev4_move, prev6_move, prev_piece, prev2_piece, prev4_piece, prev6_piece);
     for (size_t i = 0; i < moves.size(); ++i) {
         pick_best(moves, scores, i);
     }

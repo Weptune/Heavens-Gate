@@ -1,5 +1,6 @@
 #include "syzygy.hpp"
 #include "../movegen/movegen.hpp"
+#include "../movegen/attack_masks.hpp"
 #include <cmath>
 #include <algorithm>
 
@@ -21,14 +22,14 @@ void SyzygyTablebase::init(const std::string& tb_path) {
 int SyzygyTablebase::wdl_to_score(WDLScore wdl, int ply) const {
     switch (wdl) {
         case WDLScore::Win:
-            return 24000 - ply; // Proven Win
+            return ScoreTBWin - ply; // Proven Win (below ScoreMate threshold)
         case WDLScore::CursedWin:
             return 100; // Small advantage (50-move rule draw line)
         case WDLScore::Draw:
         case WDLScore::BlessedLoss:
             return 0; // Draw
         case WDLScore::Loss:
-            return -24000 + ply; // Proven Loss
+            return -ScoreTBWin + ply; // Proven Loss
         default:
             return NO_SCORE;
     }
@@ -63,6 +64,14 @@ WDLScore SyzygyTablebase::evaluate_endgame_wdl(const Board& board) {
 
     if (!w_king || !b_king) return WDLScore::Unknown;
 
+    // Never return tablebase score if either side is in check (let search resolve check/mate)
+    if (MoveGenerator::in_check(board, Color::White) || MoveGenerator::in_check(board, Color::Black)) {
+        return WDLScore::Unknown;
+    }
+
+    Square w_ksq = lsb(w_king);
+    Square b_ksq = lsb(b_king);
+
     int num_w_queens  = popcount(board.pieces(make_piece(Color::White, PieceType::Queen)));
     int num_b_queens  = popcount(board.pieces(make_piece(Color::Black, PieceType::Queen)));
     int num_w_rooks   = popcount(board.pieces(make_piece(Color::White, PieceType::Rook)));
@@ -87,18 +96,6 @@ WDLScore SyzygyTablebase::evaluate_endgame_wdl(const Board& board) {
 
     // 2. 3-Piece Endings
     if (total_pieces == 3) {
-        // KQK
-        if (num_w_queens == 1 && total_w == 2) return (stm == Color::White) ? WDLScore::Win : WDLScore::Loss;
-        if (num_b_queens == 1 && total_b == 2) return (stm == Color::Black) ? WDLScore::Win : WDLScore::Loss;
-
-        // KRK
-        if (num_w_rooks == 1 && total_w == 2) return (stm == Color::White) ? WDLScore::Win : WDLScore::Loss;
-        if (num_b_rooks == 1 && total_b == 2) return (stm == Color::Black) ? WDLScore::Win : WDLScore::Loss;
-
-        // KPK
-        if (num_w_pawns == 1 && total_w == 2) return solve_kpk(board, Color::White);
-        if (num_b_pawns == 1 && total_b == 2) return solve_kpk(board, Color::Black);
-
         // KBK or KNK (Insufficient material = Draw)
         if ((num_w_bishops == 1 || num_w_knights == 1) && total_w == 2) return WDLScore::Draw;
         if ((num_b_bishops == 1 || num_b_knights == 1) && total_b == 2) return WDLScore::Draw;
@@ -106,47 +103,27 @@ WDLScore SyzygyTablebase::evaluate_endgame_wdl(const Board& board) {
 
     // 3. 4-Piece Endings
     if (total_pieces == 4) {
-        // KBNK (King + Bishop + Knight vs King)
-        if (num_w_bishops == 1 && num_w_knights == 1 && total_w == 3 && total_b == 1) return solve_kbnk(board, Color::White);
-        if (num_b_bishops == 1 && num_b_knights == 1 && total_b == 3 && total_w == 1) return solve_kbnk(board, Color::Black);
-
-        // KBBK (King + 2 Bishops vs King)
-        if (num_w_bishops == 2 && total_w == 3 && total_b == 1) return solve_kbbk(board, Color::White);
-        if (num_b_bishops == 2 && total_b == 3 && total_w == 1) return solve_kbbk(board, Color::Black);
-
         // KNNK (King + 2 Knights vs King = Draw)
-        if (num_w_knights == 2 && total_w == 3 && total_b == 1) return solve_knnk(board, Color::White);
-        if (num_b_knights == 2 && total_b == 3 && total_w == 1) return solve_knnk(board, Color::Black);
+        if (num_w_knights == 2 && total_w == 3 && total_b == 1) return WDLScore::Draw;
+        if (num_b_knights == 2 && total_b == 3 && total_w == 1) return WDLScore::Draw;
 
-        // KB vs KB (No pawns = Draw)
+        // KB vs KB, KN vs KN, KB vs KN (No pawns = Draw)
         if (num_w_bishops == 1 && num_b_bishops == 1 && total_w == 2 && total_b == 2) return WDLScore::Draw;
-
-        // KN vs KN, KB vs KN (No pawns = Draw)
         if (num_w_knights == 1 && num_b_knights == 1 && total_w == 2 && total_b == 2) return WDLScore::Draw;
         if (num_w_bishops == 1 && num_b_knights == 1 && total_w == 2 && total_b == 2) return WDLScore::Draw;
         if (num_w_knights == 1 && num_b_bishops == 1 && total_w == 2 && total_b == 2) return WDLScore::Draw;
 
-        // KRP vs K, KQP vs K, KPP vs K (Forced Win)
-        if ((num_w_rooks == 1 || num_w_queens == 1 || num_w_pawns == 2) && num_w_pawns >= 1 && total_w == 3 && total_b == 1) return (stm == Color::White) ? WDLScore::Win : WDLScore::Loss;
-        if ((num_b_rooks == 1 || num_b_queens == 1 || num_b_pawns == 2) && num_b_pawns >= 1 && total_b == 3 && total_w == 1) return (stm == Color::Black) ? WDLScore::Win : WDLScore::Loss;
-
-        // KBP vs K (Wrong color bishop + rook pawn fortress)
+        // KBP vs K (Wrong color bishop + rook pawn fortress = Draw)
         if (num_w_bishops == 1 && num_w_pawns == 1 && total_w == 3 && total_b == 1) return solve_wrong_color_bishop_pawn(board, Color::White);
         if (num_b_bishops == 1 && num_b_pawns == 1 && total_b == 3 && total_w == 1) return solve_wrong_color_bishop_pawn(board, Color::Black);
     }
 
     // 4. 5-Piece & 6-Piece Endings
     if (total_pieces <= 6) {
-        // Opposite colored bishops with 1 pawn
+        // Opposite colored bishops with 1 pawn fortress
         if (num_w_bishops == 1 && num_b_bishops == 1 && (num_w_pawns + num_b_pawns == 1)) {
             if (num_w_pawns == 1 && total_w == 3 && total_b == 2) return solve_opposite_colored_bishops_1p(board, Color::White);
             if (num_b_pawns == 1 && total_b == 3 && total_w == 2) return solve_opposite_colored_bishops_1p(board, Color::Black);
-        }
-
-        // KRP vs KR (Lucena & Philidor)
-        if (num_w_rooks == 1 && num_b_rooks == 1 && (num_w_pawns + num_b_pawns == 1)) {
-            if (num_w_pawns == 1 && total_w == 3 && total_b == 2) return solve_krp_kr(board, Color::White);
-            if (num_b_pawns == 1 && total_b == 3 && total_w == 2) return solve_krp_kr(board, Color::Black);
         }
     }
 

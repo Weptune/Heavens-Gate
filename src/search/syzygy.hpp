@@ -18,13 +18,14 @@ enum class WDLScore {
 };
 
 struct TBCacheEntry {
-    uint64_t key;
-    WDLScore wdl;
+    uint64_t key{0};
+    WDLScore wdl{WDLScore::Unknown};
 };
 
 class SyzygyTablebase {
 public:
     static constexpr int NO_SCORE = -999999;
+    static constexpr int ScoreTBWin = 19000;
     static constexpr int MAX_TB_PIECES = 6; // Probe for 6 or fewer pieces
 
     static SyzygyTablebase& instance() {
@@ -43,7 +44,12 @@ public:
     int wdl_to_score(WDLScore wdl, int ply) const;
 
 private:
-    SyzygyTablebase() : enabled_(false), max_pieces_(6) {}
+    SyzygyTablebase() : enabled_(true), max_pieces_(6) {
+        for (auto& entry : cache_) {
+            entry.key = 0;
+            entry.wdl = WDLScore::Unknown;
+        }
+    }
 
     bool enabled_;
     int max_pieces_;

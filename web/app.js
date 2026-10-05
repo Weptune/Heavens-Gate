@@ -388,7 +388,9 @@ class ChessApp {
             whiteTime: 180.0,
             blackTime: 180.0,
             increment: 0.0,
-            lastEvalScore: 0
+            lastEvalScore: 0,
+            lastIsMate: false,
+            lastMateIn: 0
         };
 
         // Telemetry & Analysis Sandbox State (100% Isolated from Matches)
@@ -402,7 +404,9 @@ class ChessApp {
             moveHistory: [],
             uciHistory: [],
             fullMoveNumber: 1,
-            lastEvalScore: 0
+            lastEvalScore: 0,
+            lastIsMate: false,
+            lastMateIn: 0
         };
 
         this.selectedSquare = null;
@@ -419,6 +423,7 @@ class ChessApp {
     initDOM() {
         this.boardEl = document.getElementById('board');
         this.startBtn = document.getElementById('start-game-btn');
+        this.evalGaugeEl = document.getElementById('eval-gauge') || document.querySelector('.eval-gauge');
         this.evalFillEl = document.getElementById('eval-fill');
         this.evalBadgeEl = document.getElementById('eval-badge');
         this.teleNodesEl = document.getElementById('tele-nodes');
@@ -579,8 +584,16 @@ class ChessApp {
         });
 
         document.getElementById('tc-select').addEventListener('change', (e) => {
-            this.gameState.timeControl = e.target.value;
-            this.resetClocks();
+            this.setTimeControl(e.target.value);
+        });
+
+        document.querySelectorAll('.tc-pill').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tc = btn.getAttribute('data-tc');
+                if (tc) {
+                    this.setTimeControl(tc);
+                }
+            });
         });
 
         document.getElementById('theme-select').addEventListener('change', (e) => {
@@ -597,6 +610,55 @@ class ChessApp {
 
         document.getElementById('copy-fen-btn').addEventListener('click', () => this.copyFEN());
         document.getElementById('copy-pgn-btn').addEventListener('click', () => this.copyPGN());
+    }
+
+    setTimeControl(tc) {
+        this.gameState.timeControl = tc;
+
+        const tcNames = {
+            'bullet_1_0': 'Bullet 1 min (1+0)',
+            'bullet_1_1': 'Bullet 1m + 1s (1+1)',
+            'bullet_2_1': 'Bullet 2m + 1s (2+1)',
+            'blitz_3_0': 'Blitz 3 min (3+0)',
+            'blitz_3_2': 'Blitz 3m + 2s (3+2)',
+            'blitz_5_0': 'Blitz 5 min (5+0)',
+            'blitz_5_3': 'Blitz 5m + 3s (5+3)',
+            'rapid_10_0': 'Rapid 10 min (10+0)',
+            'rapid_15_10': 'Rapid 15m + 10s (15+10)',
+            'classical_30_0': 'Classical 30m (30+0)',
+            'classical_60_0': 'Classical 60m (60+0)',
+            'movetime_1': 'Fixed 1.0s / Move',
+            'movetime_3': 'Fixed 3.0s / Move',
+            'movetime_5': 'Fixed 5.0s / Move',
+            'fixed_depth': 'Untimed (Infinite)'
+        };
+
+        const activeNameEl = document.getElementById('tc-active-name');
+        if (activeNameEl && tcNames[tc]) {
+            activeNameEl.textContent = tcNames[tc];
+        }
+
+        // Sync modal select
+        const tcSelect = document.getElementById('tc-select');
+        if (tcSelect && tcSelect.value !== tc) {
+            tcSelect.value = tc;
+        }
+
+        // Sync quick selector pills
+        document.querySelectorAll('.tc-pill').forEach(btn => {
+            if (btn.getAttribute('data-tc') === tc) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        this.resetClocks();
+
+        // If game is actively in progress and it's a timed mode, ensure clock runs
+        if (this.gameState.isGameActive && !this.gameState.isGameOver && tc !== 'fixed_depth' && !tc.startsWith('movetime_')) {
+            this.startClock();
+        }
     }
 
     switchTab(tab) {
@@ -629,14 +691,18 @@ class ChessApp {
         this.renderBoard();
         this.updateClockDisplay();
         this.updateActiveClockHUD();
-        this.updateEvalBar(this.gameState.lastEvalScore);
+        this.updateEvalBar({
+            score_white: this.gameState.lastEvalScore || 0,
+            is_mate: !!this.gameState.lastIsMate,
+            mate_in_white: this.gameState.lastMateIn || 0
+        });
         this.updateOpening();
 
         if (this.gameState.isGameActive) {
             this.startBtn.textContent = 'Reset Match';
             this.setStatus(this.gameState.isThinking ? 'Calculating' : 'Match Active', this.gameState.isThinking);
             this.oracleTextEl.textContent = `${this.gameState.turn === 'w' ? 'White' : 'Black'} to move.`;
-            if (this.gameState.timeControl !== 'fixed_depth') this.startClock();
+            if (this.gameState.timeControl !== 'fixed_depth' && !this.gameState.timeControl.startsWith('movetime_')) this.startClock();
         } else {
             this.startBtn.textContent = 'Start Match';
             this.setStatus('Ready', false);
@@ -650,7 +716,11 @@ class ChessApp {
         this.setStatus('Analysis Lab', false);
         this.startBtn.textContent = 'Reset Sandbox';
         this.oracleTextEl.textContent = `${this.telemetryState.turn === 'w' ? 'White' : 'Black'} to move (Analysis Sandbox).`;
-        this.updateEvalBar(this.telemetryState.lastEvalScore);
+        this.updateEvalBar({
+            score_white: this.telemetryState.lastEvalScore || 0,
+            is_mate: !!this.telemetryState.lastIsMate,
+            mate_in_white: this.telemetryState.lastMateIn || 0
+        });
     }
 
     initTelemetryMode() {
@@ -663,6 +733,8 @@ class ChessApp {
         this.telemetryState.uciHistory = [];
         this.telemetryState.fullMoveNumber = 1;
         this.telemetryState.lastEvalScore = 0;
+        this.telemetryState.lastIsMate = false;
+        this.telemetryState.lastMateIn = 0;
         this.selectedSquare = null;
         this.legalTargets = [];
         this.renderTelemetryView();
@@ -685,6 +757,8 @@ class ChessApp {
         this.gameState.isThinking = false;
         this.gameState.isFlipped = (this.gameState.playMode === 'human_black');
         this.gameState.lastEvalScore = 0;
+        this.gameState.lastIsMate = false;
+        this.gameState.lastMateIn = 0;
 
         this.selectedSquare = null;
         this.legalTargets = [];
@@ -706,7 +780,7 @@ class ChessApp {
         this.setStatus('Match Active', false);
         this.oracleTextEl.textContent = 'Match started. White to move.';
 
-        if (this.gameState.timeControl !== 'fixed_depth') {
+        if (this.gameState.timeControl !== 'fixed_depth' && !this.gameState.timeControl.startsWith('movetime_')) {
             this.startClock();
         }
 
@@ -763,6 +837,10 @@ class ChessApp {
         const turn = this.getCurrentTurn();
         const lastMove = this.getCurrentLastMove();
         const isFlipped = this.getIsFlipped();
+
+        if (this.evalGaugeEl) {
+            this.evalGaugeEl.classList.toggle('flipped', isFlipped);
+        }
 
         const inCheck = ChessRulesEngine.isInCheck(turn, board);
         const kingPos = inCheck ? ChessRulesEngine.findKing(turn, board) : null;
@@ -1244,8 +1322,14 @@ class ChessApp {
                 const isUserWinner = (this.gameState.playMode === 'human_white' && winner === 'White') || (this.gameState.playMode === 'human_black' && winner === 'Black');
                 const outcome = isUserWinner ? 'user' : 'boss';
                 this.showGameOver("Checkmate", `${winner} won the match.`, outcome);
+                this.updateEvalBar({
+                    score_white: winner === 'White' ? 29000 : -29000,
+                    is_mate: true,
+                    mate_in_white: winner === 'White' ? 1 : -1
+                });
             } else {
                 this.showGameOver("Stalemate", "Game drawn by stalemate.", 'draw');
+                this.updateEvalBar({ score_white: 0, is_mate: false, mate_in_white: 0 });
             }
             return;
         }
@@ -1255,6 +1339,7 @@ class ChessApp {
             this.gameState.isGameOver = true;
             this.stopClock();
             this.showGameOver("Draw", "Game drawn by insufficient mating material.", 'draw');
+            this.updateEvalBar({ score_white: 0, is_mate: false, mate_in_white: 0 });
             return;
         }
 
@@ -1263,6 +1348,7 @@ class ChessApp {
             this.gameState.isGameOver = true;
             this.stopClock();
             this.showGameOver("Draw", "Game drawn by 50-move rule.", 'draw');
+            this.updateEvalBar({ score_white: 0, is_mate: false, mate_in_white: 0 });
             return;
         }
 
@@ -1274,6 +1360,7 @@ class ChessApp {
             this.gameState.isGameOver = true;
             this.stopClock();
             this.showGameOver("Draw", "Game drawn by threefold repetition.", 'draw');
+            this.updateEvalBar({ score_white: 0, is_mate: false, mate_in_white: 0 });
             return;
         }
 
@@ -1362,12 +1449,18 @@ class ChessApp {
         this.setStatus("SOVEREIGN CALCULATING", true);
 
         const fen = this.getFEN();
-        const depth = 14;
-        const movetime = 0;
+        let depth = 14;
+        let movetime = 0;
 
-        const wtimeMs = Math.round(this.gameState.whiteTime * 1000);
-        const btimeMs = Math.round(this.gameState.blackTime * 1000);
-        const incMs = Math.round(this.gameState.increment * 1000);
+        if (this.gameState.timeControl.startsWith('movetime_')) {
+            const sec = parseInt(this.gameState.timeControl.split('_')[1], 10);
+            movetime = sec * 1000;
+        }
+
+        const isUntimed = (this.gameState.timeControl === 'fixed_depth' || this.gameState.timeControl.startsWith('movetime_'));
+        const wtimeMs = isUntimed ? 0 : Math.round(this.gameState.whiteTime * 1000);
+        const btimeMs = isUntimed ? 0 : Math.round(this.gameState.blackTime * 1000);
+        const incMs = isUntimed ? 0 : Math.round(this.gameState.increment * 1000);
 
         try {
             const resp = await fetch('/api/move', {
@@ -1377,8 +1470,8 @@ class ChessApp {
                     fen,
                     depth,
                     movetime,
-                    wtime: (this.gameState.timeControl === 'fixed_depth') ? 0 : wtimeMs,
-                    btime: (this.gameState.timeControl === 'fixed_depth') ? 0 : btimeMs,
+                    wtime: wtimeMs,
+                    btime: btimeMs,
                     winc: incMs,
                     binc: incMs
                 })
@@ -1395,9 +1488,12 @@ class ChessApp {
                 this.executeMove(srcR, srcC, dstR, dstC, data.best_move, promo);
 
                 const engineColor = (this.gameState.playMode === 'human_white') ? 'b' : 'w';
+                const scoreWhite = (data.score_white !== undefined)
+                    ? data.score_white
+                    : ((data.side_to_move === 'b') ? -data.score : data.score);
                 this.updateTelemetry(data);
-                this.updateEvalBar(data.score || 0);
-                this.updateOracle(data.score || 0, data.pv, engineColor);
+                this.updateEvalBar(data);
+                this.updateOracle(scoreWhite, data.pv, engineColor);
             }
         } catch (e) {
             console.error("Engine API error:", e);
@@ -1444,9 +1540,12 @@ class ChessApp {
             });
             if (resp.ok) {
                 const data = await resp.json();
+                const scoreWhite = (data.score_white !== undefined)
+                    ? data.score_white
+                    : ((data.side_to_move === 'b') ? -data.score : data.score);
                 this.updateTelemetry(data);
-                this.updateEvalBar(data.score || 0);
-                this.updateOracle(data.score || 0, data.pv, movedBy);
+                this.updateEvalBar(data);
+                this.updateOracle(scoreWhite, data.pv, movedBy);
             }
         } catch (e) {
             console.error("Live analysis error:", e);
@@ -1454,17 +1553,103 @@ class ChessApp {
     }
 
     cpToWinProb(cp) {
-        const normalized = Math.max(-2000, Math.min(2000, cp));
-        return 1.0 / (1.0 + Math.pow(10, -normalized / 400.0));
+        // Standard logistic chess win probability formula (relative to White)
+        return 0.5 + 0.5 * (2.0 / (1.0 + Math.exp(-0.00368208 * cp)) - 1.0);
     }
 
-    updateEvalBar(scoreCp) {
-        const whiteWinProb = this.cpToWinProb(scoreCp);
-        const fillPct = (whiteWinProb * 100).toFixed(1);
-        this.evalFillEl.style.height = `${fillPct}%`;
+    updateEvalBar(dataOrScore) {
+        if (!this.evalFillEl || !this.evalBadgeEl) return;
 
-        const evalText = (scoreCp >= 0 ? '+' : '') + (scoreCp / 100).toFixed(1);
+        let scoreWhite = 0;
+        let isMate = false;
+        let mateInWhite = 0;
+
+        if (typeof dataOrScore === 'object' && dataOrScore !== null) {
+            if (dataOrScore.score_white !== undefined) {
+                scoreWhite = dataOrScore.score_white;
+            } else if (dataOrScore.score !== undefined) {
+                const turn = dataOrScore.side_to_move || (this.activeTab === 'telemetry' ? this.telemetryState.turn : this.gameState.turn);
+                scoreWhite = (turn === 'b') ? -dataOrScore.score : dataOrScore.score;
+            }
+            isMate = !!dataOrScore.is_mate;
+            if (dataOrScore.mate_in_white !== undefined) {
+                mateInWhite = dataOrScore.mate_in_white;
+            } else if (dataOrScore.mate_in !== undefined) {
+                const turn = dataOrScore.side_to_move || (this.activeTab === 'telemetry' ? this.telemetryState.turn : this.gameState.turn);
+                mateInWhite = (turn === 'b') ? -dataOrScore.mate_in : dataOrScore.mate_in;
+            }
+        } else if (typeof dataOrScore === 'number') {
+            scoreWhite = dataOrScore;
+        }
+
+        const state = (this.activeTab === 'telemetry') ? this.telemetryState : this.gameState;
+        state.lastEvalScore = scoreWhite;
+        state.lastIsMate = isMate;
+        state.lastMateIn = mateInWhite;
+
+        // Compute fill percentage (White territory)
+        let fillPct = 50.0;
+        if (isMate) {
+            fillPct = (mateInWhite > 0) ? 97.5 : (mateInWhite < 0 ? 2.5 : (scoreWhite >= 0 ? 97.5 : 2.5));
+        } else {
+            const winProb = this.cpToWinProb(scoreWhite);
+            fillPct = Math.max(2.5, Math.min(97.5, winProb * 100.0));
+        }
+
+        const isFlipped = this.getIsFlipped();
+        if (this.evalGaugeEl) {
+            this.evalGaugeEl.classList.toggle('flipped', isFlipped);
+        }
+
+        this.evalFillEl.style.height = `${fillPct.toFixed(1)}%`;
+
+        // Format evaluation badge text
+        let evalText = '0.0';
+        if (isMate) {
+            if (mateInWhite > 0) {
+                evalText = `M${mateInWhite}`;
+            } else if (mateInWhite < 0) {
+                evalText = `-M${Math.abs(mateInWhite)}`;
+            } else {
+                evalText = (scoreWhite >= 0) ? '#1-0' : '#0-1';
+            }
+        } else {
+            if (scoreWhite > 0) {
+                evalText = `+${(scoreWhite / 100).toFixed(1)}`;
+            } else if (scoreWhite < 0) {
+                evalText = `-${(Math.abs(scoreWhite) / 100).toFixed(1)}`;
+            } else {
+                evalText = '0.0';
+            }
+        }
         this.evalBadgeEl.textContent = evalText;
+
+        // Dynamic badge placement & contrast
+        const whiteLeading = isMate ? (mateInWhite >= 0) : (scoreWhite >= 0);
+
+        if (!isFlipped) {
+            // White is at bottom, Black is at top
+            if (whiteLeading) {
+                this.evalBadgeEl.style.top = 'auto';
+                this.evalBadgeEl.style.bottom = '8px';
+                this.evalBadgeEl.style.color = '#0b0f19'; // dark bold text on white fill
+            } else {
+                this.evalBadgeEl.style.top = '8px';
+                this.evalBadgeEl.style.bottom = 'auto';
+                this.evalBadgeEl.style.color = '#f8fafc'; // light bold text on dark background
+            }
+        } else {
+            // Flipped: White is at top, Black is at bottom
+            if (whiteLeading) {
+                this.evalBadgeEl.style.top = '8px';
+                this.evalBadgeEl.style.bottom = 'auto';
+                this.evalBadgeEl.style.color = '#0b0f19'; // dark bold text on white fill at top
+            } else {
+                this.evalBadgeEl.style.top = 'auto';
+                this.evalBadgeEl.style.bottom = '8px';
+                this.evalBadgeEl.style.color = '#f8fafc'; // light bold text on dark background at bottom
+            }
+        }
     }
 
     updateOracle(scoreCp, pv, movedBy = null) {
@@ -1765,6 +1950,12 @@ class ChessApp {
             this.gameState.isFlipped = !this.gameState.isFlipped;
         }
         this.renderBoard();
+        const st = (this.activeTab === 'telemetry') ? this.telemetryState : this.gameState;
+        this.updateEvalBar({
+            score_white: st.lastEvalScore || 0,
+            is_mate: !!st.lastIsMate,
+            mate_in_white: st.lastMateIn || 0
+        });
     }
 
     undoMove() {
@@ -1783,6 +1974,12 @@ class ChessApp {
         this.sound.playGameOver();
         const winner = this.gameState.playMode === 'human_white' ? "Black (Heaven's Gate)" : "White (Heaven's Gate)";
         this.showGameOver("Resignation", `${winner} won by resignation.`, 'boss');
+        const userIsWhite = (this.gameState.playMode === 'human_white');
+        this.updateEvalBar({
+            score_white: userIsWhite ? -29000 : 29000,
+            is_mate: true,
+            mate_in_white: userIsWhite ? -1 : 1
+        });
     }
 
     offerDraw() {
@@ -1800,6 +1997,7 @@ class ChessApp {
             this.stopClock();
             this.sound.playSuccess();
             this.showGameOver("Draw Agreed", "Heaven's Gate accepted the draw offer.", 'draw');
+            this.updateEvalBar({ score_white: 0, is_mate: false, mate_in_white: 0 });
         }
     }
 
@@ -1847,33 +2045,75 @@ class ChessApp {
         this.stopClock();
         this.gameState.increment = 0.0;
 
-        if (this.gameState.timeControl === 'bullet_1_0') {
-            this.gameState.whiteTime = 60.0;
-            this.gameState.blackTime = 60.0;
-        } else if (this.gameState.timeControl === 'bullet_1_1') {
-            this.gameState.whiteTime = 60.0;
-            this.gameState.blackTime = 60.0;
-            this.gameState.increment = 1.0;
-        } else if (this.gameState.timeControl === 'blitz_3_0') {
-            this.gameState.whiteTime = 180.0;
-            this.gameState.blackTime = 180.0;
-        } else if (this.gameState.timeControl === 'blitz_3_2') {
-            this.gameState.whiteTime = 180.0;
-            this.gameState.blackTime = 180.0;
-            this.gameState.increment = 2.0;
-        } else if (this.gameState.timeControl === 'rapid_10_0') {
-            this.gameState.whiteTime = 600.0;
-            this.gameState.blackTime = 600.0;
-        } else {
-            this.gameState.whiteTime = 0.0;
-            this.gameState.blackTime = 0.0;
+        switch (this.gameState.timeControl) {
+            case 'bullet_1_0':
+                this.gameState.whiteTime = 60.0;
+                this.gameState.blackTime = 60.0;
+                this.gameState.increment = 0.0;
+                break;
+            case 'bullet_1_1':
+                this.gameState.whiteTime = 60.0;
+                this.gameState.blackTime = 60.0;
+                this.gameState.increment = 1.0;
+                break;
+            case 'bullet_2_1':
+                this.gameState.whiteTime = 120.0;
+                this.gameState.blackTime = 120.0;
+                this.gameState.increment = 1.0;
+                break;
+            case 'blitz_3_0':
+                this.gameState.whiteTime = 180.0;
+                this.gameState.blackTime = 180.0;
+                this.gameState.increment = 0.0;
+                break;
+            case 'blitz_3_2':
+                this.gameState.whiteTime = 180.0;
+                this.gameState.blackTime = 180.0;
+                this.gameState.increment = 2.0;
+                break;
+            case 'blitz_5_0':
+                this.gameState.whiteTime = 300.0;
+                this.gameState.blackTime = 300.0;
+                this.gameState.increment = 0.0;
+                break;
+            case 'blitz_5_3':
+                this.gameState.whiteTime = 300.0;
+                this.gameState.blackTime = 300.0;
+                this.gameState.increment = 3.0;
+                break;
+            case 'rapid_10_0':
+                this.gameState.whiteTime = 600.0;
+                this.gameState.blackTime = 600.0;
+                this.gameState.increment = 0.0;
+                break;
+            case 'rapid_15_10':
+                this.gameState.whiteTime = 900.0;
+                this.gameState.blackTime = 900.0;
+                this.gameState.increment = 10.0;
+                break;
+            case 'classical_30_0':
+                this.gameState.whiteTime = 1800.0;
+                this.gameState.blackTime = 1800.0;
+                this.gameState.increment = 0.0;
+                break;
+            case 'classical_60_0':
+                this.gameState.whiteTime = 3600.0;
+                this.gameState.blackTime = 3600.0;
+                this.gameState.increment = 0.0;
+                break;
+            default:
+                // fixed_depth or movetime_*
+                this.gameState.whiteTime = 0.0;
+                this.gameState.blackTime = 0.0;
+                this.gameState.increment = 0.0;
+                break;
         }
         this.updateClockDisplay();
     }
 
     startClock() {
         this.stopClock();
-        if (this.gameState.timeControl === 'fixed_depth' || this.activeTab !== 'play') return;
+        if (this.gameState.timeControl === 'fixed_depth' || this.gameState.timeControl.startsWith('movetime_') || this.activeTab !== 'play') return;
         this.lastClockTick = performance.now();
         this.clockInterval = setInterval(() => this.tickClock(), 100);
         this.updateActiveClockHUD();
@@ -1889,7 +2129,7 @@ class ChessApp {
     }
 
     tickClock() {
-        if (!this.gameState.isGameActive || this.gameState.isGameOver || this.gameState.timeControl === 'fixed_depth' || this.activeTab !== 'play') return;
+        if (!this.gameState.isGameActive || this.gameState.isGameOver || this.gameState.timeControl === 'fixed_depth' || this.gameState.timeControl.startsWith('movetime_') || this.activeTab !== 'play') return;
         const now = performance.now();
         const elapsed = (now - this.lastClockTick) / 1000.0;
         this.lastClockTick = now;
@@ -1917,7 +2157,7 @@ class ChessApp {
     }
 
     updateActiveClockHUD() {
-        if (!this.gameState.isGameActive || this.gameState.timeControl === 'fixed_depth' || this.activeTab !== 'play') {
+        if (!this.gameState.isGameActive || this.gameState.timeControl === 'fixed_depth' || this.gameState.timeControl.startsWith('movetime_') || this.activeTab !== 'play') {
             this.topClockEl.classList.remove('active');
             this.bottomClockEl.classList.remove('active');
             return;
@@ -1948,9 +2188,20 @@ class ChessApp {
             this.bottomClockEl.textContent = "--:--";
             return;
         }
+        if (this.gameState.timeControl.startsWith('movetime_')) {
+            const sec = this.gameState.timeControl.split('_')[1];
+            this.topClockEl.textContent = `${sec}s/mv`;
+            this.bottomClockEl.textContent = `${sec}s/mv`;
+            return;
+        }
         const fmt = (s) => {
-            const m = Math.floor(s / 60);
-            const sec = Math.floor(s % 60);
+            const totalSec = Math.max(0, Math.floor(s));
+            const hours = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const sec = totalSec % 60;
+            if (hours > 0) {
+                return `${hours}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+            }
             return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
         };
         const isWhiteBottom = !this.gameState.isFlipped;

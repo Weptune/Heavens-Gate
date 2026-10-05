@@ -1,9 +1,6 @@
 #include "eval.hpp"
+#include "eval_params.hpp"
 #include "pst.hpp"
-#include "nnue.hpp"
-#include "tensor_eval.hpp"
-#include "tensor_quant.hpp"
-#include "tensor_nnue.hpp"
 #include "spectral_graph.hpp"
 #include "tropical_eval.hpp"
 #include <algorithm>
@@ -15,10 +12,6 @@ thread_local EvalMode Evaluator::current_mode_ = EvalMode::MasterPositional;
 void Evaluator::init() {
     PST::init();
     EvalFeatures::init();
-    NNUEEvaluator::init();
-    TensorMPS::instance().load_weights("heavensgate.tnw");
-    TensorMPSQuantized::instance().quantize_from(TensorMPS::instance());
-    TensorNNUE::instance().load_weights("heavensgate_tnnue.nnue");
     TropicalEvaluator::instance().load_weights("heavensgate_tropical.trm");
 }
 
@@ -88,14 +81,6 @@ int Evaluator::evaluate_side(const Board& board, Color side) {
 }
 
 int Evaluator::evaluate(const Board& board) {
-    if (current_mode_ == EvalMode::NNUE) {
-        return NNUEEvaluator::evaluate(board, const_cast<Board&>(board).accumulator());
-    }
-
-    if (current_mode_ == EvalMode::TensorNetwork) {
-        return TensorNNUE::instance().evaluate(board);
-    }
-
     if (current_mode_ == EvalMode::SpectralTropical) {
         // Tier 1: Fast O(1) Bitmask Material + PST Eval (~5 nanoseconds)
         int white_fast = evaluate_side(board, Color::White);
@@ -107,7 +92,7 @@ int Evaluator::evaluate(const Board& board) {
         // remain active across all positional battles up to a full Queen lead!
         if (std::abs(fast_diff) >= 600) {
             int game_phase = std::min(24, board.game_phase());
-            int tapered_tempo = (18 * game_phase + 4 * (24 - game_phase)) / 24;
+            int tapered_tempo = (g_eval_params.tempo_mg * game_phase + g_eval_params.tempo_eg * (24 - game_phase)) / 24;
             return fast_diff + tapered_tempo;
         }
 
@@ -126,42 +111,17 @@ int Evaluator::evaluate_fast(const Board& board) {
     int black_score = evaluate_side(board, Color::Black);
 
     int game_phase = std::min(24, board.game_phase());
-    int tapered_tempo = (18 * game_phase + 4 * (24 - game_phase)) / 24;
+    int tapered_tempo = (g_eval_params.tempo_mg * game_phase + g_eval_params.tempo_eg * (24 - game_phase)) / 24;
 
     int relative_score = white_score - black_score;
     return (board.side_to_move() == Color::White) ? (relative_score + tapered_tempo) : (-relative_score + tapered_tempo);
 }
 
-static constexpr int MAX_SEARCH_PLY = 256;
-static thread_local TensorMPSQuantized::QuantizedEnvironment s_quant_env[MAX_SEARCH_PLY];
-
 void Evaluator::reset_incremental_cache() {
-    for (int i = 0; i < MAX_SEARCH_PLY; i++) {
-        s_quant_env[i].valid_up_to = -1;
-    }
 }
 
-int Evaluator::evaluate_incremental(const Board& board, int ply, Square from_sq, Square to_sq) {
-    if (current_mode_ != EvalMode::TensorNetwork) {
-        return evaluate(board);
-    }
-
-    int idx = std::max(0, std::min(MAX_SEARCH_PLY - 1, ply));
-
-    if (idx == 0 || from_sq == Square::None || to_sq == Square::None || s_quant_env[idx - 1].valid_up_to < 0) {
-        s_quant_env[idx].valid_up_to = -1;
-        return TensorMPSQuantized::instance().evaluate_incremental(board, s_quant_env[idx]);
-    }
-
-    const auto& inv_hilbert = HilbertCurve::inverse_order();
-    int site_from = inv_hilbert[static_cast<int>(from_sq)];
-    int site_to   = inv_hilbert[static_cast<int>(to_sq)];
-    int min_site  = std::min(site_from, site_to);
-
-    s_quant_env[idx] = s_quant_env[idx - 1];
-    s_quant_env[idx].valid_up_to = min_site;
-
-    return TensorMPSQuantized::instance().evaluate_incremental(board, s_quant_env[idx]);
+int Evaluator::evaluate_incremental(const Board& board, int /*ply*/, Square /*from_sq*/, Square /*to_sq*/) {
+    return evaluate(board);
 }
 
 } // namespace heavensgate

@@ -1,4 +1,4 @@
-﻿import subprocess
+import subprocess
 import os
 import json
 import random
@@ -7,14 +7,16 @@ import numpy as np
 import time
 
 PARAM_DEFS = {
-    "lmr_divisor": {"type": "float", "val": 2.20, "c": 0.15, "min": 1.60, "max": 3.20, "uci": "LMR_Divisor"},
-    "lmr_hist_bonus": {"type": "int", "val": 500, "c": 60, "min": 150, "max": 1500, "uci": "LMR_HistBonus"},
-    "lmr_hist_malus": {"type": "int", "val": 100, "c": 25, "min": 25, "max": 400, "uci": "LMR_HistMalus"},
-    "rfp_margin": {"type": "int", "val": 120, "c": 15, "min": 60, "max": 250, "uci": "RFP_Margin"},
-    "futility_margin": {"type": "int", "val": 200, "c": 25, "min": 100, "max": 350, "uci": "Futility_Margin"},
-    "see_bad_capture_slope": {"type": "int", "val": 100, "c": 15, "min": 40, "max": 200, "uci": "SEE_BadCaptureSlope"},
-    "see_quiet_slope": {"type": "int", "val": 40, "c": 8, "min": 15, "max": 100, "uci": "SEE_QuietSlope"},
-    "nmp_eval_margin": {"type": "int", "val": 200, "c": 30, "min": 80, "max": 400, "uci": "NMP_EvalMargin"},
+    "lmr_divisor": {"type": "float", "val": 3.20, "c": 0.20, "min": 1.60, "max": 4.00, "uci": "LMR_Divisor"},
+    "lmr_hist_bonus": {"type": "int", "val": 425, "c": 50, "min": 150, "max": 1500, "uci": "LMR_HistBonus"},
+    "lmr_hist_malus": {"type": "int", "val": 72, "c": 20, "min": 20, "max": 300, "uci": "LMR_HistMalus"},
+    "rfp_margin": {"type": "int", "val": 163, "c": 20, "min": 60, "max": 260, "uci": "RFP_Margin"},
+    "futility_margin": {"type": "int", "val": 180, "c": 25, "min": 80, "max": 350, "uci": "Futility_Margin"},
+    "see_bad_capture_slope": {"type": "int", "val": 124, "c": 15, "min": 40, "max": 200, "uci": "SEE_BadCaptureSlope"},
+    "see_quiet_slope": {"type": "int", "val": 15, "c": 5, "min": 5, "max": 60, "uci": "SEE_QuietSlope"},
+    "nmp_eval_margin": {"type": "int", "val": 218, "c": 30, "min": 80, "max": 400, "uci": "NMP_EvalMargin"},
+    "singular_margin": {"type": "int", "val": 2, "c": 1, "min": 1, "max": 6, "uci": "Singular_Margin"},
+    "aspiration_window_delta": {"type": "int", "val": 25, "c": 5, "min": 10, "max": 60, "uci": "Aspiration_Window_Delta"},
 }
 
 GXX = r"C:\Users\abhin\heavensgate\tools\w64devkit\bin\g++.exe"
@@ -22,69 +24,30 @@ ENGINE_EXE = r"c:\Users\abhin\heavensgate\heavensgate.exe"
 ENV = os.environ.copy()
 ENV["PATH"] = r"C:\Users\abhin\heavensgate\tools\w64devkit\bin;" + ENV.get("PATH", "")
 
-def update_header_and_compile(params):
-    header_code = f"""#pragma once
-
-namespace heavensgate {{
-
-struct SearchParams {{
-    float lmr_divisor = {params['lmr_divisor']:.4f}f;
-    int lmr_hist_bonus = {int(params['lmr_hist_bonus'])};
-    int lmr_hist_malus = {int(params['lmr_hist_malus'])};
-    int rfp_margin = {int(params['rfp_margin'])};
-    int futility_margin = {int(params['futility_margin'])};
-    int see_bad_capture_slope = {int(params['see_bad_capture_slope'])};
-    int see_quiet_slope = {int(params['see_quiet_slope'])};
-    int nmp_eval_margin = {int(params['nmp_eval_margin'])};
-
-    void reset() noexcept {{
-        lmr_divisor = 2.20f;
-        lmr_hist_bonus = 500;
-        lmr_hist_malus = 100;
-        rfp_margin = 120;
-        futility_margin = 200;
-        see_bad_capture_slope = 100;
-        see_quiet_slope = 40;
-        nmp_eval_margin = 200;
-    }}
-}};
-
-extern SearchParams g_search_params;
-
-}} // namespace heavensgate
-"""
-    with open(r"c:\Users\abhin\heavensgate\src\search\search_params.hpp", "w", encoding="utf-8") as f:
-        f.write(header_code)
-    
-    # Recompile
-    cmd = [
-        GXX, "-std=c++20", "-O3", "-march=native", "-mavx2", "-mfma", "-fopenmp", "-funroll-loops",
-        "-Isrc", "src/main.cpp", "src/board/board.cpp", "src/core/fen.cpp", "src/core/zobrist.cpp",
-        "src/core/polyglot.cpp", "src/movegen/magic.cpp", "src/movegen/attack_masks.cpp", "src/movegen/movegen.cpp",
-        "src/movegen/perft.cpp", "src/evaluation/pst.cpp", "src/evaluation/eval_features.cpp",
-        "src/evaluation/nnue.cpp", "src/evaluation/tensor_eval.cpp", "src/evaluation/tensor_train.cpp",
-        "src/evaluation/tensor_quant.cpp", "src/evaluation/tensor_nnue.cpp", "src/evaluation/spectral_graph.cpp",
-        "src/evaluation/tropical_eval.cpp", "src/evaluation/eval.cpp", "src/search/move_picker.cpp",
-        "src/search/tt.cpp", "src/search/search_params.cpp", "src/search/search.cpp", "src/search/syzygy.cpp",
-        "src/visualization/exporter.cpp", "src/benchmark/metrics.cpp", "src/benchmark/sts.cpp", "src/uci/uci.cpp",
-        "-o", "heavensgate.exe"
-    ]
-    res = subprocess.run(cmd, cwd=r"c:\Users\abhin\heavensgate", env=ENV, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    return res.returncode == 0
-
 def evaluate_params(params):
-    if not update_header_and_compile(params):
-        return -9999.0
-    
-    # Run STS Benchmark
-    cmd = [ENGINE_EXE, "sts", "10", "0", "6"]
-    proc = subprocess.run(cmd, cwd=r"c:\Users\abhin\heavensgate", env=ENV, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    out = proc.stdout
-    
+    input_cmds = []
+    for k, pdef in PARAM_DEFS.items():
+        uci_name = pdef["uci"]
+        val = params[k]
+        if pdef["type"] == "float":
+            input_cmds.append(f"setoption name {uci_name} value {val:.4f}")
+        else:
+            input_cmds.append(f"setoption name {uci_name} value {int(round(val))}")
+    input_cmds.append("sts 10 0 6")
+    input_cmds.append("quit")
+    stdin_data = "\n".join(input_cmds) + "\n"
+
+    try:
+        proc = subprocess.run([ENGINE_EXE], input=stdin_data, cwd=r"c:\Users\abhin\heavensgate", env=ENV, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30)
+        out = proc.stdout
+    except Exception as e:
+        print(f"[Error] Subprocess execution failed: {e}")
+        return 0.0
+
     total_match = re.search(r"OVERALL TOTAL\s+\d+\s+(\d+)\s*/\s*8000", out)
     if not total_match:
         return 0.0
-    
+
     sts_score = float(total_match.group(1))
     return sts_score
 
@@ -176,8 +139,45 @@ def run_spsa(iterations=10):
     print("\n" + "=" * 75)
     print(f"SPSA OPTIMIZATION COMPLETE! Final Best Score: {best_score:.0f} / 8000")
     print("=" * 75)
-    print(json.dumps(best_params, indent=4))
-    update_header_and_compile(best_params)
+    # Update search_params.hpp with tuned values
+    header_path = r"c:\Users\abhin\heavensgate\src\search\search_params.hpp"
+    header_content = f"""#pragma once
+
+namespace heavensgate {{
+
+struct SearchParams {{
+    float lmr_divisor = {best_params['lmr_divisor']:.4f}f;
+    int lmr_hist_bonus = {int(round(best_params['lmr_hist_bonus']))};
+    int lmr_hist_malus = {int(round(best_params['lmr_hist_malus']))};
+    int rfp_margin = {int(round(best_params['rfp_margin']))};
+    int futility_margin = {int(round(best_params['futility_margin']))};
+    int see_bad_capture_slope = {int(round(best_params['see_bad_capture_slope']))};
+    int see_quiet_slope = {int(round(best_params['see_quiet_slope']))};
+    int nmp_eval_margin = {int(round(best_params['nmp_eval_margin']))};
+    int singular_margin = {int(round(best_params['singular_margin']))};
+    int aspiration_window_delta = {int(round(best_params['aspiration_window_delta']))};
+
+    void reset() noexcept {{
+        lmr_divisor = {best_params['lmr_divisor']:.4f}f;
+        lmr_hist_bonus = {int(round(best_params['lmr_hist_bonus']))};
+        lmr_hist_malus = {int(round(best_params['lmr_hist_malus']))};
+        rfp_margin = {int(round(best_params['rfp_margin']))};
+        futility_margin = {int(round(best_params['futility_margin']))};
+        see_bad_capture_slope = {int(round(best_params['see_bad_capture_slope']))};
+        see_quiet_slope = {int(round(best_params['see_quiet_slope']))};
+        nmp_eval_margin = {int(round(best_params['nmp_eval_margin']))};
+        singular_margin = {int(round(best_params['singular_margin']))};
+        aspiration_window_delta = {int(round(best_params['aspiration_window_delta']))};
+    }}
+}};
+
+extern SearchParams g_search_params;
+
+}} // namespace heavensgate
+"""
+    with open(header_path, "w", encoding="utf-8") as f:
+        f.write(header_content)
+    print(f"\n[SPSA] Successfully updated {header_path} with optimized parameters!")
 
 if __name__ == "__main__":
     run_spsa(iterations=10)

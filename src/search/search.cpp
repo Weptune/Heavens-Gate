@@ -113,8 +113,8 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
         const auto& m = moves[i];
 
         if (!in_chk) {
-            // SEE Pruning in QSearch: Skip clearly losing captures
-            if (!MovePicker::see_ge(board, m, 0)) {
+            // SEE Pruning in QSearch: Skip clearly losing captures, unless promotion or check
+            if (!m.is_promotion() && !MoveGenerator::gives_check(board, m) && !MovePicker::see_ge(board, m, 0)) {
                 continue;
             }
 
@@ -258,6 +258,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     Move prev4_move = (ply >= 4 && ply < 256) ? move_stack_[ply - 4] : Move();
     Move prev6_move = (ply >= 6 && ply < 256) ? move_stack_[ply - 6] : Move();
 
+    Piece prev_piece  = (ply >= 1 && ply < 256) ? piece_stack_[ply - 1] : Piece::None;
+    Piece prev2_piece = (ply >= 2 && ply < 256) ? piece_stack_[ply - 2] : Piece::None;
+    Piece prev4_piece = (ply >= 4 && ply < 256) ? piece_stack_[ply - 4] : Piece::None;
+    Piece prev6_piece = (ply >= 6 && ply < 256) ? piece_stack_[ply - 6] : Piece::None;
+
     // 1. Transposition Table Probing
     if (use_tt) {
         tt().prefetch(board.zobrist_key());
@@ -295,10 +300,12 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     }
 
     // 1.5 Syzygy Tablebase Probe (6 or fewer pieces, 0.00ms overhead)
-    if (popcount(board.occupied()) <= 6) {
+    if (!in_chk && popcount(board.occupied()) <= 6) {
         int tb_score = SyzygyTablebase::instance().probe_wdl(board, ply);
         if (tb_score != SyzygyTablebase::NO_SCORE) {
-            metrics_tracker_.add_cut();
+            if (tb_score >= beta) {
+                metrics_tracker_.add_cut();
+            }
             return tb_score;
         }
     }
@@ -315,6 +322,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     // 2. Static Eval for Pruning Decisions (computed once, reused by RFP + Futility + Multi-Table CorrHist)
     int raw_static_eval = 0;
     int static_eval = 0;
+    int eval = 0;
     bool can_futility_prune = false;
     bool improving = false;
     size_t c_idx = static_cast<size_t>(us);
@@ -339,29 +347,41 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         int total_corr = std::clamp((pawn_corr + non_pawn_corr + major_corr) / 256, -1024, 1024);
         static_eval = raw_static_eval + total_corr;
 
+        // TT Evaluation Refinement: Tighten static evaluation bounds using Transposition Table score
+        eval = static_eval;
+        if (tt_entry && std::abs(tt_score) < ScoreMate - 1000) {
+            if (tt_entry->bound == TTBound::Exact) {
+                eval = tt_score;
+            } else if (tt_entry->bound == TTBound::Lower && tt_score > eval) {
+                eval = tt_score;
+            } else if (tt_entry->bound == TTBound::Upper && tt_score < eval) {
+                eval = tt_score;
+            }
+        }
+
         if (ply < 256) eval_stack_[ply] = static_eval;
         if (ply >= 2 && eval_stack_[ply - 2] != -ScoreInfinity) {
-            improving = (static_eval > eval_stack_[ply - 2]);
+            improving = (eval > eval_stack_[ply - 2]);
         }
 
         // Reverse Futility Pruning (Static Null Move Pruning)
         if (depth <= 6 && !excluded_move) {
             int margin = std::max(60, g_search_params.rfp_margin) * depth - (improving ? 30 : 0);
-            if (static_eval - margin >= beta) {
+            if (eval - margin >= beta) {
                 metrics_tracker_.add_cut();
-                return static_eval - margin;
+                return eval - margin;
             }
         }
 
         // Forward Futility Pruning flag (checked per-move in the loop below)
-        if (depth <= 4 && !excluded_move && static_eval + g_search_params.futility_margin * depth <= alpha) {
+        if (depth <= 4 && !excluded_move && eval + g_search_params.futility_margin * depth <= alpha) {
             can_futility_prune = true;
         }
     }
 
     // 3. Adaptive Null Move Pruning (NMP) with continuous depth & score scaling
     if (depth >= 3 && !in_chk && !excluded_move && board.has_non_pawn_material(us)) {
-        int R = 3 + depth / 4 + std::min(3, (static_eval - beta) / 200);
+        int R = 3 + depth / 4 + std::min(3, (eval - beta) / 200);
         if (!improving) {
             R += 1;
         }
@@ -396,15 +416,21 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         int prob_depth = depth - 4;
         MoveList tactical_moves;
         MoveGenerator::generate_capture_moves(board, tactical_moves);
-        move_picker_.score_and_sort_moves(board, tactical_moves, ply, Move(), prev_move, prev2_move, prev4_move, prev6_move);
+        move_picker_.score_and_sort_moves(board, tactical_moves, ply, Move(), prev_move, prev2_move, prev4_move, prev6_move, prev_piece, prev2_piece, prev4_piece, prev6_piece);
 
         for (const auto& tm : tactical_moves) {
             if (!MovePicker::see_ge(board, tm, prob_beta - static_eval)) continue;
-            if (ply < 256) move_stack_[ply] = tm;
+            if (ply < 256) {
+                move_stack_[ply] = tm;
+                piece_stack_[ply] = board.piece_at(tm.from());
+            }
             board.make_move(tm);
             int prob_score = -negamax_alphabeta(board, prob_depth, ply + 1, -prob_beta, -prob_beta + 1, use_move_ordering, use_tt, Move(), nullptr, static_eval);
             board.unmake_move(tm);
-            if (ply < 256) move_stack_[ply] = Move();
+            if (ply < 256) {
+                move_stack_[ply] = Move();
+                piece_stack_[ply] = Piece::None;
+            }
             if (prob_score >= prob_beta) {
                 metrics_tracker_.add_cut();
                 return prob_beta;
@@ -440,23 +466,32 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     }
 
     // 3.9 Multi-Cut Pruning (MC) at high-depth non-PV nodes (depth >= 8)
+    MoveList moves;
+    bool moves_generated = false;
+
     if (is_non_pv && depth >= 8 && !in_chk && !excluded_move && std::abs(beta) < ScoreMate - 1000) {
         int mc_depth = depth - 1 - 3;
-        MoveList mc_moves;
-        MoveGenerator::generate_legal_moves(board, mc_moves);
-        if (mc_moves.size() >= 4) {
-            move_picker_.score_and_sort_moves(board, mc_moves, ply, tt_move, prev_move, prev2_move, prev4_move, prev6_move);
+        MoveGenerator::generate_legal_moves(board, moves);
+        moves_generated = true;
+        if (moves.size() >= 4) {
+            move_picker_.score_and_sort_moves(board, moves, ply, tt_move, prev_move, prev2_move, prev4_move, prev6_move, prev_piece, prev2_piece, prev4_piece, prev6_piece);
             int cutoffs = 0;
             int mc_count = 0;
-            for (const auto& mc_m : mc_moves) {
+            for (const auto& mc_m : moves) {
                 if (mc_m == tt_move) continue;
                 if (++mc_count > 8) break; // Check up to 8 moves
 
-                if (ply < 256) move_stack_[ply] = mc_m;
+                if (ply < 256) {
+                    move_stack_[ply] = mc_m;
+                    piece_stack_[ply] = board.piece_at(mc_m.from());
+                }
                 board.make_move(mc_m);
                 int mc_score = -negamax_alphabeta(board, mc_depth, ply + 1, -beta, -beta + 1, use_move_ordering, use_tt, Move(), nullptr, static_eval);
                 board.unmake_move(mc_m);
-                if (ply < 256) move_stack_[ply] = Move();
+                if (ply < 256) {
+                    move_stack_[ply] = Move();
+                    piece_stack_[ply] = Piece::None;
+                }
 
                 if (mc_score >= beta) {
                     cutoffs++;
@@ -470,8 +505,9 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     }
 
     // 4. Move Generation & Ordering
-    MoveList moves;
-    MoveGenerator::generate_legal_moves(board, moves);
+    if (!moves_generated) {
+        MoveGenerator::generate_legal_moves(board, moves);
+    }
 
     if (moves.empty()) {
         if (in_chk) {
@@ -483,7 +519,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     std::array<int, 256> scores{};
     if (use_move_ordering) {
-        move_picker_.score_moves(board, moves, scores, ply, tt_move, prev_move, prev2_move, prev4_move, prev6_move);
+        move_picker_.score_moves(board, moves, scores, ply, tt_move, prev_move, prev2_move, prev4_move, prev6_move, prev_piece, prev2_piece, prev4_piece, prev6_piece);
     }
 
     int best_score = -ScoreInfinity;
@@ -501,16 +537,44 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         bool is_quiet = !m.is_capture() && !m.is_promotion();
 
-        // Late Move Pruning (LMP): At shallow depth non-PV nodes, prune quiet moves after threshold
-        if (is_non_pv && depth <= 5 && !in_chk && is_quiet) {
+        int cont1_val = 0;
+        int cont2_val = 0;
+        int cont4_val = 0;
+        int cont6_val = 0;
+        int history_val = 0;
+        int total_hist = 0;
+        bool is_killer = false;
+        bool is_counter = false;
+
+        if (is_quiet) {
+            is_killer = (m == move_picker_.get_killer_move(ply, 0) || m == move_picker_.get_killer_move(ply, 1));
+            is_counter = (static_cast<bool>(prev_move) && m == move_picker_.get_countermove(prev_move));
+            history_val = move_picker_.get_history_score(us, m);
+            cont1_val = move_picker_.get_continuation_history(board, prev_move, m, prev_piece);
+            cont2_val = move_picker_.get_continuation_history_2(board, prev2_move, m, prev2_piece);
+            cont4_val = move_picker_.get_continuation_history_4(board, prev4_move, m, prev4_piece);
+            cont6_val = move_picker_.get_continuation_history_6(board, prev6_move, m, prev6_piece);
+            total_hist = history_val + 2 * cont1_val + cont2_val + cont4_val + (cont6_val / 2);
+        }
+
+        // History-Driven Late Move Pruning (LMP): At shallow depth non-PV nodes, prune quiet moves after threshold
+        // Killer moves and countermoves are strictly protected from LMP.
+        // Moves with positive history receive a higher threshold; negative history moves are pruned earlier.
+        if (is_non_pv && depth <= 5 && !in_chk && is_quiet && !is_killer && !is_counter) {
             int lmp_threshold = (3 + 2 * depth * depth) / (improving ? 1 : 2);
+            if (total_hist < -2048) {
+                lmp_threshold = std::max(1, lmp_threshold - 1);
+            } else if (total_hist > 2048) {
+                lmp_threshold += 1;
+            }
             if (quiets_searched >= lmp_threshold) {
                 continue;
             }
         }
 
         // Fast Futility Pruning: Skip quiet moves at low depth if static eval is far below alpha (Zero make/unmake overhead)
-        if (can_futility_prune && i >= 1 && is_quiet) {
+        // Killer moves and countermoves are also protected from futility pruning.
+        if (can_futility_prune && i >= 1 && is_quiet && !is_killer && !is_counter) {
             if (!MoveGenerator::gives_check(board, m)) {
                 continue;
             }
@@ -524,7 +588,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
 
         // SEE Quiet Pruning: Skip quiet moves that drop material at shallow depth
-        if (depth <= 4 && !in_chk && i >= 1 && is_quiet) {
+        if (depth <= 4 && !in_chk && i >= 1 && is_quiet && !is_killer) {
             if (!MovePicker::see_ge(board, m, -g_search_params.see_quiet_slope * depth)) {
                 continue;
             }
@@ -532,31 +596,25 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         Piece attacker = board.piece_at(m.from());
         Piece victim = board.piece_at(m.to());
+        PieceType vic_pt = m.is_ep() ? PieceType::Pawn : piece_type_of(victim);
 
         bool is_bad_capture = m.is_capture() && i >= 4 && depth >= 4 && !in_chk;
         if (is_bad_capture) {
-            int cap_hist = move_picker_.get_capture_history(attacker, m.to(), piece_type_of(victim));
+            int cap_hist = move_picker_.get_capture_history(attacker, m.to(), vic_pt);
             if (cap_hist >= 0) is_bad_capture = false;
         }
 
-        int cont1_val = 0;
-        int cont2_val = 0;
-        int cont4_val = 0;
-        int cont6_val = 0;
-        int history_val = 0;
         if (is_quiet) {
-            history_val = move_picker_.get_history_score(us, m);
-            cont1_val = move_picker_.get_continuation_history(board, prev_move, m);
-            cont2_val = move_picker_.get_continuation_history_2(board, prev2_move, m);
-            cont4_val = move_picker_.get_continuation_history_4(board, prev4_move, m);
-            cont6_val = move_picker_.get_continuation_history_6(board, prev6_move, m);
             quiets_searched++;
             if (num_quiets_tried < 64) {
                 quiets_tried[num_quiets_tried++] = m;
             }
         }
 
-        if (ply < 256) move_stack_[ply] = m;
+        if (ply < 256) {
+            move_stack_[ply] = m;
+            piece_stack_[ply] = board.piece_at(m.from());
+        }
         board.make_move(m);
         tt().prefetch(board.zobrist_key());
 
@@ -576,12 +634,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             int search_depth = depth - 1 + singular_extension;
             score = -negamax_alphabeta(board, search_depth, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), child_node, static_eval);
         } else {
+            int reduction = 0;
             // History-Based Late Move Reductions (LMR) for quiet moves & bad captures
             if ((i >= 3 && depth >= 3 && is_quiet && !in_chk) || is_bad_capture) {
-                int reduction = lmr_table[std::min(depth, 63)][std::min(i + 1, static_cast<size_t>(63))];
+                reduction = lmr_table[std::min(depth, 63)][std::min(i + 1, static_cast<size_t>(63))];
                 if (is_quiet) {
-                    int total_hist = history_val + 2 * cont1_val + cont2_val + cont4_val + (cont6_val / 2);
-
                     // Smooth continuous history reduction scaling
                     reduction -= total_hist / 8192;
                     if (!improving) reduction += 1;
@@ -598,14 +655,22 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 score = -negamax_alphabeta(board, depth - 1, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), child_node, static_eval);
             }
 
-            // PVS Re-Search: If zero-window search raised alpha, re-search with full [alpha, beta] window!
+            // If reduced search raised alpha (including score >= beta), re-search at full depth with zero window:
+            if (reduction > 0 && score > alpha) {
+                score = -negamax_alphabeta(board, depth - 1, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), child_node, static_eval);
+            }
+
+            // PVS Re-Search: If zero-window search raised alpha at a PV node (score < beta), re-search with full [alpha, beta] window!
             if (score > alpha && score < beta) {
                 score = -negamax_alphabeta(board, depth - 1, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), child_node, static_eval);
             }
         }
 
         board.unmake_move(m);
-        if (ply < 256) move_stack_[ply] = Move();
+        if (ply < 256) {
+            move_stack_[ply] = Move();
+            piece_stack_[ply] = Piece::None;
+        }
 
         if (time_stop_flag_) return 0;
 
@@ -620,22 +685,23 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 if (m.is_capture()) {
                     Piece attacker = board.piece_at(m.from());
                     Piece victim   = board.piece_at(m.to());
-                    move_picker_.add_capture_history(attacker, m.to(), piece_type_of(victim), depth);
+                    PieceType vic_pt = m.is_ep() ? PieceType::Pawn : piece_type_of(victim);
+                    move_picker_.add_capture_history(attacker, m.to(), vic_pt, depth);
                 } else {
                     move_picker_.add_killer_move(ply, m);
                     move_picker_.add_history_score(board.side_to_move(), m, depth);
                     if (static_cast<bool>(prev_move)) {
                         move_picker_.add_countermove(prev_move, m);
-                        move_picker_.add_continuation_history(board, prev_move, m, depth);
+                        move_picker_.add_continuation_history(board, prev_move, m, depth, prev_piece);
                     }
                     if (static_cast<bool>(prev2_move)) {
-                        move_picker_.add_continuation_history_2(board, prev2_move, m, depth);
+                        move_picker_.add_continuation_history_2(board, prev2_move, m, depth, prev2_piece);
                     }
                     if (static_cast<bool>(prev4_move)) {
-                        move_picker_.add_continuation_history_4(board, prev4_move, m, depth);
+                        move_picker_.add_continuation_history_4(board, prev4_move, m, depth, prev4_piece);
                     }
                     if (static_cast<bool>(prev6_move)) {
-                        move_picker_.add_continuation_history_6(board, prev6_move, m, depth);
+                        move_picker_.add_continuation_history_6(board, prev6_move, m, depth, prev6_piece);
                     }
 
                     // History Malus: Penalize all quiet moves searched prior to this cutoff
@@ -644,16 +710,16 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                         if (failed_q != m) {
                             move_picker_.sub_history_score(us, failed_q, depth);
                             if (static_cast<bool>(prev_move)) {
-                                move_picker_.sub_continuation_history(board, prev_move, failed_q, depth);
+                                move_picker_.sub_continuation_history(board, prev_move, failed_q, depth, prev_piece);
                             }
                             if (static_cast<bool>(prev2_move)) {
-                                move_picker_.sub_continuation_history_2(board, prev2_move, failed_q, depth);
+                                move_picker_.sub_continuation_history_2(board, prev2_move, failed_q, depth, prev2_piece);
                             }
                             if (static_cast<bool>(prev4_move)) {
-                                move_picker_.sub_continuation_history_4(board, prev4_move, failed_q, depth);
+                                move_picker_.sub_continuation_history_4(board, prev4_move, failed_q, depth, prev4_piece);
                             }
                             if (static_cast<bool>(prev6_move)) {
-                                move_picker_.sub_continuation_history_6(board, prev6_move, failed_q, depth);
+                                move_picker_.sub_continuation_history_6(board, prev6_move, failed_q, depth, prev6_piece);
                             }
                         }
                     }
@@ -823,6 +889,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     for (size_t i = 0; i < moves.size(); ++i) {
         const auto& m = moves[i];
         move_stack_[0] = m;
+        piece_stack_[0] = board.piece_at(m.from());
         board.make_move(m);
 
         TreeNodeJSON* child_json = nullptr;
@@ -847,6 +914,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
 
         board.unmake_move(m);
         move_stack_[0] = Move();
+        piece_stack_[0] = Piece::None;
 
         if (score > best_score) {
             best_score = score;
@@ -870,6 +938,172 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     result.q_nodes = q_nodes_;
 
     return result;
+}
+
+void SearchEngine::iterative_deepening_root(Board& board, int max_depth, uint64_t max_nodes, SearchResult& final_result) {
+    Move best_pv_move = Move();
+    int last_score = 0;
+    int stable_move_count = 0;
+
+    for (int d = 1; d <= max_depth; ++d) {
+        if (max_nodes > 0 && metrics_tracker_.get_metrics().total_nodes >= max_nodes) break;
+        metrics_tracker_.set_depth(d);
+
+        MoveList moves;
+        MoveGenerator::generate_legal_moves(board, moves);
+
+        if (moves.empty()) break;
+        if (!static_cast<bool>(final_result.best_move)) {
+            final_result.best_move = moves[0];
+        }
+
+        move_picker_.score_and_sort_moves(board, moves, 0, best_pv_move);
+
+        int alpha = -ScoreInfinity;
+        int beta  =  ScoreInfinity;
+        int window_delta = 12;
+
+        if (d >= 4 && std::abs(last_score) < ScoreMate - 1000) {
+            alpha = std::max(-ScoreInfinity, last_score - window_delta);
+            beta  = std::min(ScoreInfinity, last_score + window_delta);
+        }
+
+        int current_best_score = -ScoreInfinity;
+        Move current_best_move = moves[0];
+        bool interrupted = false;
+
+        while (true) {
+            current_best_score = -ScoreInfinity;
+            int search_alpha = alpha;
+
+            for (size_t i = 0; i < moves.size(); ++i) {
+                const auto& m = moves[i];
+                move_stack_[0] = m;
+                piece_stack_[0] = board.piece_at(m.from());
+                board.make_move(m);
+
+                int score = 0;
+                if (i == 0) {
+                    score = -negamax_alphabeta(board, d - 1, 1, -beta, -search_alpha, true, true, Move(), nullptr);
+                } else {
+                    score = -negamax_alphabeta(board, d - 1, 1, -search_alpha - 1, -search_alpha, true, true, Move(), nullptr);
+                    if (score > search_alpha && score < beta) {
+                        score = -negamax_alphabeta(board, d - 1, 1, -beta, -search_alpha, true, true, Move(), nullptr);
+                    }
+                }
+
+                board.unmake_move(m);
+                move_stack_[0] = Move();
+                piece_stack_[0] = Piece::None;
+
+                if (time_stop_flag_) {
+                    interrupted = true;
+                    break;
+                }
+
+                if (score > current_best_score) {
+                    current_best_score = score;
+                    current_best_move = m;
+                }
+
+                if (score > search_alpha) {
+                    search_alpha = score;
+                    pv_table_.set_move(0, m);
+                    pv_table_.update(0, m);
+                }
+
+                // Fail-High Early Break & Hoisting in Aspiration Window:
+                // If score >= beta, the aspiration window is exceeded.
+                // Break immediately and hoist the cut move to index 0 so it is searched first on widened re-search.
+                if (score >= beta) {
+                    if (i > 0) {
+                        std::swap(moves[0], moves[i]);
+                    }
+                    break;
+                }
+            }
+
+            if (interrupted) break;
+
+            if (current_best_score <= alpha) {
+                opt_time_ms_ = std::min(max_time_ms_, opt_time_ms_ * 1.5);
+                if (alpha <= -ScoreInfinity) break;
+                alpha = std::max(-ScoreInfinity, alpha - window_delta);
+                window_delta += window_delta / 2;
+            } else if (current_best_score >= beta) {
+                if (beta >= ScoreInfinity) break;
+                beta = std::min(ScoreInfinity, beta + window_delta);
+                window_delta += window_delta / 2;
+            } else {
+                break;
+            }
+        }
+
+        if (interrupted) break;
+
+        if (current_best_move == best_pv_move) {
+            stable_move_count++;
+        } else {
+            stable_move_count = 0;
+        }
+
+        best_pv_move = current_best_move;
+        last_score   = current_best_score;
+
+        final_result.best_move = current_best_move;
+        final_result.best_score = current_best_score;
+        final_result.pv = pv_table_.get_pv(d).to_vector();
+        final_result.completed_depth = d;
+        final_result.tt_hits = tt().hits();
+        final_result.q_nodes = q_nodes_;
+
+        if (uci_output_) {
+            auto now = std::chrono::high_resolution_clock::now();
+            uint64_t elapsed_ms = std::max<uint64_t>(1, std::chrono::duration_cast<std::chrono::milliseconds>(now - search_start_time_).count());
+            uint64_t total_nodes = node_count_ + q_nodes_;
+            uint64_t nps = (total_nodes * 1000) / elapsed_ms;
+
+            std::cout << "info depth " << d
+                      << " score ";
+            if (std::abs(current_best_score) >= ScoreMate - 1000) {
+                int mate_plies = ScoreMate - std::abs(current_best_score);
+                int mate_moves = (mate_plies + 1) / 2;
+                if (current_best_score < 0) mate_moves = -mate_moves;
+                std::cout << "mate " << mate_moves;
+            } else {
+                std::cout << "cp " << current_best_score;
+            }
+            std::cout << " nodes " << total_nodes
+                      << " nps " << nps
+                      << " time " << elapsed_ms
+                      << " hashfull " << tt().hashfull()
+                      << " pv";
+            for (const auto& pv_m : final_result.pv) {
+                std::cout << " " << move_to_uci(pv_m);
+            }
+            std::cout << std::endl;
+        }
+
+        // High-depth stable move early exit (saves clock time safely on rock-solid moves)
+        if (opt_time_ms_ > 0.0 && d >= 12 && stable_move_count >= 5) {
+            auto now = std::chrono::high_resolution_clock::now();
+            double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
+            if (elapsed >= opt_time_ms_ * 0.85) {
+                break;
+            }
+        }
+
+        // Soft Time Allocation: Stop iterative deepening between iterations if optimum time expired
+        if (opt_time_ms_ > 0.0 && d >= 5) {
+            auto now = std::chrono::high_resolution_clock::now();
+            double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
+            if (elapsed >= opt_time_ms_ || (stable_move_count >= 4 && elapsed >= opt_time_ms_ * 0.70)) {
+                break;
+            }
+        }
+
+        if (is_time_up()) break;
+    }
 }
 
 SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_depth, double max_time_ms, uint64_t max_nodes, double opt_time_ms) {
@@ -905,9 +1139,6 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
     metrics_tracker_.set_version("v10.0 (Master Lazy SMP)");
 
     SearchResult final_result;
-    Move best_pv_move = Move();
-    int last_score = 0;
-    int stable_move_count = 0;
 
 #if defined(_OPENMP)
     int n_threads = num_threads_;
@@ -916,144 +1147,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
         {
             int tid = omp_get_thread_num();
             if (tid == 0) {
-                for (int d = 1; d <= max_depth; ++d) {
-                    if (max_nodes > 0 && metrics_tracker_.get_metrics().total_nodes >= max_nodes) break;
-                    metrics_tracker_.set_depth(d);
-
-                    MoveList moves;
-                    MoveGenerator::generate_legal_moves(board, moves);
-
-                    if (moves.empty()) break;
-                    if (!static_cast<bool>(final_result.best_move)) {
-                        final_result.best_move = moves[0];
-                    }
-
-                    move_picker_.score_and_sort_moves(board, moves, 0, best_pv_move);
-
-                    int alpha = -ScoreInfinity;
-                    int beta  =  ScoreInfinity;
-                    int window_delta = 12;
-
-                    if (d >= 4 && std::abs(last_score) < ScoreMate - 1000) {
-                        alpha = std::max(-ScoreInfinity, last_score - window_delta);
-                        beta  = std::min(ScoreInfinity, last_score + window_delta);
-                    }
-
-                    int current_best_score = -ScoreInfinity;
-                    Move current_best_move = moves[0];
-                    bool interrupted = false;
-
-                    while (true) {
-                        current_best_score = -ScoreInfinity;
-                        int search_alpha = alpha;
-
-                        for (size_t i = 0; i < moves.size(); ++i) {
-                            const auto& m = moves[i];
-                            move_stack_[0] = m;
-                            board.make_move(m);
-
-                            int score = 0;
-                            if (i == 0) {
-                                score = -negamax_alphabeta(board, d - 1, 1, -beta, -search_alpha, true, true, Move(), nullptr);
-                            } else {
-                                score = -negamax_alphabeta(board, d - 1, 1, -search_alpha - 1, -search_alpha, true, true, Move(), nullptr);
-                                if (score > search_alpha && score < beta) {
-                                    score = -negamax_alphabeta(board, d - 1, 1, -beta, -search_alpha, true, true, Move(), nullptr);
-                                }
-                            }
-
-                            board.unmake_move(m);
-                            move_stack_[0] = Move();
-
-                            if (time_stop_flag_) {
-                                interrupted = true;
-                                break;
-                            }
-
-                            if (score > current_best_score) {
-                                current_best_score = score;
-                                current_best_move = m;
-                            }
-
-                            if (score > search_alpha) {
-                                search_alpha = score;
-                                pv_table_.set_move(0, m);
-                                pv_table_.update(0, m);
-                            }
-                        }
-
-                        if (interrupted) break;
-
-                        if (current_best_score <= alpha) {
-                            opt_time_ms_ = std::min(max_time_ms_, opt_time_ms_ * 1.5);
-                            if (alpha <= -ScoreInfinity) break;
-                            alpha = std::max(-ScoreInfinity, alpha - window_delta);
-                            window_delta += window_delta / 2;
-                        } else if (current_best_score >= beta) {
-                            if (beta >= ScoreInfinity) break;
-                            beta = std::min(ScoreInfinity, beta + window_delta);
-                            window_delta += window_delta / 2;
-                        } else {
-                            break;
-                        }
-                    }
-
-                    if (interrupted) break;
-
-                    if (current_best_move == best_pv_move) {
-                        stable_move_count++;
-                    } else {
-                        stable_move_count = 0;
-                    }
-
-                    best_pv_move = current_best_move;
-                    last_score   = current_best_score;
-
-                    final_result.best_move = current_best_move;
-                    final_result.best_score = current_best_score;
-                    final_result.pv = pv_table_.get_pv(d).to_vector();
-                    final_result.completed_depth = d;
-                    final_result.tt_hits = tt().hits();
-                    final_result.q_nodes = q_nodes_;
-
-                    if (uci_output_) {
-                        auto now = std::chrono::high_resolution_clock::now();
-                        uint64_t elapsed_ms = std::max<uint64_t>(1, std::chrono::duration_cast<std::chrono::milliseconds>(now - search_start_time_).count());
-                        uint64_t total_nodes = node_count_ + q_nodes_;
-                        uint64_t nps = (total_nodes * 1000) / elapsed_ms;
-
-                        std::cout << "info depth " << d
-                                  << " score ";
-                        if (std::abs(current_best_score) >= ScoreMate - 1000) {
-                            int mate_plies = ScoreMate - std::abs(current_best_score);
-                            int mate_moves = (mate_plies + 1) / 2;
-                            if (current_best_score < 0) mate_moves = -mate_moves;
-                            std::cout << "mate " << mate_moves;
-                        } else {
-                            std::cout << "cp " << current_best_score;
-                        }
-                        std::cout << " nodes " << total_nodes
-                                  << " nps " << nps
-                                  << " time " << elapsed_ms
-                                  << " hashfull " << tt().hashfull()
-                                  << " pv";
-                        for (const auto& pv_m : final_result.pv) {
-                            std::cout << " " << move_to_uci(pv_m);
-                        }
-                        std::cout << std::endl;
-                    }
-
-                    // High-depth stable move early exit (saves clock time safely on rock-solid moves)
-                    if (opt_time_ms_ > 0.0 && d >= 12 && stable_move_count >= 5) {
-                        auto now = std::chrono::high_resolution_clock::now();
-                        double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
-                        if (elapsed >= opt_time_ms_ * 0.85) {
-                            break;
-                        }
-                    }
-
-                    if (is_time_up()) break;
-                }
+                iterative_deepening_root(board, max_depth, max_nodes, final_result);
                 time_stop_flag_.store(true, std::memory_order_relaxed);
             } else {
                 // Helper thread (sharing master TT, private thread-local MovePicker history tables)
@@ -1076,10 +1170,12 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                     for (const auto& m : moves) {
                         if (time_stop_flag_ || helper.time_stop_flag_) break;
                         helper.move_stack_[0] = m;
+                        helper.piece_stack_[0] = helper_board.piece_at(m.from());
                         helper_board.make_move(m);
                         helper.negamax_alphabeta(helper_board, d - 1, 1, -ScoreInfinity, ScoreInfinity, true, true, Move(), nullptr);
                         helper_board.unmake_move(m);
                         helper.move_stack_[0] = Move();
+                        helper.piece_stack_[0] = Piece::None;
                     }
                 }
             }
@@ -1087,116 +1183,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
     } else
 #endif
     {
-        for (int d = 1; d <= max_depth; ++d) {
-            if (max_nodes > 0 && metrics_tracker_.get_metrics().total_nodes >= max_nodes) break;
-            metrics_tracker_.set_depth(d);
-
-            MoveList moves;
-            MoveGenerator::generate_legal_moves(board, moves);
-
-            if (moves.empty()) break;
-            if (!static_cast<bool>(final_result.best_move)) {
-                final_result.best_move = moves[0];
-            }
-
-            move_picker_.score_and_sort_moves(board, moves, 0, best_pv_move);
-
-            int alpha = -ScoreInfinity;
-            int beta  =  ScoreInfinity;
-            int window_delta = 12;
-
-            if (d >= 4 && std::abs(last_score) < ScoreMate - 1000) {
-                alpha = std::max(-ScoreInfinity, last_score - window_delta);
-                beta  = std::min(ScoreInfinity, last_score + window_delta);
-            }
-
-            int current_best_score = -ScoreInfinity;
-            Move current_best_move = moves[0];
-            bool interrupted = false;
-
-            while (true) {
-                current_best_score = -ScoreInfinity;
-                int search_alpha = alpha;
-
-                for (size_t i = 0; i < moves.size(); ++i) {
-                    const auto& m = moves[i];
-                    move_stack_[0] = m;
-                    board.make_move(m);
-
-                    int score = 0;
-                    if (i == 0) {
-                        score = -negamax_alphabeta(board, d - 1, 1, -beta, -search_alpha, true, true, Move(), nullptr);
-                    } else {
-                        score = -negamax_alphabeta(board, d - 1, 1, -search_alpha - 1, -search_alpha, true, true, Move(), nullptr);
-                        if (score > search_alpha && score < beta) {
-                            score = -negamax_alphabeta(board, d - 1, 1, -beta, -search_alpha, true, true, Move(), nullptr);
-                        }
-                    }
-
-                    board.unmake_move(m);
-                    move_stack_[0] = Move();
-
-                    if (time_stop_flag_) {
-                        interrupted = true;
-                        break;
-                    }
-
-                    if (score > current_best_score) {
-                        current_best_score = score;
-                        current_best_move = m;
-                    }
-
-                    if (score > search_alpha) {
-                        search_alpha = score;
-                        pv_table_.set_move(0, m);
-                        pv_table_.update(0, m);
-                    }
-                }
-
-                if (interrupted) break;
-
-                if (current_best_score <= alpha) {
-                    opt_time_ms_ = std::min(max_time_ms_, opt_time_ms_ * 1.5);
-                    if (alpha <= -ScoreInfinity) break;
-                    alpha = std::max(-ScoreInfinity, alpha - window_delta);
-                    window_delta += window_delta / 2;
-                } else if (current_best_score >= beta) {
-                    if (beta >= ScoreInfinity) break;
-                    beta = std::min(ScoreInfinity, beta + window_delta);
-                    window_delta += window_delta / 2;
-                } else {
-                    break;
-                }
-            }
-
-            if (interrupted) break;
-
-            if (current_best_move == best_pv_move) {
-                stable_move_count++;
-            } else {
-                stable_move_count = 0;
-            }
-
-            best_pv_move = current_best_move;
-            last_score   = current_best_score;
-
-            final_result.best_move = current_best_move;
-            final_result.best_score = current_best_score;
-            final_result.pv = pv_table_.get_pv(d).to_vector();
-            final_result.completed_depth = d;
-            final_result.tt_hits = tt().hits();
-            final_result.q_nodes = q_nodes_;
-
-            if (opt_time_ms_ > 0.0 && d >= 12 && stable_move_count >= 5) {
-                auto now = std::chrono::high_resolution_clock::now();
-                double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
-                if (elapsed >= opt_time_ms_ * 0.85) {
-                    break;
-                }
-            }
-
-            if (is_time_up()) break;
-        }
+        iterative_deepening_root(board, max_depth, max_nodes, final_result);
     }
 
     metrics_tracker_.stop_timer();

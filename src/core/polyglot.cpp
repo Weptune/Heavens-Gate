@@ -1,13 +1,14 @@
 #include "polyglot.hpp"
 #include "../movegen/movegen.hpp"
+#include "../movegen/attack_masks.hpp"
 #include <fstream>
 #include <random>
 #include <algorithm>
 
 namespace heavensgate {
 
-// PolyGlot Random Keys for Pieces, Castling, EnPassant, Turn
-static const uint64_t RandomPiece[15][64] = {
+// Official PolyGlot Random Table (781 64-bit integers)
+static const uint64_t PolyGlotRandom[781] = {
     #include "polyglot_keys.inc"
 };
 
@@ -42,37 +43,44 @@ uint64_t PolyGlotBook::compute_polyglot_key(const Board& board) {
         Color c = color_of(p);
         PieceType pt = piece_type_of(p);
 
-        int piece_idx = 0;
+        int piece_type_num = 0;
         switch (pt) {
-            case PieceType::Pawn:   piece_idx = 0; break;
-            case PieceType::Knight: piece_idx = 1; break;
-            case PieceType::Bishop: piece_idx = 2; break;
-            case PieceType::Rook:   piece_idx = 3; break;
-            case PieceType::Queen:  piece_idx = 4; break;
-            case PieceType::King:   piece_idx = 5; break;
+            case PieceType::Pawn:   piece_type_num = 1; break;
+            case PieceType::Knight: piece_type_num = 2; break;
+            case PieceType::Bishop: piece_type_num = 3; break;
+            case PieceType::Rook:   piece_type_num = 4; break;
+            case PieceType::Queen:  piece_type_num = 5; break;
+            case PieceType::King:   piece_type_num = 6; break;
+            default: break;
         }
-        if (c == Color::Black) piece_idx += 6;
 
-        key ^= RandomPiece[piece_idx][sq];
+        // PolyGlot piece indexing: Black is even (0, 2, 4...), White is odd (1, 3, 5...)
+        int piece_idx = (piece_type_num - 1) * 2 + (c == Color::White ? 1 : 0);
+        key ^= PolyGlotRandom[piece_idx * 64 + sq];
     }
 
-    // Castling keys (PolyGlot indices: White O-O 0, White O-O-O 1, Black O-O 2, Black O-O-O 3)
+    // Castling keys (PolyGlot indices: White O-O 768, White O-O-O 769, Black O-O 770, Black O-O-O 771)
     CastlingRights cr = board.castling_rights();
-    if ((cr & WhiteOO)  != 0) key ^= RandomPiece[12][0];
-    if ((cr & WhiteOOO) != 0) key ^= RandomPiece[12][1];
-    if ((cr & BlackOO)  != 0) key ^= RandomPiece[12][2];
-    if ((cr & BlackOOO) != 0) key ^= RandomPiece[12][3];
+    if ((cr & WhiteOO)  != 0) key ^= PolyGlotRandom[768];
+    if ((cr & WhiteOOO) != 0) key ^= PolyGlotRandom[769];
+    if ((cr & BlackOO)  != 0) key ^= PolyGlotRandom[770];
+    if ((cr & BlackOOO) != 0) key ^= PolyGlotRandom[771];
 
-    // En Passant key
+    // En Passant key: PolyGlot only hashes EP if an enemy pawn can legally/pseudo-legally capture
     Square ep_sq = board.en_passant_sq();
     if (ep_sq != Square::None) {
-        int file = static_cast<int>(file_of(ep_sq));
-        key ^= RandomPiece[13][file];
+        Color us = board.side_to_move();
+        Bitboard pawns = board.pieces(make_piece(us, PieceType::Pawn));
+        Bitboard ep_attackers = AttackMasks::pawn_attacks(~us, ep_sq) & pawns;
+        if (ep_attackers) {
+            int file = static_cast<int>(file_of(ep_sq));
+            key ^= PolyGlotRandom[772 + file];
+        }
     }
 
-    // Side to Move key (White = 0, Black = 1)
+    // Side to Move key: PolyGlot hashes 780 if White to move, 0 if Black to move
     if (board.side_to_move() == Color::White) {
-        key ^= RandomPiece[14][0];
+        key ^= PolyGlotRandom[780];
     }
 
     return key;
@@ -99,6 +107,11 @@ bool PolyGlotBook::load(const std::string& filepath) {
         entries_[i].weight = swap16(entries_[i].weight);
         entries_[i].learn  = swap32(entries_[i].learn);
     }
+
+    // Ensure sorted order for binary search (std::lower_bound)
+    std::sort(entries_.begin(), entries_.end(), [](const PolyGlotEntry& a, const PolyGlotEntry& b) {
+        return a.key < b.key;
+    });
 
     loaded_ = !entries_.empty();
     return loaded_;

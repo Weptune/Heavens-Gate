@@ -16,8 +16,9 @@ public:
     constexpr MoveList() noexcept = default;
 
     constexpr void push_back(Move m) noexcept {
-        assert(size_ < 256);
-        moves_[size_++] = m;
+        if (size_ < 256) {
+            moves_[size_++] = m;
+        }
     }
 
     constexpr size_t size() const noexcept { return size_; }

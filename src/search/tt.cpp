@@ -49,6 +49,26 @@ TTEntry* TranspositionTable::probe(uint64_t key) noexcept {
     return nullptr;
 }
 
+bool TranspositionTable::probe(uint64_t key, TTEntry& entry) noexcept {
+    if (num_buckets_ == 0) return false;
+    probes_++;
+
+    size_t idx = static_cast<size_t>(key & mask_);
+    const TTBucket& bucket = table_[idx];
+
+    for (int i = 0; i < 4; ++i) {
+        TTEntry e = bucket.entries[i]; // Local copy to protect against concurrent torn writes
+        if (e.bound == TTBound::None) continue;
+        uint64_t d = e.data_word();
+        if ((e.key ^ d) == key) {
+            hits_++;
+            entry = e;
+            return true;
+        }
+    }
+    return false;
+}
+
 void TranspositionTable::prefetch(uint64_t key) const noexcept {
     if (num_buckets_ > 0) {
         size_t idx = static_cast<size_t>(key & mask_);

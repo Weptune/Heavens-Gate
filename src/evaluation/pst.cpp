@@ -7,7 +7,7 @@ namespace heavensgate {
 const std::array<int, 64> PieceSquareTables::PawnMG = {
       0,  0,  0,  0,  0,  0,  0,  0, // Rank 1 (a1..h1)
       0, 10, 15, 20, 20, 15, 10,  0, // Rank 2 (a2..h2)
-      5, -5,-10,  0,  0,-10, -5,  5, // Rank 3 (a3..h3)
+      5,  5,  0,  0,  0,  0,  5,  5, // Rank 3 (a3..h3)
       0,  0,  0, 20, 20,  0,  0,  0, // Rank 4 (a4..h4)
       5,  5, 10, 25, 25, 10,  5,  5, // Rank 5 (a5..h5)
      10, 10, 20, 30, 30, 20, 10, 10, // Rank 6 (a6..h6)

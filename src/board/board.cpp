@@ -2,6 +2,7 @@
 #include "../core/fen.hpp"
 #include "../core/zobrist.hpp"
 #include "../evaluation/pst.hpp"
+#include "../evaluation/eval_params.hpp"
 #include <algorithm>
 
 namespace heavensgate {
@@ -34,7 +35,6 @@ void Board::clear() {
 
     history_.clear();
     pos_history_.clear();
-    accumulator_ = Accumulator{};
 }
 
 void Board::reset() {
@@ -45,8 +45,6 @@ void Board::load_fen(const std::string& fen_str) {
     clear();
     FEN::parse(fen_str, *this);
     pos_history_.push_back(zobrist_key_);
-    accumulator_.computed[0] = false;
-    accumulator_.computed[1] = false;
 }
 
 void Board::recalculate_zobrist_key() {
@@ -72,11 +70,11 @@ void Board::set_piece(Square sq, Piece p) {
 
     int mg_val = 0, eg_val = 0, phase_w = 0;
     switch (pt) {
-        case PieceType::Pawn:   mg_val = 100; eg_val = 120; phase_w = 0; break;
-        case PieceType::Knight: mg_val = 320; eg_val = 310; phase_w = 1; break;
-        case PieceType::Bishop: mg_val = 330; eg_val = 340; phase_w = 1; break;
-        case PieceType::Rook:   mg_val = 500; eg_val = 530; phase_w = 2; break;
-        case PieceType::Queen:  mg_val = 900; eg_val = 950; phase_w = 4; break;
+        case PieceType::Pawn:   mg_val = g_eval_params.pawn_mg;   eg_val = g_eval_params.pawn_eg;   phase_w = 0; break;
+        case PieceType::Knight: mg_val = g_eval_params.knight_mg; eg_val = g_eval_params.knight_eg; phase_w = 1; break;
+        case PieceType::Bishop: mg_val = g_eval_params.bishop_mg; eg_val = g_eval_params.bishop_eg; phase_w = 1; break;
+        case PieceType::Rook:   mg_val = g_eval_params.rook_mg;   eg_val = g_eval_params.rook_eg;   phase_w = 2; break;
+        case PieceType::Queen:  mg_val = g_eval_params.queen_mg;  eg_val = g_eval_params.queen_eg;  phase_w = 4; break;
         default: break;
     }
 
@@ -107,11 +105,11 @@ void Board::remove_piece(Square sq) {
 
     int mg_val = 0, eg_val = 0, phase_w = 0;
     switch (pt) {
-        case PieceType::Pawn:   mg_val = 100; eg_val = 120; phase_w = 0; break;
-        case PieceType::Knight: mg_val = 320; eg_val = 310; phase_w = 1; break;
-        case PieceType::Bishop: mg_val = 330; eg_val = 340; phase_w = 1; break;
-        case PieceType::Rook:   mg_val = 500; eg_val = 530; phase_w = 2; break;
-        case PieceType::Queen:  mg_val = 900; eg_val = 950; phase_w = 4; break;
+        case PieceType::Pawn:   mg_val = g_eval_params.pawn_mg;   eg_val = g_eval_params.pawn_eg;   phase_w = 0; break;
+        case PieceType::Knight: mg_val = g_eval_params.knight_mg; eg_val = g_eval_params.knight_eg; phase_w = 1; break;
+        case PieceType::Bishop: mg_val = g_eval_params.bishop_mg; eg_val = g_eval_params.bishop_eg; phase_w = 1; break;
+        case PieceType::Rook:   mg_val = g_eval_params.rook_mg;   eg_val = g_eval_params.rook_eg;   phase_w = 2; break;
+        case PieceType::Queen:  mg_val = g_eval_params.queen_mg;  eg_val = g_eval_params.queen_eg;  phase_w = 4; break;
         default: break;
     }
 
@@ -271,9 +269,6 @@ void Board::make_move(const Move& m) {
 
     side_to_move_ = them;
     pos_history_.push_back(zobrist_key_);
-
-    accumulator_.computed[0] = false;
-    accumulator_.computed[1] = false;
 }
 
 void Board::unmake_move(const Move& m) {
@@ -329,9 +324,6 @@ void Board::unmake_move(const Move& m) {
     ep_square_ = state.ep_square;
     halfmove_clock_ = state.halfmove_clock;
     zobrist_key_ = state.zobrist_key;
-
-    accumulator_.computed[0] = false;
-    accumulator_.computed[1] = false;
 }
 
 void Board::make_null_move() {

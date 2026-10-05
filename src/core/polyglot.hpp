@@ -29,6 +29,7 @@ public:
     static uint64_t compute_polyglot_key(const Board& board);
 
     bool is_loaded() const { return loaded_; }
+    size_t size() const { return entries_.size(); }
 
 private:
     std::vector<PolyGlotEntry> entries_;

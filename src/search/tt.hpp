@@ -55,6 +55,7 @@ public:
     uint8_t generation() const noexcept { return generation_; }
 
     TTEntry* probe(uint64_t key) noexcept;
+    bool probe(uint64_t key, TTEntry& entry) noexcept;
     void store(uint64_t key, Move move, int score, int depth, TTBound bound, int ply) noexcept;
 
     void prefetch(uint64_t key) const noexcept;

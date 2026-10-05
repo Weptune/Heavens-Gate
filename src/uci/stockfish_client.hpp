@@ -196,10 +196,11 @@ public:
 
         if (!is_running) return false;
 
-        if (current_elo >= 3500 || current_elo <= 0) {
+        if (current_elo >= 3200 || current_elo <= 0) {
             send_cmd("setoption name UCI_LimitStrength value false");
         } else {
-            send_cmd("setoption name UCI_Elo value " + std::to_string(current_elo));
+            int sf_elo = std::clamp(current_elo, 1320, 3190);
+            send_cmd("setoption name UCI_Elo value " + std::to_string(sf_elo));
             send_cmd("setoption name UCI_LimitStrength value true");
         }
         send_cmd("setoption name Threads value " + std::to_string(threads));
