@@ -33,6 +33,8 @@ public:
     static std::array<Bitboard, 64> pawn_attacks_table[2];
     static std::array<Bitboard, 64> knight_attacks_table;
     static std::array<Bitboard, 64> king_attacks_table;
+    static std::array<std::array<Bitboard, 64>, 64> between_table;
+    static std::array<std::array<Bitboard, 64>, 64> line_table;
 
     static void init();
 
@@ -52,18 +54,28 @@ public:
     }
 
     static Bitboard bishop_attacks(Square sq, Bitboard occupied) noexcept {
-        if (sq == Square::None) return EmptyBB;
+        if (static_cast<size_t>(sq) >= 64) return EmptyBB;
         return MagicBitboards::bishop_attacks(sq, occupied);
     }
 
     static Bitboard rook_attacks(Square sq, Bitboard occupied) noexcept {
-        if (sq == Square::None) return EmptyBB;
+        if (static_cast<size_t>(sq) >= 64) return EmptyBB;
         return MagicBitboards::rook_attacks(sq, occupied);
     }
 
     static Bitboard queen_attacks(Square sq, Bitboard occupied) noexcept {
-        if (sq == Square::None) return EmptyBB;
+        if (static_cast<size_t>(sq) >= 64) return EmptyBB;
         return MagicBitboards::queen_attacks(sq, occupied);
+    }
+
+    static Bitboard between(Square s1, Square s2) noexcept {
+        if (static_cast<size_t>(s1) >= 64 || static_cast<size_t>(s2) >= 64) return EmptyBB;
+        return between_table[static_cast<size_t>(s1)][static_cast<size_t>(s2)];
+    }
+
+    static Bitboard line(Square s1, Square s2) noexcept {
+        if (static_cast<size_t>(s1) >= 64 || static_cast<size_t>(s2) >= 64) return EmptyBB;
+        return line_table[static_cast<size_t>(s1)][static_cast<size_t>(s2)];
     }
 };
 
