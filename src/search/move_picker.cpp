@@ -560,20 +560,10 @@ bool MovePicker::see_ge(const Board& board, Move m, int threshold) noexcept {
         }
     };
 
-    int promo_val = m.is_promotion() ? (get_val(m.promotion_piece_type()) - PawnValue) : 0;
-    int vic_val = (m.is_ep() ? PawnValue : get_val(piece_type_of(victim))) + promo_val;
-    int att_val = get_val(piece_type_of(attacker));
-
-    // Fast O(1) SEE Pruning:
-    // 1. Initial capture alone cannot reach threshold:
-    if (vic_val < threshold) return false;
-
-    // 2. Capturing piece is equal or lower value than victim, guaranteed >= 0:
-    if (vic_val >= att_val && threshold <= 0) return true;
-
     int gain[32];
     int d = 0;
-    gain[d] = vic_val;
+    int promo_val = m.is_promotion() ? (get_val(m.promotion_piece_type()) - PawnValue) : 0;
+    gain[d] = (m.is_ep() ? PawnValue : get_val(piece_type_of(victim))) + promo_val;
 
     Bitboard occ = board.occupied();
     occ ^= square_bb(from); // Remove initial attacker

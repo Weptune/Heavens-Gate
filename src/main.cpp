@@ -46,9 +46,9 @@ const std::vector<std::string> TournamentOpenings = {
     "rnbqkb1r/pp2pppp/3p1n2/8/3NP3/8/PPP2PPP/RNBQKB1R w KQkq - 0 5",      // 3. Sicilian Defense: Najdorf
     "r1bqkb1r/pp1ppp1p/2n2np1/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 6",  // 4. Sicilian Defense: Dragon
     "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3", // 5. Ruy Lopez: Main Line
-    "r1bqkb1r/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",  // 6. Ruy Lopez: Berlin
+    "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",  // 6. Ruy Lopez: Berlin
     "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",     // 7. French Defense: Advance
-    "rnbqk1nr/pppp1ppp/4p3/8/3PP3/2b5/PPP2PPP/R1BQKBNR w KQkq - 0 4",     // 8. French Defense: Winawer
+    "rnbqk1nr/ppp2ppp/4p3/3p4/1b1PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 2 4",     // 8. French Defense: Winawer
     "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2",     // 9. Queen's Gambit Declined
     "rnbqkbnr/ppp1pppp/8/8/2pP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3",         // 10. Queen's Gambit Accepted
     "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP2BPPP/R1BQK2R b KQ - 1 6",  // 11. King's Indian: Classical
@@ -187,9 +187,12 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
 
             bool current_is_master = (board.side_to_move() == Color::White) ? a_is_white : !a_is_white;
             int active_clock_ms = (board.side_to_move() == Color::White) ? white_clock_ms : black_clock_ms;
-            double time_alloc = is_fixed_movetime ? fixed_movetime_ms : (is_time_control ? std::max(200.0, std::min((active_clock_ms / 35.0) + (inc_ms * 0.8), active_clock_ms * 0.8)) : 0.0);
-            double opt_time = is_fixed_movetime ? fixed_movetime_ms : (is_time_control ? std::min(time_alloc, active_clock_ms * 0.50) : 0.0);
-            double max_time = is_fixed_movetime ? fixed_movetime_ms : (is_time_control ? std::min(time_alloc * 3.5, active_clock_ms * 0.85) : 0.0);
+            double divisor = (inc_ms > 0) ? 35.0 : 45.0;
+            double clock_cap = (inc_ms > 0) ? 0.40 : 0.20;
+            double max_mult = (inc_ms > 0) ? 2.5 : 1.8;
+            double time_alloc = is_fixed_movetime ? fixed_movetime_ms : (is_time_control ? std::max(100.0, std::min((active_clock_ms / divisor) + (inc_ms * 0.8), active_clock_ms * clock_cap)) : 0.0);
+            double opt_time = is_fixed_movetime ? fixed_movetime_ms : (is_time_control ? std::min(time_alloc, active_clock_ms * 0.35) : 0.0);
+            double max_time = is_fixed_movetime ? fixed_movetime_ms : (is_time_control ? std::min(time_alloc * max_mult, active_clock_ms * clock_cap) : 0.0);
 
             auto move_start = std::chrono::high_resolution_clock::now();
             SearchResult res;
