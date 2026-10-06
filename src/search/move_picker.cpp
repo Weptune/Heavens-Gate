@@ -156,7 +156,7 @@ void MovePicker::add_continuation_history(const Board& board, Move prev_move, Mo
 
     if (curr_p_idx < 14 && prev_p_idx < 14) {
         int bonus = std::clamp(depth * depth, -400, 400);
-        int& val = cont_tables_->cont_history[curr_p_idx][curr_to][prev_p_idx][prev_to];
+        auto& val = cont_tables_->cont_history[curr_p_idx][curr_to][prev_p_idx][prev_to];
         val += bonus - (val * std::abs(bonus)) / 16384;
     }
 }
@@ -175,7 +175,7 @@ void MovePicker::sub_continuation_history(const Board& board, Move prev_move, Mo
 
     if (curr_p_idx < 14 && prev_p_idx < 14) {
         int bonus = std::clamp(depth * depth, -400, 400);
-        int& val = cont_tables_->cont_history[curr_p_idx][curr_to][prev_p_idx][prev_to];
+        auto& val = cont_tables_->cont_history[curr_p_idx][curr_to][prev_p_idx][prev_to];
         val -= bonus + (val * std::abs(bonus)) / 16384;
     }
 }
@@ -212,7 +212,7 @@ void MovePicker::add_continuation_history_2(const Board& board, Move prev2_move,
 
     if (curr_p_idx < 14 && prev2_p_idx < 14) {
         int bonus = std::clamp(depth * depth, -400, 400);
-        int& val = cont_tables_->cont_history_2[curr_p_idx][curr_to][prev2_p_idx][prev2_to];
+        auto& val = cont_tables_->cont_history_2[curr_p_idx][curr_to][prev2_p_idx][prev2_to];
         val += bonus - (val * std::abs(bonus)) / 16384;
     }
 }
@@ -231,7 +231,7 @@ void MovePicker::sub_continuation_history_2(const Board& board, Move prev2_move,
 
     if (curr_p_idx < 14 && prev2_p_idx < 14) {
         int bonus = std::clamp(depth * depth, -400, 400);
-        int& val = cont_tables_->cont_history_2[curr_p_idx][curr_to][prev2_p_idx][prev2_to];
+        auto& val = cont_tables_->cont_history_2[curr_p_idx][curr_to][prev2_p_idx][prev2_to];
         val -= bonus + (val * std::abs(bonus)) / 16384;
     }
 }
@@ -268,7 +268,7 @@ void MovePicker::add_continuation_history_4(const Board& board, Move prev4_move,
 
     if (curr_p_idx < 14 && prev4_p_idx < 14) {
         int bonus = std::clamp(depth * depth, -400, 400);
-        int& val = cont_tables_->cont_history_4[curr_p_idx][curr_to][prev4_p_idx][prev4_to];
+        auto& val = cont_tables_->cont_history_4[curr_p_idx][curr_to][prev4_p_idx][prev4_to];
         val += bonus - (val * std::abs(bonus)) / 16384;
     }
 }
@@ -287,7 +287,7 @@ void MovePicker::sub_continuation_history_4(const Board& board, Move prev4_move,
 
     if (curr_p_idx < 14 && prev4_p_idx < 14) {
         int bonus = std::clamp(depth * depth, -400, 400);
-        int& val = cont_tables_->cont_history_4[curr_p_idx][curr_to][prev4_p_idx][prev4_to];
+        auto& val = cont_tables_->cont_history_4[curr_p_idx][curr_to][prev4_p_idx][prev4_to];
         val -= bonus + (val * std::abs(bonus)) / 16384;
     }
 }
@@ -324,7 +324,7 @@ void MovePicker::add_continuation_history_6(const Board& board, Move prev6_move,
 
     if (curr_p_idx < 14 && prev6_p_idx < 14) {
         int bonus = std::clamp(depth * depth, -400, 400);
-        int& val = cont_tables_->cont_history_6[curr_p_idx][curr_to][prev6_p_idx][prev6_to];
+        auto& val = cont_tables_->cont_history_6[curr_p_idx][curr_to][prev6_p_idx][prev6_to];
         val += bonus - (val * std::abs(bonus)) / 16384;
     }
 }
@@ -343,7 +343,7 @@ void MovePicker::sub_continuation_history_6(const Board& board, Move prev6_move,
 
     if (curr_p_idx < 14 && prev6_p_idx < 14) {
         int bonus = std::clamp(depth * depth, -400, 400);
-        int& val = cont_tables_->cont_history_6[curr_p_idx][curr_to][prev6_p_idx][prev6_to];
+        auto& val = cont_tables_->cont_history_6[curr_p_idx][curr_to][prev6_p_idx][prev6_to];
         val -= bonus + (val * std::abs(bonus)) / 16384;
     }
 }
@@ -374,7 +374,7 @@ void MovePicker::add_capture_history(Piece attacker, Square to, PieceType victim
 
     if (att_idx < 14 && to_idx < 64 && vic_idx < 6) {
         int bonus = std::clamp(depth * depth, -400, 400);
-        int& val = cont_tables_->capture_history[att_idx][to_idx][vic_idx];
+        auto& val = cont_tables_->capture_history[att_idx][to_idx][vic_idx];
         val += bonus - (val * std::abs(bonus)) / 16384;
     }
 }
@@ -560,10 +560,20 @@ bool MovePicker::see_ge(const Board& board, Move m, int threshold) noexcept {
         }
     };
 
+    int promo_val = m.is_promotion() ? (get_val(m.promotion_piece_type()) - PawnValue) : 0;
+    int vic_val = (m.is_ep() ? PawnValue : get_val(piece_type_of(victim))) + promo_val;
+    int att_val = get_val(piece_type_of(attacker));
+
+    // Fast O(1) SEE Pruning:
+    // 1. Initial capture alone cannot reach threshold:
+    if (vic_val < threshold) return false;
+
+    // 2. Capturing piece is equal or lower value than victim, guaranteed >= 0:
+    if (vic_val >= att_val && threshold <= 0) return true;
+
     int gain[32];
     int d = 0;
-    int promo_val = m.is_promotion() ? (get_val(m.promotion_piece_type()) - PawnValue) : 0;
-    gain[d] = (m.is_ep() ? PawnValue : get_val(piece_type_of(victim))) + promo_val;
+    gain[d] = vic_val;
 
     Bitboard occ = board.occupied();
     occ ^= square_bb(from); // Remove initial attacker

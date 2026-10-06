@@ -8,11 +8,11 @@
 namespace heavensgate {
 
 struct ContHistoryTables {
-    std::array<std::array<std::array<std::array<int, 64>, 14>, 64>, 14> cont_history{};   // 1-ply (opp move 1 ply ago)
-    std::array<std::array<std::array<std::array<int, 64>, 14>, 64>, 14> cont_history_2{}; // 2-ply (self move 2 plies ago)
-    std::array<std::array<std::array<std::array<int, 64>, 14>, 64>, 14> cont_history_4{}; // 4-ply (self move 4 plies ago)
-    std::array<std::array<std::array<std::array<int, 64>, 14>, 64>, 14> cont_history_6{}; // 6-ply (self move 6 plies ago)
-    std::array<std::array<std::array<int, 6>, 64>, 14> capture_history{};
+    std::array<std::array<std::array<std::array<int16_t, 64>, 14>, 64>, 14> cont_history{};   // 1-ply (opp move 1 ply ago)
+    std::array<std::array<std::array<std::array<int16_t, 64>, 14>, 64>, 14> cont_history_2{}; // 2-ply (self move 2 plies ago)
+    std::array<std::array<std::array<std::array<int16_t, 64>, 14>, 64>, 14> cont_history_4{}; // 4-ply (self move 4 plies ago)
+    std::array<std::array<std::array<std::array<int16_t, 64>, 14>, 64>, 14> cont_history_6{}; // 6-ply (self move 6 plies ago)
+    std::array<std::array<std::array<int16_t, 6>, 64>, 14> capture_history{};
 };
 
 class MovePicker {
