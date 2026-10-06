@@ -1,4 +1,5 @@
 #include "move_picker.hpp"
+#include "search_params.hpp"
 #include "../evaluation/eval.hpp"
 #include "../movegen/movegen.hpp"
 #include "../movegen/attack_masks.hpp"
@@ -111,7 +112,8 @@ void MovePicker::add_history_score(Color side, Move move, int depth) noexcept {
     size_t from_idx = static_cast<size_t>(move.from());
     size_t to_idx = static_cast<size_t>(move.to());
 
-    int bonus = std::clamp(depth * depth, -400, 400);
+    int limit = std::max(50, g_search_params.lmr_hist_bonus);
+    int bonus = std::clamp(depth * depth, -limit, limit);
     int& val = history_scores_[c_idx][from_idx][to_idx];
     val += bonus - (val * std::abs(bonus)) / 16384;
 }
@@ -121,9 +123,10 @@ void MovePicker::sub_history_score(Color side, Move move, int depth) noexcept {
     size_t from_idx = static_cast<size_t>(move.from());
     size_t to_idx = static_cast<size_t>(move.to());
 
-    int bonus = std::clamp(depth * depth, -400, 400);
+    int limit = std::max(20, g_search_params.lmr_hist_malus);
+    int malus = std::clamp(depth * depth, -limit, limit);
     int& val = history_scores_[c_idx][from_idx][to_idx];
-    val -= bonus + (val * std::abs(bonus)) / 16384;
+    val -= malus + (val * std::abs(malus)) / 16384;
 }
 
 int MovePicker::get_history_score(Color c, Move move) const noexcept {

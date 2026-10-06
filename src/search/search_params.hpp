@@ -10,9 +10,9 @@ struct SearchParams {
     int futility_margin = 180;
     int see_bad_capture_slope = 124;
     int see_quiet_slope = 15;
-    int nmp_eval_margin = 218;
+    int nmp_eval_margin = 200;
     int singular_margin = 2;
-    int aspiration_window_delta = 25;
+    int aspiration_window_delta = 16;
 
     void reset() noexcept {
         lmr_divisor = 3.2000f;
@@ -22,9 +22,9 @@ struct SearchParams {
         futility_margin = 180;
         see_bad_capture_slope = 124;
         see_quiet_slope = 15;
-        nmp_eval_margin = 218;
+        nmp_eval_margin = 200;
         singular_margin = 2;
-        aspiration_window_delta = 25;
+        aspiration_window_delta = 16;
     }
 };
 

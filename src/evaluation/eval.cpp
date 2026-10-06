@@ -1,5 +1,6 @@
 #include "eval.hpp"
 #include "eval_params.hpp"
+#include "tuned_eval_params.inc"
 #include "pst.hpp"
 #include "spectral_graph.hpp"
 #include "tropical_eval.hpp"
@@ -11,6 +12,7 @@ thread_local EvalMode Evaluator::current_mode_ = EvalMode::MasterPositional;
 
 void Evaluator::init() {
     PST::init();
+    apply_tuned_eval_params(g_eval_params);
     EvalFeatures::init();
     TropicalEvaluator::instance().load_weights("heavensgate_tropical.trm");
 }
@@ -66,8 +68,9 @@ int Evaluator::evaluate_side(const Board& board, Color side) {
     ScorePair activity     = EvalFeatures::evaluate_piece_activity(board, side);
     ScorePair threats      = EvalFeatures::evaluate_threats(board, side);
     ScorePair mobility     = EvalFeatures::evaluate_mobility(board, side);
+    ScorePair imbalances   = EvalFeatures::evaluate_material_imbalances(board, side);
 
-    ScorePair pos_total = pawn_struct + passed_pawns + king_safety + activity + threats + mobility;
+    ScorePair pos_total = pawn_struct + passed_pawns + king_safety + activity + threats + mobility + imbalances;
 
     int game_phase = board.game_phase();
 

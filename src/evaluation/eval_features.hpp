@@ -45,6 +45,7 @@ public:
     static ScorePair evaluate_piece_activity(const Board& board, Color side);
     static ScorePair evaluate_threats(const Board& board, Color side);
     static ScorePair evaluate_mobility(const Board& board, Color side);
+    static ScorePair evaluate_material_imbalances(const Board& board, Color side);
 };
 
 } // namespace heavensgate

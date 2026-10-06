@@ -2,6 +2,8 @@
 // Trained across 77455 grandmaster quiet positions
 // Anchor invariant: PawnMG = 100
 
+namespace heavensgate {
+
 inline void apply_tuned_eval_params(EvalParams& p) {
     p.pawn_eg = 119;
     p.knight_mg = 320;
@@ -55,27 +57,29 @@ inline void apply_tuned_eval_params(EvalParams& p) {
     p.rook_open_eg = 32;
     p.rook_semi_open_mg = 25;
     p.rook_semi_open_eg = 30;
-    p.minor_threat_rook_mg = 65;
-    p.minor_threat_rook_eg = 65;
-    p.minor_threat_queen_mg = 78;
-    p.minor_threat_queen_eg = 74;
-    p.rook_threat_queen_mg = 60;
-    p.rook_threat_queen_eg = 65;
-    p.pawn_push_threat_mg = 35;
-    p.pawn_push_threat_eg = 8;
+    p.minor_threat_rook_mg = 35;
+    p.minor_threat_rook_eg = 45;
+    p.minor_threat_queen_mg = 48;
+    p.minor_threat_queen_eg = 62;
+    p.rook_threat_queen_mg = 30;
+    p.rook_threat_queen_eg = 35;
+    p.pawn_push_threat_mg = 16;
+    p.pawn_push_threat_eg = 22;
     p.pawn_attack_threat_mg = 22;
     p.pawn_attack_threat_eg = 28;
-    p.knight_mob_mg = 10;
-    p.knight_mob_eg = 10;
-    p.bishop_mob_mg = 10;
-    p.bishop_mob_eg = 10;
-    p.rook_mob_mg = 8;
-    p.rook_mob_eg = 8;
-    p.queen_mob_mg = 5;
-    p.queen_mob_eg = 5;
-    p.pawn_shield_mg = 8;
-    p.uncastled_king_mg = 90;
-    p.uncastled_king_eg = 0;
-    p.tempo_mg = 8;
-    p.tempo_eg = 0;
+    p.knight_mob_mg = 4;
+    p.knight_mob_eg = 4;
+    p.bishop_mob_mg = 4;
+    p.bishop_mob_eg = 4;
+    p.rook_mob_mg = 2;
+    p.rook_mob_eg = 3;
+    p.queen_mob_mg = 1;
+    p.queen_mob_eg = 2;
+    p.pawn_shield_mg = 15;
+    p.uncastled_king_mg = 120;
+    p.uncastled_king_eg = 20;
+    p.tempo_mg = 15;
+    p.tempo_eg = 4;
 }
+
+} // namespace heavensgate

@@ -39,6 +39,7 @@ heavensgate_tropical_BACKUP_*.trm
 # Temporary Dev Scripts & Local Workflows
 scratch/
 archive/
+pgn_history/
 run_continuous_training.ps1
 15
 videos/
@@ -67,6 +68,7 @@ game_tree.json
 *.log
 *.pgn
 !tournament_results_batch1.pgn
+!tournament_results_batch2.pgn
 
 # IDE & System Files
 .vscode/

@@ -381,7 +381,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     // 3. Adaptive Null Move Pruning (NMP) with continuous depth & score scaling
     if (depth >= 3 && !in_chk && !excluded_move && board.has_non_pawn_material(us)) {
-        int R = 3 + depth / 4 + std::min(3, (eval - beta) / 200);
+        int nmp_margin = std::max(1, g_search_params.nmp_eval_margin);
+        int R = 3 + depth / 4 + std::min(3, (eval - beta) / nmp_margin);
         if (!improving) {
             R += 1;
         }
@@ -443,7 +444,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     int singular_extension = 0;
     if (depth >= 7 && !in_chk && !excluded_move && tt_entry && tt_entry->bound != TTBound::Upper &&
         tt_entry->depth >= depth - 3 && std::abs(tt_score) < ScoreMate - 1000 && static_cast<bool>(tt_move)) {
-        int singular_margin = 2 * depth;
+        int singular_margin = std::max(1, g_search_params.singular_margin) * depth;
         int singular_beta = tt_score - singular_margin;
         int singular_depth = (depth - 1) / 2;
 
@@ -961,7 +962,7 @@ void SearchEngine::iterative_deepening_root(Board& board, int max_depth, uint64_
 
         int alpha = -ScoreInfinity;
         int beta  =  ScoreInfinity;
-        int window_delta = 12;
+        int window_delta = std::max(4, g_search_params.aspiration_window_delta);
 
         if (d >= 4 && std::abs(last_score) < ScoreMate - 1000) {
             alpha = std::max(-ScoreInfinity, last_score - window_delta);

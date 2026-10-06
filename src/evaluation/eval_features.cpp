@@ -619,4 +619,67 @@ ScorePair EvalFeatures::evaluate_mobility(const Board& board, Color side) {
     return score;
 }
 
+ScorePair EvalFeatures::evaluate_material_imbalances(const Board& board, Color side) {
+    ScorePair score;
+    Color opp = ~side;
+
+    Bitboard my_pawns   = board.pieces(make_piece(side, PieceType::Pawn));
+    Bitboard opp_pawns  = board.pieces(make_piece(opp, PieceType::Pawn));
+    int total_pawns = popcount(my_pawns | opp_pawns);
+
+    int my_knights  = popcount(board.pieces(make_piece(side, PieceType::Knight)));
+    int opp_knights = popcount(board.pieces(make_piece(opp, PieceType::Knight)));
+    int my_bishops  = popcount(board.pieces(make_piece(side, PieceType::Bishop)));
+    int opp_bishops = popcount(board.pieces(make_piece(opp, PieceType::Bishop)));
+    int my_rooks    = popcount(board.pieces(make_piece(side, PieceType::Rook)));
+    int opp_rooks   = popcount(board.pieces(make_piece(opp, PieceType::Rook)));
+    int my_queens   = popcount(board.pieces(make_piece(side, PieceType::Queen)));
+    int opp_queens  = popcount(board.pieces(make_piece(opp, PieceType::Queen)));
+
+    // 1. Kaufman Dynamic Bishop Pair Scaling with Pawn Count
+    if (my_bishops >= 2) {
+        if (total_pawns < 12) {
+            int open_delta = 12 - total_pawns;
+            score.mg += open_delta * 2;
+            score.eg += open_delta * 4;
+        } else if (total_pawns > 12) {
+            int closed_delta = total_pawns - 12;
+            score.mg -= closed_delta * 2;
+            score.eg -= closed_delta * 3;
+        }
+    }
+
+    // 2. Minor Piece Synergy vs Pawn Count
+    if (total_pawns > 10) {
+        int closed_weight = total_pawns - 10;
+        score.mg += my_knights * closed_weight * 2;
+        score.eg += my_knights * closed_weight;
+        score.mg -= my_bishops * closed_weight;
+        score.eg -= my_bishops * closed_weight * 2;
+    } else if (total_pawns < 8) {
+        int open_weight = 8 - total_pawns;
+        score.mg += my_bishops * open_weight * 2;
+        score.eg += my_bishops * open_weight * 3;
+        score.mg -= my_knights * open_weight * 2;
+        score.eg -= my_knights * open_weight * 3;
+    }
+
+    // 3. Exchange Imbalances: Queen vs 2 Rooks
+    if (my_queens >= 1 && opp_queens == 0 && opp_rooks >= 2 && my_rooks < opp_rooks) {
+        score.mg += 15;
+        score.eg -= 25;
+    }
+    if (opp_queens >= 1 && my_queens == 0 && my_rooks >= 2 && opp_rooks < my_rooks) {
+        score.mg -= 15;
+        score.eg += 25;
+    }
+
+    // 4. Endgame Rook Pair Synergy
+    if (my_rooks >= 2) {
+        score.eg += 12;
+    }
+
+    return score;
+}
+
 } // namespace heavensgate
