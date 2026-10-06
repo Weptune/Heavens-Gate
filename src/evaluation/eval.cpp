@@ -106,15 +106,35 @@ int Evaluator::evaluate(const Board& board) {
     return evaluate_fast(board);
 }
 
-int Evaluator::evaluate_fast(const Board& board) {
-    // Fast O(1) Bitboard Positional Evaluation:
-    // Computes Material + PST + Pawn Structure + Passed Pawns + King Safety + Piece Activity + Mobility.
-    // Zero allocations, pure SIMD/Bitboard math (~50 nanoseconds).
-    int white_score = evaluate_side(board, Color::White);
-    int black_score = evaluate_side(board, Color::Black);
+int Evaluator::evaluate_fast(const Board& board, int alpha, int beta) {
+    // 1. Fast O(1) Material + PST base evaluation (~2 nanoseconds)
+    int white_mg = board.mg_material(Color::White) + board.mg_pst(Color::White);
+    int white_eg = board.eg_material(Color::White) + board.eg_pst(Color::White);
+    int black_mg = board.mg_material(Color::Black) + board.mg_pst(Color::Black);
+    int black_eg = board.eg_material(Color::Black) + board.eg_pst(Color::Black);
 
     int game_phase = std::min(24, board.game_phase());
     int tapered_tempo = (g_eval_params.tempo_mg * game_phase + g_eval_params.tempo_eg * (24 - game_phase)) / 24;
+
+    int diff_mg = white_mg - black_mg;
+    int diff_eg = white_eg - black_eg;
+    int simple_diff = (diff_mg * game_phase + diff_eg * (24 - game_phase)) / 24;
+    int simple_eval = (board.side_to_move() == Color::White) ? (simple_diff + tapered_tempo) : (-simple_diff + tapered_tempo);
+
+    // Lazy Evaluation Cutoffs:
+    // If simple_eval is already >= beta + 240 or <= alpha - 240, positional features cannot change the cutoff decision.
+    constexpr int LAZY_MARGIN = 240;
+    if (beta < ScoreMate - 1000 && simple_eval >= beta + LAZY_MARGIN) {
+        return simple_eval;
+    }
+    if (alpha > -ScoreMate + 1000 && simple_eval <= alpha - LAZY_MARGIN) {
+        return simple_eval;
+    }
+
+    // 2. Full Positional Evaluation:
+    // Computes Pawn Structure + Passed Pawns + King Safety + Piece Activity + Mobility + Imbalances.
+    int white_score = evaluate_side(board, Color::White);
+    int black_score = evaluate_side(board, Color::Black);
 
     int relative_score = white_score - black_score;
     return (board.side_to_move() == Color::White) ? (relative_score + tapered_tempo) : (-relative_score + tapered_tempo);

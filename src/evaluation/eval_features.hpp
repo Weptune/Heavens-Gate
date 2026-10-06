@@ -36,6 +36,8 @@ public:
     static std::array<Bitboard, 64> OutpostMask[2];
     static std::array<Bitboard, 8>  IsolatedPawnMask;
     static std::array<int, 32>      KingDangerTable;
+    static std::array<Bitboard, 64> KingShieldMask[2];
+    static std::array<Bitboard, 64> KingAdjacentFilesMask;
 
     static void init();
 

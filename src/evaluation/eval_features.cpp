@@ -11,6 +11,8 @@ std::array<Bitboard, 64> EvalFeatures::PassedPawnMask[2]{};
 std::array<Bitboard, 64> EvalFeatures::OutpostMask[2]{};
 std::array<Bitboard, 8>  EvalFeatures::IsolatedPawnMask{};
 std::array<int, 32>      EvalFeatures::KingDangerTable{};
+std::array<Bitboard, 64> EvalFeatures::KingShieldMask[2]{};
+std::array<Bitboard, 64> EvalFeatures::KingAdjacentFilesMask{};
 
 void EvalFeatures::init() {
     // 1. Isolated Pawn Masks (adjacent files)
@@ -68,6 +70,46 @@ void EvalFeatures::init() {
     // 3. King Danger Table (quadratic scaling for king attack count)
     for (size_t i = 0; i < 32; ++i) {
         KingDangerTable[i] = static_cast<int>(i * i * 3);
+    }
+
+    // 4. Precomputed King Shield Masks & Adjacent Files Mask
+    for (int s_idx = 0; s_idx < 64; ++s_idx) {
+        Square sq = static_cast<Square>(s_idx);
+        File kf_enum = file_of(sq);
+        Rank kr_enum = rank_of(sq);
+
+        Bitboard adj_files = EmptyBB;
+        for (int df = -1; df <= 1; ++df) {
+            int f_idx = static_cast<int>(kf_enum) + df;
+            if (f_idx >= 0 && f_idx < 8) {
+                adj_files |= file_bb(static_cast<File>(f_idx));
+            }
+        }
+        KingAdjacentFilesMask[static_cast<size_t>(s_idx)] = adj_files;
+
+        Bitboard w_shield = EmptyBB;
+        if (kr_enum <= Rank::Rank3) {
+            for (int df = -1; df <= 1; ++df) {
+                int f_idx = static_cast<int>(kf_enum) + df;
+                if (f_idx >= 0 && f_idx < 8) {
+                    w_shield |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank2));
+                    w_shield |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank3));
+                }
+            }
+        }
+        KingShieldMask[0][static_cast<size_t>(s_idx)] = w_shield;
+
+        Bitboard b_shield = EmptyBB;
+        if (kr_enum >= Rank::Rank6) {
+            for (int df = -1; df <= 1; ++df) {
+                int f_idx = static_cast<int>(kf_enum) + df;
+                if (f_idx >= 0 && f_idx < 8) {
+                    b_shield |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank7));
+                    b_shield |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank6));
+                }
+            }
+        }
+        KingShieldMask[1][static_cast<size_t>(s_idx)] = b_shield;
     }
 }
 
@@ -273,24 +315,8 @@ ScorePair EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
         File kf_enum = file_of(ksq);
         Rank kr_enum = rank_of(ksq);
 
-        Bitboard shield_mask = EmptyBB;
-        if (side == Color::White && kr_enum <= Rank::Rank3) {
-            for (int df = -1; df <= 1; ++df) {
-                int f_idx = static_cast<int>(kf_enum) + df;
-                if (f_idx >= 0 && f_idx < 8) {
-                    shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank2));
-                    shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank3));
-                }
-            }
-        } else if (side == Color::Black && kr_enum >= Rank::Rank6) {
-            for (int df = -1; df <= 1; ++df) {
-                int f_idx = static_cast<int>(kf_enum) + df;
-                if (f_idx >= 0 && f_idx < 8) {
-                    shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank7));
-                    shield_mask |= square_bb(make_square(static_cast<File>(f_idx), Rank::Rank6));
-                }
-            }
-        }
+        size_t side_idx = (side == Color::White) ? 0 : 1;
+        Bitboard shield_mask = KingShieldMask[side_idx][static_cast<size_t>(ksq)];
 
         Bitboard my_pawns = board.pieces(make_piece(side, PieceType::Pawn));
         int shield_pawns = popcount(my_pawns & shield_mask);
@@ -298,45 +324,50 @@ ScorePair EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
 
         // 2. Pawn Storm Evaluation: Penalize advancing enemy pawns near our king
         Bitboard opp_pawns = board.pieces(make_piece(~side, PieceType::Pawn));
-        for (int df = -1; df <= 1; ++df) {
-            int f_idx = static_cast<int>(kf_enum) + df;
-            if (f_idx >= 0 && f_idx < 8) {
-                Bitboard file_opp_pawns = opp_pawns & file_bb(static_cast<File>(f_idx));
-                if (file_opp_pawns) {
-                    if (side == Color::White) {
-                        Square psq = lsb(file_opp_pawns);
-                        Rank pr = rank_of(psq);
-                        if (pr == Rank::Rank5) score.mg -= 25;
-                        else if (pr == Rank::Rank4) score.mg -= 55;
-                        else if (pr == Rank::Rank3) score.mg -= 105;
-                    } else {
-                        Square psq = msb(file_opp_pawns);
-                        Rank pr = rank_of(psq);
-                        if (pr == Rank::Rank4) score.mg -= 25;
-                        else if (pr == Rank::Rank5) score.mg -= 55;
-                        else if (pr == Rank::Rank6) score.mg -= 105;
+        Bitboard adj_opp_pawns = opp_pawns & KingAdjacentFilesMask[static_cast<size_t>(ksq)];
+        if (adj_opp_pawns != EmptyBB) {
+            for (int df = -1; df <= 1; ++df) {
+                int f_idx = static_cast<int>(kf_enum) + df;
+                if (f_idx >= 0 && f_idx < 8) {
+                    Bitboard file_opp_pawns = adj_opp_pawns & file_bb(static_cast<File>(f_idx));
+                    if (file_opp_pawns) {
+                        if (side == Color::White) {
+                            Square psq = lsb(file_opp_pawns);
+                            Rank pr = rank_of(psq);
+                            if (pr == Rank::Rank5) score.mg -= 25;
+                            else if (pr == Rank::Rank4) score.mg -= 55;
+                            else if (pr == Rank::Rank3) score.mg -= 105;
+                        } else {
+                            Square psq = msb(file_opp_pawns);
+                            Rank pr = rank_of(psq);
+                            if (pr == Rank::Rank4) score.mg -= 25;
+                            else if (pr == Rank::Rank5) score.mg -= 55;
+                            else if (pr == Rank::Rank6) score.mg -= 105;
+                        }
                     }
                 }
             }
         }
 
         // 3. Open/Semi-Open File King Threat Penalty
-        Bitboard all_pawns = board.pieces(Piece::WhitePawn) | board.pieces(Piece::BlackPawn);
         Bitboard enemy_majors = board.pieces(make_piece(~side, PieceType::Rook)) | board.pieces(make_piece(~side, PieceType::Queen));
-
-        for (int df = -1; df <= 1; ++df) {
-            int f_idx = static_cast<int>(kf_enum) + df;
-            if (f_idx >= 0 && f_idx < 8) {
-                File f = static_cast<File>(f_idx);
-                Bitboard f_mask = file_bb(f);
-                int majors_on_file = popcount(enemy_majors & f_mask);
-                if (majors_on_file > 0) {
-                    if ((all_pawns & f_mask) == EmptyBB) {
-                        score.mg -= majors_on_file * 50;
-                        score.eg -= majors_on_file * 15; // Fully open file aimed at king ring
-                    } else if ((my_pawns & f_mask) == EmptyBB) {
-                        score.mg -= majors_on_file * 32;
-                        score.eg -= majors_on_file * 10; // Semi-open file
+        Bitboard adj_enemy_majors = enemy_majors & KingAdjacentFilesMask[static_cast<size_t>(ksq)];
+        if (adj_enemy_majors != EmptyBB) {
+            Bitboard all_pawns = board.pieces(Piece::WhitePawn) | board.pieces(Piece::BlackPawn);
+            for (int df = -1; df <= 1; ++df) {
+                int f_idx = static_cast<int>(kf_enum) + df;
+                if (f_idx >= 0 && f_idx < 8) {
+                    File f = static_cast<File>(f_idx);
+                    Bitboard f_mask = file_bb(f);
+                    int majors_on_file = popcount(adj_enemy_majors & f_mask);
+                    if (majors_on_file > 0) {
+                        if ((all_pawns & f_mask) == EmptyBB) {
+                            score.mg -= majors_on_file * 50;
+                            score.eg -= majors_on_file * 15; // Fully open file aimed at king ring
+                        } else if ((my_pawns & f_mask) == EmptyBB) {
+                            score.mg -= majors_on_file * 32;
+                            score.eg -= majors_on_file * 10; // Semi-open file
+                        }
                     }
                 }
             }

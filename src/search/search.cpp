@@ -36,7 +36,7 @@ static struct LMRTableInit {
 
 int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) {
     if (ply >= 64) {
-        return Evaluator::evaluate_fast(board);
+        return Evaluator::evaluate_fast(board, alpha, beta);
     }
 
     metrics_tracker_.add_nodes(1);
@@ -73,7 +73,7 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
     Color us = board.side_to_move();
     bool in_chk = MoveGenerator::in_check(board, us);
 
-    int stand_pat = Evaluator::evaluate_fast(board);
+    int stand_pat = Evaluator::evaluate_fast(board, alpha, beta);
     int best_score = stand_pat;
     Move best_move = Move();
 
@@ -340,7 +340,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     size_t major_hash = static_cast<size_t>((w_majors ^ (b_majors * 0x9e3779b97f4a7c15ULL)) % 4096);
 
     if (!in_chk && std::abs(beta) < ScoreMate - 1000) {
-        raw_static_eval = Evaluator::evaluate_fast(board);
+        raw_static_eval = Evaluator::evaluate_fast(board, alpha, beta);
         int pawn_corr = corr_history_[c_idx][pawn_hash];
         int non_pawn_corr = non_pawn_corr_history_[c_idx][non_pawn_hash];
         int major_corr = major_corr_history_[c_idx][major_hash];
