@@ -99,13 +99,33 @@ WDLScore SyzygyTablebase::evaluate_endgame_wdl(const Board& board) {
         // KBK or KNK (Insufficient material = Draw)
         if ((num_w_bishops == 1 || num_w_knights == 1) && total_w == 2) return WDLScore::Draw;
         if ((num_b_bishops == 1 || num_b_knights == 1) && total_b == 2) return WDLScore::Draw;
+
+        // KQK
+        if (num_w_queens == 1 && total_w == 2 && total_b == 1) return solve_kqk(board, Color::White);
+        if (num_b_queens == 1 && total_b == 2 && total_w == 1) return solve_kqk(board, Color::Black);
+
+        // KRK
+        if (num_w_rooks == 1 && total_w == 2 && total_b == 1) return solve_krk(board, Color::White);
+        if (num_b_rooks == 1 && total_b == 2 && total_w == 1) return solve_krk(board, Color::Black);
+
+        // KPK
+        if (num_w_pawns == 1 && total_w == 2 && total_b == 1) return solve_kpk(board, Color::White);
+        if (num_b_pawns == 1 && total_b == 2 && total_w == 1) return solve_kpk(board, Color::Black);
     }
 
     // 3. 4-Piece Endings
     if (total_pieces == 4) {
         // KNNK (King + 2 Knights vs King = Draw)
-        if (num_w_knights == 2 && total_w == 3 && total_b == 1) return WDLScore::Draw;
-        if (num_b_knights == 2 && total_b == 3 && total_w == 1) return WDLScore::Draw;
+        if (num_w_knights == 2 && total_w == 3 && total_b == 1) return solve_knnk(board, Color::White);
+        if (num_b_knights == 2 && total_b == 3 && total_w == 1) return solve_knnk(board, Color::Black);
+
+        // KBBK
+        if (num_w_bishops == 2 && total_w == 3 && total_b == 1) return solve_kbbk(board, Color::White);
+        if (num_b_bishops == 2 && total_b == 3 && total_w == 1) return solve_kbbk(board, Color::Black);
+
+        // KBNK
+        if (num_w_bishops == 1 && num_w_knights == 1 && total_w == 3 && total_b == 1) return solve_kbnk(board, Color::White);
+        if (num_b_bishops == 1 && num_b_knights == 1 && total_b == 3 && total_w == 1) return solve_kbnk(board, Color::Black);
 
         // KB vs KB, KN vs KN, KB vs KN (No pawns = Draw)
         if (num_w_bishops == 1 && num_b_bishops == 1 && total_w == 2 && total_b == 2) return WDLScore::Draw;
@@ -120,6 +140,12 @@ WDLScore SyzygyTablebase::evaluate_endgame_wdl(const Board& board) {
 
     // 4. 5-Piece & 6-Piece Endings
     if (total_pieces <= 6) {
+        // KRP vs KR (Lucena and Philidor positions)
+        if (num_w_rooks == 1 && num_b_rooks == 1) {
+            if (num_w_pawns == 1 && num_b_pawns == 0 && total_w == 3 && total_b == 2) return solve_krp_kr(board, Color::White);
+            if (num_b_pawns == 1 && num_w_pawns == 0 && total_b == 3 && total_w == 2) return solve_krp_kr(board, Color::Black);
+        }
+
         // Opposite colored bishops with 1 pawn fortress
         if (num_w_bishops == 1 && num_b_bishops == 1 && (num_w_pawns + num_b_pawns == 1)) {
             if (num_w_pawns == 1 && total_w == 3 && total_b == 2) return solve_opposite_colored_bishops_1p(board, Color::White);
@@ -131,11 +157,13 @@ WDLScore SyzygyTablebase::evaluate_endgame_wdl(const Board& board) {
 }
 
 WDLScore SyzygyTablebase::solve_kqk(const Board& board, Color strong_side) {
-    return WDLScore::Win;
+    Color stm = board.side_to_move();
+    return (stm == strong_side) ? WDLScore::Win : WDLScore::Loss;
 }
 
 WDLScore SyzygyTablebase::solve_krk(const Board& board, Color strong_side) {
-    return WDLScore::Win;
+    Color stm = board.side_to_move();
+    return (stm == strong_side) ? WDLScore::Win : WDLScore::Loss;
 }
 
 WDLScore SyzygyTablebase::solve_kbnk(const Board& board, Color strong_side) {

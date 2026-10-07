@@ -63,6 +63,7 @@ public:
     void sub_continuation_history_6(const Board& board, Move prev6_move, Move curr_move, int depth, Piece prev6_p = Piece::None, Piece curr_p = Piece::None) noexcept;
     int get_continuation_history_6(const Board& board, Move prev6_move, Move curr_move, Piece prev6_p = Piece::None, Piece curr_p = Piece::None) const noexcept;
     void add_capture_history(Piece attacker, Square to, PieceType victim, int depth) noexcept;
+    void sub_capture_history(Piece attacker, Square to, PieceType victim, int depth) noexcept;
     int get_capture_history(Piece attacker, Square to, PieceType victim) const noexcept;
 
     void score_moves(const Board& board, MoveList& moves, std::array<int, 256>& scores, int ply, Move pv_move = Move(), Move prev_move = Move(), Move prev2_move = Move(), Move prev4_move = Move(), Move prev6_move = Move(), Piece prev_piece = Piece::None, Piece prev2_piece = Piece::None, Piece prev4_piece = Piece::None, Piece prev6_piece = Piece::None) const noexcept;

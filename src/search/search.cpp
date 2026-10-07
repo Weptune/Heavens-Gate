@@ -43,7 +43,7 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
     q_nodes_++;
     node_count_++;
 
-    if (time_stop_flag_ || ((node_count_ & 2047) == 0 && is_time_up())) return 0;
+    if (is_stopped() || ((node_count_ & 2047) == 0 && is_time_up())) return 0;
 
     if (ply > 0 && board.is_repetition(2)) {
         return ScoreDraw;
@@ -141,7 +141,7 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
 
         board.unmake_move(m);
 
-        if (time_stop_flag_) return 0;
+        if (is_stopped()) return 0;
 
         if (score > best_score) {
             best_score = score;
@@ -229,7 +229,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     metrics_tracker_.add_nodes(1);
     node_count_++;
 
-    if (time_stop_flag_ || ((node_count_ & 2047) == 0 && is_time_up())) return 0;
+    if (is_stopped() || ((node_count_ & 2047) == 0 && is_time_up())) return 0;
 
     if (ply > 0 && board.is_repetition(2)) {
         return ScoreDraw;
@@ -399,7 +399,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             // Eliminates high-depth zugzwang miscalculations and false cutoffs
             if (depth >= 12 && null_score < ScoreMate - 1000) {
                 // Pass a non-empty excluded_move to disable recursive NMP inside the verification search
-                int verify_score = negamax_alphabeta(board, depth - 1 - R, ply, beta - 1, beta, use_move_ordering, use_tt, Move(), nullptr, static_eval, Move(Square::a1, Square::a1));
+                int verify_score = negamax_alphabeta(board, depth - 1 - R, ply, beta - 1, beta, use_move_ordering, use_tt, Move(), nullptr, static_eval, Move::nmp_verify_sentinel());
                 if (verify_score >= beta) {
                     metrics_tracker_.add_cut();
                     return beta;
@@ -528,6 +528,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     int quiets_searched = 0;
     std::array<Move, 64> quiets_tried{};
     int num_quiets_tried = 0;
+    std::array<Move, 32> captures_tried{};
+    int num_captures_tried = 0;
 
     for (size_t i = 0; i < moves.size(); ++i) {
         if (use_move_ordering) {
@@ -602,10 +604,15 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         bool is_bad_capture = m.is_capture() && i >= 4 && depth >= 4 && !in_chk;
         if (is_bad_capture) {
             int cap_hist = move_picker_.get_capture_history(attacker, m.to(), vic_pt);
-            if (cap_hist >= 0) is_bad_capture = false;
+            bool see_negative = !MovePicker::see_ge(board, m, 0);
+            if (!see_negative && cap_hist >= 0) is_bad_capture = false;
         }
 
-        if (is_quiet) {
+        if (m.is_capture()) {
+            if (num_captures_tried < 32) {
+                captures_tried[num_captures_tried++] = m;
+            }
+        } else if (is_quiet) {
             quiets_searched++;
             if (num_quiets_tried < 64) {
                 quiets_tried[num_quiets_tried++] = m;
@@ -673,7 +680,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             piece_stack_[ply] = Piece::None;
         }
 
-        if (time_stop_flag_) return 0;
+        if (is_stopped()) return 0;
 
         if (score > best_score) {
             best_score = score;
@@ -688,6 +695,17 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                     Piece victim   = board.piece_at(m.to());
                     PieceType vic_pt = m.is_ep() ? PieceType::Pawn : piece_type_of(victim);
                     move_picker_.add_capture_history(attacker, m.to(), vic_pt, depth);
+
+                    // Penalize any prior captures that failed to produce a beta cutoff
+                    for (int c = 0; c < num_captures_tried; ++c) {
+                        Move failed_c = captures_tried[c];
+                        if (failed_c != m) {
+                            Piece f_att = board.piece_at(failed_c.from());
+                            Piece f_vic = board.piece_at(failed_c.to());
+                            PieceType f_vic_pt = failed_c.is_ep() ? PieceType::Pawn : piece_type_of(f_vic);
+                            move_picker_.sub_capture_history(f_att, failed_c.to(), f_vic_pt, depth);
+                        }
+                    }
                 } else {
                     move_picker_.add_killer_move(ply, m);
                     move_picker_.add_history_score(board.side_to_move(), m, depth);
@@ -703,6 +721,15 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                     }
                     if (static_cast<bool>(prev6_move)) {
                         move_picker_.add_continuation_history_6(board, prev6_move, m, depth, prev6_piece);
+                    }
+
+                    // Penalize any prior captures that failed to produce a cutoff
+                    for (int c = 0; c < num_captures_tried; ++c) {
+                        Move failed_c = captures_tried[c];
+                        Piece f_att = board.piece_at(failed_c.from());
+                        Piece f_vic = board.piece_at(failed_c.to());
+                        PieceType f_vic_pt = failed_c.is_ep() ? PieceType::Pawn : piece_type_of(f_vic);
+                        move_picker_.sub_capture_history(f_att, failed_c.to(), f_vic_pt, depth);
                     }
 
                     // History Malus: Penalize all quiet moves searched prior to this cutoff
@@ -997,7 +1024,7 @@ void SearchEngine::iterative_deepening_root(Board& board, int max_depth, uint64_
                 move_stack_[0] = Move();
                 piece_stack_[0] = Piece::None;
 
-                if (time_stop_flag_) {
+                if (is_stopped()) {
                     interrupted = true;
                     break;
                 }
@@ -1103,7 +1130,7 @@ void SearchEngine::iterative_deepening_root(Board& board, int max_depth, uint64_
             }
         }
 
-        if (is_time_up()) break;
+        if (is_time_up() || is_stopped()) break;
     }
 }
 
@@ -1144,6 +1171,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
 #if defined(_OPENMP)
     int n_threads = num_threads_;
     if (n_threads > 1) {
+        std::atomic<uint64_t> helper_nodes_accum{0};
         #pragma omp parallel num_threads(n_threads)
         {
             int tid = omp_get_thread_num();
@@ -1154,13 +1182,14 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                 // Helper thread (sharing master TT, private thread-local MovePicker history tables)
                 Board helper_board = board;
                 SearchEngine helper(tt_ptr_);
+                helper.set_master_stop_flag(&time_stop_flag_);
                 helper.search_start_time_ = search_start_time_;
                 helper.max_time_ms_ = max_time_ms_;
                 helper.opt_time_ms_ = opt_time_ms_;
 
                 int depth_offset = (tid % 2);
                 for (int d = 1 + depth_offset; d <= max_depth; ++d) {
-                    if (time_stop_flag_ || helper.time_stop_flag_) break;
+                    if (helper.is_stopped()) break;
 
                     MoveList moves;
                     MoveGenerator::generate_legal_moves(helper_board, moves);
@@ -1169,7 +1198,7 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                     helper.move_picker_.score_and_sort_moves(helper_board, moves, 0);
 
                     for (const auto& m : moves) {
-                        if (time_stop_flag_ || helper.time_stop_flag_) break;
+                        if (helper.is_stopped()) break;
                         helper.move_stack_[0] = m;
                         helper.piece_stack_[0] = helper_board.piece_at(m.from());
                         helper_board.make_move(m);
@@ -1179,8 +1208,12 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                         helper.piece_stack_[0] = Piece::None;
                     }
                 }
+                helper_nodes_accum.fetch_add(helper.metrics_tracker_.get_metrics().total_nodes, std::memory_order_relaxed);
             }
         }
+        uint64_t extra_nodes = helper_nodes_accum.load(std::memory_order_relaxed);
+        metrics_tracker_.add_nodes(extra_nodes);
+        node_count_ += extra_nodes;
     } else
 #endif
     {

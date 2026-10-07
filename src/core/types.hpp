@@ -181,6 +181,10 @@ public:
     constexpr bool operator==(const Move& other) const noexcept { return data_ == other.data_; }
     constexpr bool operator!=(const Move& other) const noexcept { return data_ != other.data_; }
     constexpr explicit operator bool() const noexcept { return data_ != 0; }
+
+    static constexpr Move nmp_verify_sentinel() noexcept {
+        return Move(Square::h8, Square::h8, MoveType::Quiet);
+    }
 };
 
 // Helper Functions

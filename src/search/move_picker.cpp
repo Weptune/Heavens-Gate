@@ -379,6 +379,19 @@ void MovePicker::add_capture_history(Piece attacker, Square to, PieceType victim
     }
 }
 
+void MovePicker::sub_capture_history(Piece attacker, Square to, PieceType victim, int depth) noexcept {
+    if (!cont_tables_) return;
+    size_t att_idx = static_cast<size_t>(attacker);
+    size_t to_idx  = static_cast<size_t>(to);
+    size_t vic_idx = static_cast<size_t>(victim);
+
+    if (att_idx < 14 && to_idx < 64 && vic_idx < 6) {
+        int bonus = std::clamp(depth * depth, -400, 400);
+        auto& val = cont_tables_->capture_history[att_idx][to_idx][vic_idx];
+        val -= bonus + (val * std::abs(bonus)) / 16384;
+    }
+}
+
 int MovePicker::get_capture_history(Piece attacker, Square to, PieceType victim) const noexcept {
     if (!cont_tables_) return 0;
     size_t att_idx = static_cast<size_t>(attacker);
@@ -539,14 +552,12 @@ void MovePicker::score_and_sort_moves(const Board& board, MoveList& moves, int p
 }
 
 bool MovePicker::see_ge(const Board& board, Move m, int threshold) noexcept {
-    if (!m.is_capture()) return threshold <= 0;
-
     Square from = m.from();
     Square to = m.to();
 
     Piece victim = board.piece_at(to);
     Piece attacker = board.piece_at(from);
-    if (victim == Piece::None && !m.is_ep()) return threshold <= 0;
+    if (victim == Piece::None && !m.is_ep() && m.is_capture()) return threshold <= 0;
 
     auto get_val = [](PieceType pt) -> int {
         switch (pt) {
@@ -565,50 +576,66 @@ bool MovePicker::see_ge(const Board& board, Move m, int threshold) noexcept {
     int promo_val = m.is_promotion() ? (get_val(m.promotion_piece_type()) - PawnValue) : 0;
     gain[d] = (m.is_ep() ? PawnValue : get_val(piece_type_of(victim))) + promo_val;
 
-    Bitboard occ = board.occupied();
-    occ ^= square_bb(from); // Remove initial attacker
+    PieceType curr_piece = m.is_promotion() ? m.promotion_piece_type() : piece_type_of(attacker);
+    // Fast initial cutoff: even if moved piece is lost immediately with no recaptures, we exceed threshold
+    if (gain[0] - get_val(curr_piece) >= threshold) return true;
+
+    // For quiet moves without promotion, initial gain is 0. If threshold > 0, quiet move cannot satisfy it
+    if (!m.is_capture() && gain[0] < threshold) return false;
+
+    Bitboard occ = (board.occupied() ^ square_bb(from)) | square_bb(to);
     if (m.is_ep()) {
         Square ep_victim_sq = make_square(file_of(to), rank_of(from));
         occ ^= square_bb(ep_victim_sq);
     }
 
     Color side = ~board.side_to_move();
-    PieceType curr_piece = m.is_promotion() ? m.promotion_piece_type() : piece_type_of(attacker);
 
     while (true) {
         d++;
         gain[d] = get_val(curr_piece) - gain[d - 1];
         if (std::max(-gain[d - 1], gain[d]) < 0) break; // Stand-pat cutoff
 
-        // Find attackers to target square 'to' for 'side'
+        // Find attackers to target square 'to' for 'side' in strict LVA order
         Bitboard attackers = EmptyBB;
-        Bitboard side_occ = board.pieces(side) & occ;
 
-        // Pawns
+        // 1. Pawns
         Bitboard p_att = AttackMasks::pawn_attacks(~side, to) & board.pieces(make_piece(side, PieceType::Pawn)) & occ;
-        if (p_att) { curr_piece = PieceType::Pawn; attackers = p_att; }
-        else {
-            // Knights
+        if (p_att) {
+            curr_piece = PieceType::Pawn;
+            attackers = p_att;
+        } else {
+            // 2. Knights
             Bitboard n_att = AttackMasks::knight_attacks(to) & board.pieces(make_piece(side, PieceType::Knight)) & occ;
-            if (n_att) { curr_piece = PieceType::Knight; attackers = n_att; }
-            else {
-                // Bishops
-                Bitboard b_att = AttackMasks::bishop_attacks(to, occ) & (board.pieces(make_piece(side, PieceType::Bishop)) | board.pieces(make_piece(side, PieceType::Queen))) & occ;
+            if (n_att) {
+                curr_piece = PieceType::Knight;
+                attackers = n_att;
+            } else {
+                // 3. Bishops
+                Bitboard b_att = AttackMasks::bishop_attacks(to, occ) & board.pieces(make_piece(side, PieceType::Bishop)) & occ;
                 if (b_att) {
-                    Bitboard b_only = b_att & board.pieces(make_piece(side, PieceType::Bishop));
-                    if (b_only) { curr_piece = PieceType::Bishop; attackers = b_only; }
-                    else { curr_piece = PieceType::Queen; attackers = b_att; }
+                    curr_piece = PieceType::Bishop;
+                    attackers = b_att;
                 } else {
-                    // Rooks
-                    Bitboard r_att = AttackMasks::rook_attacks(to, occ) & (board.pieces(make_piece(side, PieceType::Rook)) | board.pieces(make_piece(side, PieceType::Queen))) & occ;
+                    // 4. Rooks
+                    Bitboard r_att = AttackMasks::rook_attacks(to, occ) & board.pieces(make_piece(side, PieceType::Rook)) & occ;
                     if (r_att) {
-                        Bitboard r_only = r_att & board.pieces(make_piece(side, PieceType::Rook));
-                        if (r_only) { curr_piece = PieceType::Rook; attackers = r_only; }
-                        else { curr_piece = PieceType::Queen; attackers = r_att; }
+                        curr_piece = PieceType::Rook;
+                        attackers = r_att;
                     } else {
-                        // King
-                        Bitboard k_att = AttackMasks::king_attacks(to) & board.pieces(make_piece(side, PieceType::King)) & occ;
-                        if (k_att) { curr_piece = PieceType::King; attackers = k_att; }
+                        // 5. Queens (both diagonal and orthogonal)
+                        Bitboard q_att = (AttackMasks::bishop_attacks(to, occ) | AttackMasks::rook_attacks(to, occ)) & board.pieces(make_piece(side, PieceType::Queen)) & occ;
+                        if (q_att) {
+                            curr_piece = PieceType::Queen;
+                            attackers = q_att;
+                        } else {
+                            // 6. King
+                            Bitboard k_att = AttackMasks::king_attacks(to) & board.pieces(make_piece(side, PieceType::King)) & occ;
+                            if (k_att) {
+                                curr_piece = PieceType::King;
+                                attackers = k_att;
+                            }
+                        }
                     }
                 }
             }

@@ -40,28 +40,31 @@ int Evaluator::evaluate_side(const Board& board, Color side) {
     // caching pawn features reduces evaluation overhead by ~85%.
     Bitboard w_pawns = board.pieces(Piece::WhitePawn);
     Bitboard b_pawns = board.pieces(Piece::BlackPawn);
-    uint64_t pawn_key = w_pawns ^ (b_pawns * 0x9e3779b97f4a7c15ULL);
-    size_t pawn_idx = static_cast<size_t>((pawn_key ^ (pawn_key >> 32)) & (PAWN_HASH_SIZE - 1));
-
-    ScorePair pawn_struct;
-    ScorePair passed_pawns;
+    ScorePair pawn_struct{0, 0};
+    ScorePair passed_pawns{0, 0};
     size_t s_idx = static_cast<size_t>(side);
 
-    if (s_pawn_hash_table[pawn_idx].key == pawn_key && pawn_key != 0) {
-        pawn_struct = s_pawn_hash_table[pawn_idx].pawn_struct[s_idx];
-        passed_pawns = s_pawn_hash_table[pawn_idx].passed_pawns[s_idx];
-    } else {
-        pawn_struct = EvalFeatures::evaluate_pawn_structure(board, side);
-        passed_pawns = EvalFeatures::evaluate_passed_pawns(board, side);
+    if (w_pawns || b_pawns) {
+        uint64_t pawn_key = w_pawns ^ (b_pawns * 0x9e3779b97f4a7c15ULL);
+        if (pawn_key == 0) pawn_key = 1;
+        size_t pawn_idx = static_cast<size_t>((pawn_key ^ (pawn_key >> 32)) & (PAWN_HASH_SIZE - 1));
 
-        Color opp_side = ~side;
-        size_t o_idx = static_cast<size_t>(opp_side);
+        if (s_pawn_hash_table[pawn_idx].key == pawn_key) {
+            pawn_struct = s_pawn_hash_table[pawn_idx].pawn_struct[s_idx];
+            passed_pawns = s_pawn_hash_table[pawn_idx].passed_pawns[s_idx];
+        } else {
+            pawn_struct = EvalFeatures::evaluate_pawn_structure(board, side);
+            passed_pawns = EvalFeatures::evaluate_passed_pawns(board, side);
 
-        s_pawn_hash_table[pawn_idx].key = pawn_key;
-        s_pawn_hash_table[pawn_idx].pawn_struct[s_idx] = pawn_struct;
-        s_pawn_hash_table[pawn_idx].passed_pawns[s_idx] = passed_pawns;
-        s_pawn_hash_table[pawn_idx].pawn_struct[o_idx] = EvalFeatures::evaluate_pawn_structure(board, opp_side);
-        s_pawn_hash_table[pawn_idx].passed_pawns[o_idx] = EvalFeatures::evaluate_passed_pawns(board, opp_side);
+            Color opp_side = ~side;
+            size_t o_idx = static_cast<size_t>(opp_side);
+
+            s_pawn_hash_table[pawn_idx].key = pawn_key;
+            s_pawn_hash_table[pawn_idx].pawn_struct[s_idx] = pawn_struct;
+            s_pawn_hash_table[pawn_idx].passed_pawns[s_idx] = passed_pawns;
+            s_pawn_hash_table[pawn_idx].pawn_struct[o_idx] = EvalFeatures::evaluate_pawn_structure(board, opp_side);
+            s_pawn_hash_table[pawn_idx].passed_pawns[o_idx] = EvalFeatures::evaluate_passed_pawns(board, opp_side);
+        }
     }
 
     ScorePair king_safety  = EvalFeatures::evaluate_king_safety(board, side);

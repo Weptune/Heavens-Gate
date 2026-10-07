@@ -64,6 +64,11 @@ public:
     void set_uci_output(bool enabled) noexcept { uci_output_ = enabled; }
     static void init_lmr_table(float divisor = 3.20f);
     bool uci_output() const noexcept { return uci_output_; }
+    bool is_stopped() const noexcept {
+        return time_stop_flag_.load(std::memory_order_relaxed) ||
+               (master_stop_flag_ && master_stop_flag_->load(std::memory_order_relaxed));
+    }
+    void set_master_stop_flag(std::atomic<bool>* flag) noexcept { master_stop_flag_ = flag; }
 
 private:
     int quiescence_search(Board& board, int alpha, int beta, int ply);
@@ -72,7 +77,7 @@ private:
     void iterative_deepening_root(Board& board, int max_depth, uint64_t max_nodes, SearchResult& final_result);
 
     bool is_time_up() {
-        if (time_stop_flag_.load(std::memory_order_relaxed)) return true;
+        if (is_stopped()) return true;
         if (max_time_ms_ > 0.0) {
             auto now = std::chrono::high_resolution_clock::now();
             double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
@@ -83,6 +88,8 @@ private:
         }
         return false;
     }
+
+    std::atomic<bool>* master_stop_flag_{nullptr};
 
     TranspositionTable* tt_ptr_{nullptr};
     TranspositionTable local_tt_;
