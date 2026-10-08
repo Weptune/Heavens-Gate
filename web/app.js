@@ -415,6 +415,15 @@ class ChessApp {
         this.clockInterval = null;
         this.lastClockTick = 0;
 
+        // Tournament Broadcast & Replay State
+        this.tourneyBatches = [];
+        this.currentBatchId = 8;
+        this.tourneyData = null;
+        this.activeTourneyGameIndex = -1;
+        this.replaySnapshots = [];
+        this.replayPlyIndex = 0;
+        this.replayAutoPlayTimer = null;
+
         this.initDOM();
         this.bindEvents();
         this.initPlayMode();
@@ -426,6 +435,28 @@ class ChessApp {
         this.evalGaugeEl = document.getElementById('eval-gauge') || document.querySelector('.eval-gauge');
         this.evalFillEl = document.getElementById('eval-fill');
         this.evalBadgeEl = document.getElementById('eval-badge');
+
+        // Tournament Broadcast DOM
+        this.panelTournament = document.getElementById('panel-tournament');
+        this.tourneyBatchSelect = document.getElementById('tourney-batch-select');
+        this.tourneyLiveBadge = document.getElementById('tourney-live-badge');
+        this.tourneyScoreHG = document.getElementById('tourney-score-hg');
+        this.tourneyScoreSF = document.getElementById('tourney-score-sf');
+        this.tourneyDrawsCount = document.getElementById('tourney-draws-count');
+        this.tourneyGameCount = document.getElementById('tourney-game-count');
+        this.tourneyRefreshBtn = document.getElementById('tourney-refresh-btn');
+        this.tourneyGamesList = document.getElementById('tourney-games-list');
+        this.replayStartBtn = document.getElementById('replay-start-btn');
+        this.replayPrevBtn = document.getElementById('replay-prev-btn');
+        this.replayPlayBtn = document.getElementById('replay-play-btn');
+        this.replayNextBtn = document.getElementById('replay-next-btn');
+        this.replayEndBtn = document.getElementById('replay-end-btn');
+        this.replaySlider = document.getElementById('replay-slider');
+        this.replayPlyLabel = document.getElementById('replay-ply-label');
+        this.replayEvalBadge = document.getElementById('replay-eval-badge');
+        this.replayGameTitle = document.getElementById('replay-game-title');
+        this.replayGameResult = document.getElementById('replay-game-result');
+        this.replayHistoryList = document.getElementById('replay-history-list');
         this.teleNodesEl = document.getElementById('tele-nodes');
         this.teleNpsEl = document.getElementById('tele-nps');
         this.teleDepthEl = document.getElementById('tele-depth');
@@ -498,7 +529,31 @@ class ChessApp {
     bindEvents() {
         // Tab switching
         document.getElementById('tab-play').addEventListener('click', () => this.switchTab('play'));
+        const tabTourneyBtn = document.getElementById('tab-tournament');
+        if (tabTourneyBtn) tabTourneyBtn.addEventListener('click', () => this.switchTab('tournament'));
         document.getElementById('tab-telemetry').addEventListener('click', () => this.switchTab('telemetry'));
+
+        // Tournament Broadcast Listeners
+        if (this.tourneyBatchSelect) {
+            this.tourneyBatchSelect.addEventListener('change', (e) => {
+                this.loadTournamentBatch(parseInt(e.target.value, 10));
+            });
+        }
+        if (this.tourneyRefreshBtn) {
+            this.tourneyRefreshBtn.addEventListener('click', () => {
+                this.loadTournamentBatch(this.currentBatchId);
+            });
+        }
+        if (this.replayStartBtn) this.replayStartBtn.addEventListener('click', () => this.goToReplayPly(0));
+        if (this.replayPrevBtn) this.replayPrevBtn.addEventListener('click', () => this.goToReplayPly(this.replayPlyIndex - 1));
+        if (this.replayNextBtn) this.replayNextBtn.addEventListener('click', () => this.goToReplayPly(this.replayPlyIndex + 1));
+        if (this.replayEndBtn) this.replayEndBtn.addEventListener('click', () => this.goToReplayPly(this.replaySnapshots.length - 1));
+        if (this.replayPlayBtn) this.replayPlayBtn.addEventListener('click', () => this.toggleReplayAutoPlay());
+        if (this.replaySlider) {
+            this.replaySlider.addEventListener('input', (e) => {
+                this.goToReplayPly(parseInt(e.target.value, 10));
+            });
+        }
 
         // Match Actions
         this.startBtn.addEventListener('click', () => {
@@ -672,18 +727,33 @@ class ChessApp {
 
         const panelPlay = document.getElementById('panel-play');
         const cardTelemetry = document.getElementById('card-telemetry');
+        const panelTournament = document.getElementById('panel-tournament');
 
         if (tab === 'play') {
             this.stopClock();
+            this.stopReplayAutoPlay();
             if (panelPlay) { panelPlay.classList.remove('hidden'); panelPlay.style.display = 'flex'; }
             if (cardTelemetry) { cardTelemetry.classList.add('hidden'); cardTelemetry.style.display = 'none'; }
+            if (panelTournament) { panelTournament.classList.add('hidden'); panelTournament.style.display = 'none'; }
             this.renderPlayView();
         } else if (tab === 'telemetry') {
             this.stopClock();
+            this.stopReplayAutoPlay();
             if (panelPlay) { panelPlay.classList.add('hidden'); panelPlay.style.display = 'none'; }
             if (cardTelemetry) { cardTelemetry.classList.remove('hidden'); cardTelemetry.style.display = 'flex'; }
+            if (panelTournament) { panelTournament.classList.add('hidden'); panelTournament.style.display = 'none'; }
             this.renderTelemetryView();
             this.runLiveAnalysis();
+        } else if (tab === 'tournament') {
+            this.stopClock();
+            if (panelPlay) { panelPlay.classList.add('hidden'); panelPlay.style.display = 'none'; }
+            if (cardTelemetry) { cardTelemetry.classList.add('hidden'); cardTelemetry.style.display = 'none'; }
+            if (panelTournament) { panelTournament.classList.remove('hidden'); panelTournament.style.display = 'flex'; }
+            if (!this.tourneyData) {
+                this.fetchTournamentBatches();
+            } else if (this.replaySnapshots.length > 0) {
+                this.goToReplayPly(this.replayPlyIndex);
+            }
         }
     }
 
@@ -2212,6 +2282,316 @@ class ChessApp {
             this.topClockEl.textContent = fmt(this.gameState.whiteTime);
             this.bottomClockEl.textContent = fmt(this.gameState.blackTime);
         }
+    }
+
+    // =========================================================================
+    // TOURNAMENT BROADCAST & GRANDMASTER REPLAYER
+    // =========================================================================
+    async fetchTournamentBatches() {
+        try {
+            const resp = await fetch('/api/tournaments');
+            if (!resp.ok) return;
+            const batches = await resp.json();
+            this.tourneyBatches = batches;
+
+            if (this.tourneyBatchSelect) {
+                this.tourneyBatchSelect.innerHTML = '';
+                batches.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.batch_id;
+                    const statusText = b.is_active ? ' [LIVE]' : '';
+                    opt.textContent = `Batch ${b.batch_id} (${b.stats.total_games} gms, ${b.stats.win_rate}% win)${statusText}`;
+                    if (b.batch_id === this.currentBatchId || (b.is_active && !this.tourneyData)) {
+                        opt.selected = true;
+                        this.currentBatchId = b.batch_id;
+                    }
+                    this.tourneyBatchSelect.appendChild(opt);
+                });
+            }
+
+            await this.loadTournamentBatch(this.currentBatchId);
+        } catch (e) {
+            console.error("Failed to fetch tournament batches:", e);
+        }
+    }
+
+    async loadTournamentBatch(batchId) {
+        this.currentBatchId = batchId;
+        try {
+            const resp = await fetch(`/api/tournament?batch=${batchId}`);
+            if (!resp.ok) return;
+            const data = await resp.json();
+            this.tourneyData = data;
+
+            // Update Scoreboard
+            if (this.tourneyScoreHG) this.tourneyScoreHG.textContent = (data.stats.score_master || 0).toFixed(1);
+            if (this.tourneyScoreSF) this.tourneyScoreSF.textContent = (data.stats.score_stockfish || 0).toFixed(1);
+            if (this.tourneyDrawsCount) this.tourneyDrawsCount.textContent = `${data.stats.draws || 0} D`;
+            if (this.tourneyGameCount) this.tourneyGameCount.textContent = data.games.length;
+
+            // Live badge: check if active from batches list
+            const currentMeta = this.tourneyBatches.find(b => b.batch_id === batchId);
+            const isBatchActive = currentMeta ? currentMeta.is_active : (batchId === 8);
+            if (this.tourneyLiveBadge) {
+                if (isBatchActive) this.tourneyLiveBadge.classList.remove('hidden');
+                else this.tourneyLiveBadge.classList.add('hidden');
+            }
+
+            // Render Games List
+            this.renderTourneyGamesList(data.games);
+
+            // Select most recent game if none selected or out of range
+            if (data.games.length > 0) {
+                const targetIdx = (this.activeTourneyGameIndex >= 0 && this.activeTourneyGameIndex < data.games.length)
+                    ? this.activeTourneyGameIndex
+                    : data.games.length - 1;
+                this.selectTourneyGame(targetIdx);
+            }
+        } catch (e) {
+            console.error("Failed to load tournament batch:", e);
+        }
+    }
+
+    renderTourneyGamesList(games) {
+        if (!this.tourneyGamesList) return;
+        this.tourneyGamesList.innerHTML = '';
+        if (games.length === 0) {
+            this.tourneyGamesList.innerHTML = '<div class="empty-notice">No completed games in this batch yet.</div>';
+            return;
+        }
+
+        games.forEach((game, idx) => {
+            const item = document.createElement('div');
+            item.className = 'tourney-game-item' + (idx === this.activeTourneyGameIndex ? ' active' : '');
+            
+            let resClass = 'result-draw';
+            let resText = game.result;
+            const isMasterWhite = game.white.includes('Master');
+            if (game.result === '1-0') resClass = isMasterWhite ? 'result-win' : 'result-loss';
+            else if (game.result === '0-1') resClass = !isMasterWhite ? 'result-win' : 'result-loss';
+
+            const hgColor = isMasterWhite ? 'White' : 'Black';
+            const termShort = game.termination ? ` • ${game.termination}` : '';
+
+            item.innerHTML = `
+                <div class="game-item-info">
+                    <span class="game-item-title">Game ${game.round}: HG (${hgColor}) vs Stockfish</span>
+                    <span class="game-item-sub">${game.move_count} plies${termShort}</span>
+                </div>
+                <span class="game-result-badge ${resClass}">${resText}</span>
+            `;
+            item.addEventListener('click', () => this.selectTourneyGame(idx));
+            this.tourneyGamesList.appendChild(item);
+        });
+    }
+
+    selectTourneyGame(gameIndex) {
+        if (!this.tourneyData || !this.tourneyData.games[gameIndex]) return;
+        this.activeTourneyGameIndex = gameIndex;
+        const game = this.tourneyData.games[gameIndex];
+
+        // Update list active highlight
+        document.querySelectorAll('.tourney-game-item').forEach((el, i) => {
+            if (i === gameIndex) el.classList.add('active');
+            else el.classList.remove('active');
+        });
+
+        if (this.replayGameTitle) {
+            const isMasterWhite = game.white.includes('Master');
+            this.replayGameTitle.textContent = `Game ${game.round} (${isMasterWhite ? 'HG White' : 'HG Black'})`;
+        }
+        if (this.replayGameResult) {
+            this.replayGameResult.textContent = game.result;
+        }
+
+        // Build replay snapshots
+        this.buildReplaySnapshots(game);
+
+        // Render Notation Panel
+        this.renderReplayNotation(game);
+
+        // Jump to end of game so final checkmate / victory position is shown
+        this.goToReplayPly(this.replaySnapshots.length - 1);
+    }
+
+    buildReplaySnapshots(game) {
+        this.replaySnapshots = [];
+        let simBoard = ChessRulesEngine.cloneBoard(INITIAL_BOARD);
+        if (game.fen && game.fen !== 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1') {
+            simBoard = this.fenToBoard(game.fen);
+        }
+
+        this.replaySnapshots.push({
+            ply: 0,
+            board: ChessRulesEngine.cloneBoard(simBoard),
+            lastMove: null,
+            eval: 0,
+            clk_ms: 0,
+            uci: null,
+            turn: 'w'
+        });
+
+        game.moves.forEach((m, idx) => {
+            this.applyReplayMoveToBoard(simBoard, m.uci);
+            const src = m.uci.substring(0, 2);
+            const dst = m.uci.substring(2, 4);
+            this.replaySnapshots.push({
+                ply: idx + 1,
+                board: ChessRulesEngine.cloneBoard(simBoard),
+                lastMove: { from: src, to: dst },
+                eval: m.eval,
+                clk_ms: m.clk_ms,
+                uci: m.uci,
+                turn: m.turn
+            });
+        });
+
+        if (this.replaySlider) {
+            this.replaySlider.min = 0;
+            this.replaySlider.max = Math.max(0, this.replaySnapshots.length - 1);
+        }
+    }
+
+    fenToBoard(fen) {
+        const parts = fen.trim().split(' ');
+        const rows = parts[0].split('/');
+        const b = [];
+        for (let r = 0; r < 8; r++) {
+            const row = [];
+            const rowStr = rows[r];
+            for (let c = 0; c < rowStr.length; c++) {
+                const ch = rowStr[c];
+                if (ch >= '1' && ch <= '8') {
+                    const count = parseInt(ch, 10);
+                    for (let k = 0; k < count; k++) row.push('.');
+                } else {
+                    row.push(ch);
+                }
+            }
+            b.push(row);
+        }
+        return b;
+    }
+
+    applyReplayMoveToBoard(board, uci) {
+        if (!uci || uci.length < 4) return;
+        const [sr, sc] = this.squareToCoords(uci.substring(0, 2));
+        const [tr, tc] = this.squareToCoords(uci.substring(2, 4));
+        const promo = uci.length > 4 ? uci[4] : null;
+
+        const piece = board[sr][sc];
+        board[sr][sc] = '.';
+
+        // Castling
+        if (piece === 'K' && sr === 7 && sc === 4) {
+            if (tc === 6) { board[7][5] = 'R'; board[7][7] = '.'; }
+            if (tc === 2) { board[7][3] = 'R'; board[7][0] = '.'; }
+        } else if (piece === 'k' && sr === 0 && sc === 4) {
+            if (tc === 6) { board[0][5] = 'r'; board[0][7] = '.'; }
+            if (tc === 2) { board[0][3] = 'r'; board[0][0] = '.'; }
+        }
+
+        // En passant
+        if (piece.toUpperCase() === 'P' && sc !== tc && board[tr][tc] === '.') {
+            board[sr][tc] = '.';
+        }
+
+        if (promo) {
+            board[tr][tc] = (piece === 'P') ? promo.toUpperCase() : promo.toLowerCase();
+        } else {
+            board[tr][tc] = piece;
+        }
+    }
+
+    renderReplayNotation(game) {
+        if (!this.replayHistoryList) return;
+        this.replayHistoryList.innerHTML = '';
+
+        game.moves.forEach((m, idx) => {
+            const plyNum = idx + 1;
+            const fullMoveNum = Math.floor(idx / 2) + 1;
+            const prefix = (idx % 2 === 0) ? `${fullMoveNum}. ` : '';
+
+            const btn = document.createElement('button');
+            btn.className = 'replay-ply-item' + (plyNum === this.replayPlyIndex ? ' active' : '');
+            btn.dataset.ply = plyNum;
+            btn.textContent = `${prefix}${m.uci}`;
+            btn.title = `Eval: ${(m.eval / 100).toFixed(2)} | Time: ${(m.clk_ms / 1000).toFixed(2)}s`;
+            btn.addEventListener('click', () => this.goToReplayPly(plyNum));
+            this.replayHistoryList.appendChild(btn);
+        });
+    }
+
+    goToReplayPly(ply) {
+        if (this.replaySnapshots.length === 0) return;
+        const target = Math.max(0, Math.min(ply, this.replaySnapshots.length - 1));
+        this.replayPlyIndex = target;
+
+        const snap = this.replaySnapshots[target];
+        this.gameState.board = ChessRulesEngine.cloneBoard(snap.board);
+        this.gameState.lastMove = snap.lastMove;
+        this.renderBoard();
+
+        // Advantage gauge update
+        const evCp = snap.eval || 0;
+        const evWhite = (snap.turn === 'b') ? -evCp : evCp;
+        const evFormatted = (evCp / 100.0).toFixed(2);
+        const evPrefix = evCp > 0 ? '+' : '';
+        if (this.replayEvalBadge) this.replayEvalBadge.textContent = `${evPrefix}${evFormatted}`;
+        if (this.evalBadgeEl) this.evalBadgeEl.textContent = `${evPrefix}${evFormatted}`;
+
+        // Update eval gauge bar height
+        const winProb = 0.5 + 0.5 * (2.0 / (1.0 + Math.exp(-0.00368208 * evWhite)) - 1.0);
+        const fillPct = Math.max(5, Math.min(95, winProb * 100));
+        if (this.evalFillEl) this.evalFillEl.style.height = `${fillPct}%`;
+
+        // Update slider and label
+        if (this.replaySlider) this.replaySlider.value = target;
+        if (this.replayPlyLabel) {
+            const moveNum = Math.ceil(target / 2);
+            this.replayPlyLabel.textContent = `Ply ${target} / ${this.replaySnapshots.length - 1} (Move ${moveNum})`;
+        }
+
+        // Highlight active move in notation list
+        document.querySelectorAll('.replay-ply-item').forEach(el => {
+            const p = parseInt(el.dataset.ply, 10);
+            if (p === target) {
+                el.classList.add('active');
+                el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            } else {
+                el.classList.remove('active');
+            }
+        });
+    }
+
+    toggleReplayAutoPlay() {
+        if (this.replayAutoPlayTimer) {
+            this.stopReplayAutoPlay();
+        } else {
+            this.startReplayAutoPlay();
+        }
+    }
+
+    startReplayAutoPlay() {
+        if (this.replayPlyIndex >= this.replaySnapshots.length - 1) {
+            this.goToReplayPly(0);
+        }
+        if (this.replayPlayBtn) this.replayPlayBtn.textContent = '⏸ Pause';
+        this.replayAutoPlayTimer = setInterval(() => {
+            if (this.replayPlyIndex < this.replaySnapshots.length - 1) {
+                this.goToReplayPly(this.replayPlyIndex + 1);
+            } else {
+                this.stopReplayAutoPlay();
+            }
+        }, 850);
+    }
+
+    stopReplayAutoPlay() {
+        if (this.replayAutoPlayTimer) {
+            clearInterval(this.replayAutoPlayTimer);
+            this.replayAutoPlayTimer = null;
+        }
+        if (this.replayPlayBtn) this.replayPlayBtn.textContent = '▶ Play';
     }
 }
 

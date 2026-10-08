@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=2026091303">
+    <link rel="stylesheet" href="style.css?v=2026100801">
     <style>
         /* CRITICAL RESET & ZERO-BLEED STYLES */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,6 +42,7 @@
         </div>
         <nav class="nav-tabs" aria-label="Game Modes">
             <button class="nav-tab active" id="tab-play">Arena Match</button>
+            <button class="nav-tab" id="tab-tournament">Tournament Broadcast</button>
             <button class="nav-tab" id="tab-telemetry">Search Lab</button>
         </nav>
         <div class="nav-status">
@@ -270,6 +271,75 @@
                 </div>
             </div>
 
+            <!-- Panel 3: Grandmaster Tournament Broadcast & Replay Hub -->
+            <div class="sidebar-card hidden" id="panel-tournament" style="display: none;">
+                <div class="card-header tournament-header">
+                    <div class="tourney-header-info">
+                        <span class="card-header-title">Grandmaster Broadcast</span>
+                        <span class="live-pulse-badge hidden" id="tourney-live-badge"><span class="pulse-dot"></span> LIVE</span>
+                    </div>
+                    <select id="tourney-batch-select" class="tourney-select" title="Select Tournament Batch">
+                        <option value="8" selected>Batch 8 (Live vs SF 2400)</option>
+                    </select>
+                </div>
+
+                <!-- Match Scoreboard Banner -->
+                <div class="tourney-scoreboard" id="tourney-scoreboard">
+                    <div class="scoreboard-team">
+                        <span class="team-name">Heaven's Gate</span>
+                        <strong class="team-score" id="tourney-score-hg">0.0</strong>
+                    </div>
+                    <div class="scoreboard-vs">
+                        <span class="vs-text">VS</span>
+                        <span class="tourney-draws" id="tourney-draws-count">0 D</span>
+                    </div>
+                    <div class="scoreboard-team">
+                        <strong class="team-score" id="tourney-score-sf">0.0</strong>
+                        <span class="team-name">Stockfish 2400</span>
+                    </div>
+                </div>
+
+                <!-- Games List Carousel / Selector -->
+                <div class="tourney-games-card">
+                    <div class="tourney-subheading">
+                        <span>Games (<span id="tourney-game-count">0</span>)</span>
+                        <button class="btn-subtle" id="tourney-refresh-btn" title="Refresh Live Games">↻ Refresh</button>
+                    </div>
+                    <div class="tourney-games-list" id="tourney-games-list">
+                        <div class="empty-notice">Loading tournament archive...</div>
+                    </div>
+                </div>
+
+                <!-- Replay Controls Bar -->
+                <div class="tourney-replay-controls" id="tourney-replay-controls">
+                    <div class="replay-btn-group">
+                        <button class="btn-subtle replay-btn" id="replay-start-btn" title="First Move (Home)">|◀</button>
+                        <button class="btn-subtle replay-btn" id="replay-prev-btn" title="Previous Move (Left Arrow)">◀</button>
+                        <button class="btn-primary replay-btn replay-play-btn" id="replay-play-btn" title="Auto-Play / Pause (Space)">▶ Play</button>
+                        <button class="btn-subtle replay-btn" id="replay-next-btn" title="Next Move (Right Arrow)">▶</button>
+                        <button class="btn-subtle replay-btn" id="replay-end-btn" title="Final Move (End)">▶|</button>
+                    </div>
+                    <div class="replay-slider-box">
+                        <input type="range" id="replay-slider" min="0" max="0" value="0" class="replay-slider" aria-label="Game scrub slider">
+                        <div class="replay-move-label">
+                            <span id="replay-ply-label">Move 0 / 0</span>
+                            <span class="replay-eval-badge" id="replay-eval-badge">0.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Game Moves Notation List -->
+                <div class="notation-panel tourney-notation-panel">
+                    <div class="notation-toolbar">
+                        <span class="notation-heading" id="replay-game-title">Game Moves</span>
+                        <span class="notation-tag" id="replay-game-result">1-0</span>
+                    </div>
+                    <div class="history-list replay-history-list" id="replay-history-list">
+                        <div class="empty-notice">Select a game above to view and replay moves.</div>
+                    </div>
+                </div>
+            </div>
+
         </aside>
 
     </main>
@@ -345,6 +415,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=2026091303"></script>
+    <script src="app.js?v=2026100801"></script>
 </body>
 </html>
