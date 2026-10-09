@@ -1,5 +1,10 @@
 # 3400 Elo Tournament Results
 
+2026-10-09 correction: this is a historical seven-game, reported-mate result,
+not evidence of 3400 strength. The +800 perfect-score value was an arbitrary
+reporting cap. Original output is preserved below; see
+[the skill audit](engine_skill_audit.md).
+
 ```text
 ======================================================
   HEAVEN'S GATE GRANDMASTER TOURNAMENT DETAILED REPORT

@@ -4,6 +4,7 @@
 #include "../evaluation/pst.hpp"
 #include "../evaluation/eval_params.hpp"
 #include <algorithm>
+#include <exception>
 
 namespace heavensgate {
 
@@ -33,8 +34,9 @@ void Board::clear() {
     fullmove_number_ = 1;
     zobrist_key_ = 0ULL;
 
-    history_.clear();
-    pos_history_.clear();
+    history_ply_ = 0;
+    repetition_start_ = 0;
+    pos_history_[0] = zobrist_key_;
 }
 
 void Board::reset() {
@@ -44,11 +46,11 @@ void Board::reset() {
 void Board::load_fen(const std::string& fen_str) {
     clear();
     FEN::parse(fen_str, *this);
-    pos_history_.push_back(zobrist_key_);
 }
 
 void Board::recalculate_zobrist_key() {
     zobrist_key_ = Zobrist::compute_hash(*this);
+    pos_history_[history_ply_] = zobrist_key_;
 }
 
 void Board::set_piece(Square sq, Piece p) {
@@ -131,8 +133,8 @@ bool Board::has_non_pawn_material(Color c) const {
 
 bool Board::is_repetition(int fold) const {
     int count = 0;
-    int limit = std::max(0, static_cast<int>(pos_history_.size()) - halfmove_clock_ - 1);
-    for (int i = static_cast<int>(pos_history_.size()) - 1; i >= limit; --i) {
+    int limit = std::max(repetition_start_, static_cast<int>(history_ply_) - halfmove_clock_);
+    for (int i = static_cast<int>(history_ply_); i >= limit; --i) {
         if (pos_history_[static_cast<size_t>(i)] == zobrist_key_) {
             count++;
             if (count >= fold) return true;
@@ -172,10 +174,14 @@ bool Board::is_insufficient_material() const {
 }
 
 void Board::make_move(const Move& m) {
+    // Fail before mutation, never silently overwrite reversible state.
+    if (!can_push_history()) std::terminate();
     StateInfo state;
     state.castling_rights = castling_rights_;
     state.ep_square = ep_square_;
     state.halfmove_clock = halfmove_clock_;
+    state.fullmove_number = fullmove_number_;
+    state.repetition_start = repetition_start_;
     state.zobrist_key = zobrist_key_;
 
     Color us = side_to_move_;
@@ -188,7 +194,7 @@ void Board::make_move(const Move& m) {
     Piece captured = piece_at(to);
 
     state.captured_piece = captured;
-    history_.push_back(state);
+    history_[history_ply_++] = state;
 
     zobrist_key_ ^= Zobrist::side_to_move();
 
@@ -268,16 +274,13 @@ void Board::make_move(const Move& m) {
     zobrist_key_ ^= Zobrist::castling(castling_rights_);
 
     side_to_move_ = them;
-    pos_history_.push_back(zobrist_key_);
+    if (us == Color::Black) ++fullmove_number_;
+    pos_history_[history_ply_] = zobrist_key_;
 }
 
 void Board::unmake_move(const Move& m) {
-    if (history_.empty()) return;
-
-    StateInfo state = history_.back();
-    history_.pop_back();
-
-    pos_history_.pop_back();
+    if (history_ply_ == 0) return;
+    StateInfo state = history_[--history_ply_];
 
     Color us = side_to_move_;
     Color them = ~us;
@@ -323,18 +326,25 @@ void Board::unmake_move(const Move& m) {
     castling_rights_ = state.castling_rights;
     ep_square_ = state.ep_square;
     halfmove_clock_ = state.halfmove_clock;
+    fullmove_number_ = state.fullmove_number;
+    repetition_start_ = state.repetition_start;
     zobrist_key_ = state.zobrist_key;
 }
 
 void Board::make_null_move() {
+    if (!can_push_history()) std::terminate();
     StateInfo state;
     state.castling_rights = castling_rights_;
     state.ep_square = ep_square_;
     state.halfmove_clock = halfmove_clock_;
+    state.fullmove_number = fullmove_number_;
+    state.repetition_start = repetition_start_;
     state.zobrist_key = zobrist_key_;
     state.captured_piece = Piece::None;
 
-    history_.push_back(state);
+    history_[history_ply_++] = state;
+    // A synthetic null move cannot manufacture a legal repetition.
+    repetition_start_ = static_cast<int>(history_ply_);
 
     zobrist_key_ ^= Zobrist::side_to_move();
 
@@ -344,22 +354,20 @@ void Board::make_null_move() {
     }
 
     side_to_move_ = ~side_to_move_;
-    pos_history_.push_back(zobrist_key_);
+    pos_history_[history_ply_] = zobrist_key_;
 }
 
 void Board::unmake_null_move() {
-    if (history_.empty()) return;
-
-    StateInfo state = history_.back();
-    history_.pop_back();
-
-    pos_history_.pop_back();
+    if (history_ply_ == 0) return;
+    StateInfo state = history_[--history_ply_];
 
     side_to_move_ = ~side_to_move_;
 
     castling_rights_ = state.castling_rights;
     ep_square_ = state.ep_square;
     halfmove_clock_ = state.halfmove_clock;
+    fullmove_number_ = state.fullmove_number;
+    repetition_start_ = state.repetition_start;
     zobrist_key_ = state.zobrist_key;
 }
 

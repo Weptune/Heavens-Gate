@@ -41,12 +41,11 @@ TropicalEvaluator::TropicalEvaluator() {
 }
 
 TropicalEvaluator& TropicalEvaluator::instance() {
-    static TropicalEvaluator inst;
-    static bool initialized = false;
-    if (!initialized) {
-        inst.load_weights("heavensgate_tropical.trm");
-        initialized = true;
-    }
+    static TropicalEvaluator inst = [] {
+        TropicalEvaluator evaluator;
+        evaluator.load_weights("heavensgate_tropical.trm");
+        return evaluator;
+    }();
     return inst;
 }
 
@@ -200,9 +199,6 @@ std::array<float, TropicalEvaluator::NUM_FEATURES> TropicalEvaluator::extract_fe
 
     SpectralFeatures feat = SpectralGraph::compute_spectrum(board);
 
-    float our_shield   = (us == Color::White) ? feat.king_shield_us : feat.king_shield_them;
-    float their_shield = (us == Color::White) ? feat.king_shield_them : feat.king_shield_us;
-    float our_pressure = (us == Color::White) ? feat.king_pressure_us : feat.king_pressure_them;
 
     // Feature Scale Normalization: Material scaled so 1 Pawn = 100 cp, 1 Knight = 320 cp through *10.0 multiplier
     std::array<float, NUM_FEATURES> x;

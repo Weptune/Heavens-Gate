@@ -16,15 +16,20 @@
 #include <iomanip>
 #include <omp.h>
 #include <algorithm>
+#include <filesystem>
+#include <sstream>
 
 using namespace heavensgate;
 
 // Dense feature representation for 1 training sample
 struct FeatureSample {
+    std::string fen;    // Retained only in parity-check mode.
     float target;       // 1.0 (Win), 0.5 (Draw), 0.0 (Loss) from White's perspective
     float phase_mg;     // phase / 24.0
     float phase_eg;     // (24 - phase) / 24.0
-    float base_constant;// PST tables + king danger + trapped pieces
+    double base_constant; // Runtime white-perspective score minus modeled tunable terms
+    double runtime_eval_white;
+    double unrounded_eval_white;
 
     // Features: index corresponds to tunable parameter index
     // Each value is (feature_white - feature_black)
@@ -35,7 +40,6 @@ struct FeatureSample {
 // Parameter descriptor for the tuner
 struct TunerParam {
     std::string name;
-    double* val_ptr;
     int* int_ptr;
     double min_val;
     double max_val;
@@ -43,12 +47,31 @@ struct TunerParam {
     size_t feat_idx;
 };
 
+// Independent slope oracle: assemble the production features without the two
+// per-side integer divisions. This separates feature errors from quantization.
+double unrounded_runtime_white(const Board& board) {
+    const int phase = std::min(24, board.game_phase());
+    auto side = [&](Color color) {
+        const ScorePair positional = EvalFeatures::evaluate_pawn_structure(board, color)
+            + EvalFeatures::evaluate_passed_pawns(board, color)
+            + EvalFeatures::evaluate_king_safety(board, color)
+            + EvalFeatures::evaluate_piece_activity(board, color)
+            + EvalFeatures::evaluate_threats(board, color)
+            + EvalFeatures::evaluate_mobility(board, color)
+            + EvalFeatures::evaluate_material_imbalances(board, color);
+        return ((board.mg_material(color) + board.mg_pst(color) + positional.mg) * phase
+            + (board.eg_material(color) + board.eg_pst(color) + positional.eg) * (24 - phase)) / 24.0;
+    };
+    const double tempo = (g_eval_params.tempo_mg * phase + g_eval_params.tempo_eg * (24 - phase)) / 24.0;
+    return side(Color::White) - side(Color::Black) + (board.side_to_move() == Color::White ? tempo : -tempo);
+}
+
 inline double sigmoid(double eval_cp, double K = 400.0) {
     return 1.0 / (1.0 + std::pow(10.0, -eval_cp / K));
 }
 
 // Extract the feature differences from a position
-void extract_board_features(const Board& board, std::vector<float>& feats_mg, std::vector<float>& feats_eg, float& base_constant, float& phase_mg, float& phase_eg) {
+void extract_board_features(const Board& board, std::vector<float>& feats_mg, std::vector<float>& feats_eg, float& phase_mg, float& phase_eg) {
     int phase = std::min(24, board.game_phase());
     phase_mg = phase / 24.0f;
     phase_eg = (24 - phase) / 24.0f;
@@ -302,8 +325,9 @@ void extract_board_features(const Board& board, std::vector<float>& feats_mg, st
         if (ksq != Square::None) {
             int kr = static_cast<int>(rank_of(ksq));
             int kf = static_cast<int>(file_of(ksq));
-            if ((side == Color::White && kr <= 3 && kf >= 2 && kf <= 5) ||
-                (side == Color::Black && kr >= 4 && kf >= 2 && kf <= 5)) {
+            const bool queens_present = board.pieces(Piece::WhiteQueen) || board.pieces(Piece::BlackQueen);
+            if (queens_present && ((side == Color::White && kr <= 3 && kf >= 2 && kf <= 5) ||
+                (side == Color::Black && kr >= 4 && kf >= 2 && kf <= 5))) {
                 feats_mg[37] -= sign;
                 feats_eg[37] -= sign;
             }
@@ -329,7 +353,7 @@ void extract_board_features(const Board& board, std::vector<float>& feats_mg, st
                 }
             }
             int shield = popcount(pawns & shield_mask);
-            feats_mg[36] += sign * shield;
+            if (queens_present) feats_mg[36] += sign * shield;
         }
     };
 
@@ -341,16 +365,25 @@ void extract_board_features(const Board& board, std::vector<float>& feats_mg, st
     feats_mg[38] = tempo_sign;
     feats_eg[38] = tempo_sign;
 
-    // Base constant: PST tables + king danger + storm/trapped piece static terms
-    float white_pst = board.mg_pst(Color::White) * phase_mg + board.eg_pst(Color::White) * phase_eg;
-    float black_pst = board.mg_pst(Color::Black) * phase_mg + board.eg_pst(Color::Black) * phase_eg;
-    base_constant = white_pst - black_pst;
+}
+
+// The feature model is the local linear part of runtime evaluation. Any
+// non-tunable terms and integer tapering residue belong in base_constant.
+double tunable_score(const FeatureSample& sample, const std::vector<TunerParam>& params,
+                     const std::vector<double>& weights) {
+    double score = sample.phase_mg * sample.f_mg[0] * 100.0; // Pawn MG anchor.
+    for (size_t p = 0; p < params.size(); ++p) {
+        const auto& param = params[p];
+        score += (param.is_mg ? sample.phase_mg * sample.f_mg[param.feat_idx]
+                              : sample.phase_eg * sample.f_eg[param.feat_idx]) * weights[p];
+    }
+    return score;
 }
 
 int main(int argc, char* argv[]) {
     std::cout << "======================================================\n";
     std::cout << "  HEAVEN'S GATE ANALYTIC TEXEL EVALUATION TUNER v2    \n";
-    std::cout << "  High-Speed Exact Gradient Descent (77,455 Games)    \n";
+    std::cout << "  Candidate-only fitting with held-out validation   \n";
     std::cout << "======================================================\n\n";
 
     int epochs = 80;
@@ -358,9 +391,45 @@ int main(int argc, char* argv[]) {
     double lambda_reg = 0.0001; // L2 regularization to prevent drift
     std::string dataset_path = "data/quiet_positions.txt";
 
-    if (argc > 1) epochs = std::stoi(argv[1]);
-    if (argc > 2) lr = std::stod(argv[2]);
-    if (argc > 3) dataset_path = argv[3];
+    bool parity_only = false;
+    std::string validation_path, test_path, output_path, report_path;
+    int patience = 10, requested_threads = 1;
+    double sigmoid_k = 400.0;
+    try {
+        if (argc > 1) epochs = std::stoi(argv[1]);
+        if (argc > 2) lr = std::stod(argv[2]);
+        if (argc > 3) dataset_path = argv[3];
+        for (int argument = 4; argument < argc; ++argument) {
+            const std::string flag = argv[argument];
+            if (flag == "--parity-only") { parity_only = true; continue; }
+            if (argument + 1 == argc) throw std::invalid_argument("Missing option value");
+            const std::string value = argv[++argument];
+            if (flag == "--validation") validation_path = value;
+            else if (flag == "--test") test_path = value;
+            else if (flag == "--output") output_path = value;
+            else if (flag == "--report") report_path = value;
+            else if (flag == "--patience") patience = std::stoi(value);
+            else if (flag == "--threads") requested_threads = std::stoi(value);
+            else if (flag == "--k") sigmoid_k = std::stod(value);
+            else throw std::invalid_argument("Unknown option: " + flag);
+        }
+        if (epochs < 0 || !std::isfinite(lr) || lr <= 0 || patience < 1 || requested_threads < 1 ||
+            !std::isfinite(sigmoid_k) || sigmoid_k <= 0) throw std::invalid_argument("Invalid optimizer configuration");
+        if (!parity_only) {
+            if (validation_path.empty() || test_path.empty() || output_path.empty() || report_path.empty())
+                throw std::invalid_argument("Training requires --validation, --test, --output and --report; use run_texel_candidate.py");
+            auto absolute = [](const std::string& value) { return std::filesystem::weakly_canonical(value); };
+            const auto production = absolute("src/evaluation/tuned_eval_params.inc");
+            if (absolute(output_path) == production || absolute(report_path) == production ||
+                absolute(output_path) == absolute(report_path) || std::filesystem::exists(output_path) ||
+                std::filesystem::exists(report_path)) throw std::invalid_argument("Output must be a fresh, non-production candidate and report");
+            if (absolute(dataset_path) == absolute(validation_path) || absolute(dataset_path) == absolute(test_path) ||
+                absolute(validation_path) == absolute(test_path)) throw std::invalid_argument("Held-out inputs must be separate files");
+        }
+    } catch (const std::exception& error) {
+        std::cerr << "[Error] " << error.what() << '\n';
+        return 1;
+    }
 
     Zobrist::init();
     MoveGenerator::init();
@@ -369,17 +438,17 @@ int main(int argc, char* argv[]) {
     Evaluator::init();
     Evaluator::set_mode(EvalMode::MasterPositional);
 
-    int num_threads = omp_get_max_threads();
+    int num_threads = std::min(requested_threads, omp_get_max_threads());
     omp_set_num_threads(num_threads);
     std::cout << "[Texel] Initialized OpenMP across " << num_threads << " CPU threads.\n";
 
-    // 1. Build Parameter Table (74 Parameters)
+    // 1. Build Parameter Table (Pawn MG remains anchored).
     std::vector<TunerParam> params;
     std::vector<double> w;
 
     auto add_p = [&](const std::string& name, int* int_p, double min_v, double max_v, bool is_mg, size_t f_idx) {
         w.push_back(static_cast<double>(*int_p));
-        params.push_back({name, &w.back(), int_p, min_v, max_v, is_mg, f_idx});
+        params.push_back({name, int_p, min_v, max_v, is_mg, f_idx});
     };
 
     // Material (PawnMG anchored at 100 - NOT in params!)
@@ -468,38 +537,61 @@ int main(int argc, char* argv[]) {
     add_p("tempo_eg", &g_eval_params.tempo_eg, 0, 10, false, 38);
 
     const size_t num_params = params.size();
+    if (g_eval_params.pawn_mg != 100) {
+        std::cerr << "[Error] Pawn MG anchor differs from runtime evaluation.\n";
+        return 1;
+    }
     std::cout << "[Texel] Extracted " << num_params << " tunable parameters.\n";
     std::cout << "[Texel] Anchor invariant locked: PawnMG = 100 cp (Zero Scale Inflation).\n\n";
 
     // 2. Load Dataset & Precompute Feature Matrices
-    std::cout << "[Texel] Precomputing feature tensors from: " << dataset_path << "...\n";
-    std::ifstream in(dataset_path);
-    if (!in.is_open()) {
-        std::cerr << "[Error] Could not open dataset!\n";
+    std::cout << "[Texel] Precomputing features from: " << dataset_path << "...\n";
+    std::vector<FeatureSample> dataset, validation, test;
+    auto t_load_start = std::chrono::high_resolution_clock::now();
+    auto load_dataset = [&](const std::string& filename, std::vector<FeatureSample>& destination) {
+        std::ifstream input(filename);
+        if (!input) throw std::runtime_error("Cannot open dataset: " + filename);
+        std::string line;
+        size_t line_number = 0;
+        while (std::getline(input, line)) {
+            ++line_number;
+            if (line.empty() || line == "\r") continue;
+            const size_t pipe_pos = line.find('|');
+            if (pipe_pos == std::string::npos || line.find('|', pipe_pos + 1) != std::string::npos)
+                throw std::runtime_error("Malformed dataset line " + std::to_string(line_number));
+            const std::string fen = line.substr(0, pipe_pos);
+            const std::string target_text = line.substr(pipe_pos + 1);
+            size_t consumed = 0;
+            const double target = std::stod(target_text, &consumed);
+            if (!std::isfinite(target) || target < 0 || target > 1 ||
+                target_text.find_first_not_of(" \t\r", consumed) != std::string::npos)
+                throw std::runtime_error("Invalid target at line " + std::to_string(line_number));
+            Board board;
+            if (!FEN::parse(fen, board) || board.king_square(Color::White) == Square::None ||
+                board.king_square(Color::Black) == Square::None)
+                throw std::runtime_error("Invalid FEN at line " + std::to_string(line_number));
+            FeatureSample sample;
+            if (parity_only) sample.fen = fen;
+            sample.target = target;
+            extract_board_features(board, sample.f_mg, sample.f_eg, sample.phase_mg, sample.phase_eg);
+            const int runtime_stm = Evaluator::evaluate_fast(board);
+            sample.runtime_eval_white = board.side_to_move() == Color::White ? runtime_stm : -runtime_stm;
+            sample.base_constant = sample.runtime_eval_white - tunable_score(sample, params, w);
+            if (parity_only) sample.unrounded_eval_white = unrounded_runtime_white(board);
+            destination.push_back(std::move(sample));
+        }
+        if (!input.eof() || destination.empty()) throw std::runtime_error("Unreadable or empty dataset: " + filename);
+    };
+    try {
+        load_dataset(dataset_path, dataset);
+        if (!parity_only) {
+            load_dataset(validation_path, validation);
+            load_dataset(test_path, test);
+        }
+    } catch (const std::exception& error) {
+        std::cerr << "[Error] " << error.what() << '\n';
         return 1;
     }
-
-    std::vector<FeatureSample> dataset;
-    std::string line;
-    auto t_load_start = std::chrono::high_resolution_clock::now();
-
-    while (std::getline(in, line)) {
-        if (line.empty()) continue;
-        size_t pipe_pos = line.find('|');
-        if (pipe_pos == std::string::npos) continue;
-
-        std::string fen = line.substr(0, pipe_pos);
-        float target = std::stof(line.substr(pipe_pos + 1));
-
-        Board board;
-        if (FEN::parse(fen, board)) {
-            FeatureSample sample;
-            sample.target = target;
-            extract_board_features(board, sample.f_mg, sample.f_eg, sample.base_constant, sample.phase_mg, sample.phase_eg);
-            dataset.push_back(std::move(sample));
-        }
-    }
-    in.close();
 
     auto t_load_end = std::chrono::high_resolution_clock::now();
     double load_sec = std::chrono::duration<double>(t_load_end - t_load_start).count();
@@ -508,46 +600,91 @@ int main(int argc, char* argv[]) {
     const size_t N = dataset.size();
     if (N == 0) return 1;
 
-    // Anchor: PawnMG is always 100
-    const double pawn_mg_val = 100.0;
-
     // Fast inline evaluator of a sample given weights w
     auto eval_sample = [&](const FeatureSample& s) -> double {
-        double eval_white = s.base_constant;
-        // Add anchored PawnMG:
-        eval_white += s.phase_mg * s.f_mg[0] * pawn_mg_val;
+        return s.base_constant + tunable_score(s, params, w);
+    };
 
-        // Add all tunable parameters
-        for (size_t p = 0; p < num_params; ++p) {
-            const auto& param = params[p];
-            double weight = w[p];
-            if (param.is_mg) {
-                eval_white += s.phase_mg * s.f_mg[param.feat_idx] * weight;
-            } else {
-                eval_white += s.phase_eg * s.f_eg[param.feat_idx] * weight;
+    // Abort before optimization if the baseline model diverges from the engine.
+    double max_parity_error = 0.0;
+    for (const auto& sample : dataset)
+        max_parity_error = std::max(max_parity_error, std::abs(eval_sample(sample) - sample.runtime_eval_white));
+    std::cout << "[Texel] Runtime baseline parity: max error " << std::fixed
+              << std::setprecision(9) << max_parity_error << " cp across " << N << " positions.\n";
+    if (max_parity_error > 1e-6) {
+        std::cerr << "[Error] Feature reconstruction does not match evaluate_fast.\n";
+        return 1;
+    }
+    if (parity_only) {
+        // Check local slopes against the real evaluator too. Baseline residual
+        // parity alone would hide a feature extractor with incorrect gradients.
+        double max_slope_error = 0.0;
+        double max_unrounded_error = 0.0;
+        std::string worst_parameter;
+        for (const auto& sample : dataset) {
+            for (size_t p = 0; p < num_params; ++p) {
+                const auto& param = params[p];
+                const int original = *param.int_ptr;
+                const double coefficient = param.is_mg
+                    ? sample.phase_mg * sample.f_mg[param.feat_idx]
+                    : sample.phase_eg * sample.f_eg[param.feat_idx];
+                for (int delta : {-8, -1, 1, 8}) {
+                    if (original + delta < param.min_val || original + delta > param.max_val) continue;
+                    *param.int_ptr = original + delta;
+                    Board perturbed;
+                    if (!FEN::parse(sample.fen, perturbed)) {
+                        *param.int_ptr = original;
+                        std::cerr << "[Error] Parity fixture became invalid.\n";
+                        return 1;
+                    }
+                    Evaluator::reset_incremental_cache();
+                    const int score_stm = Evaluator::evaluate_fast(perturbed);
+                    const double score_white = perturbed.side_to_move() == Color::White ? score_stm : -score_stm;
+                    const double error = std::abs(score_white - (sample.runtime_eval_white + delta * coefficient));
+                    max_unrounded_error = std::max(max_unrounded_error, std::abs(
+                        unrounded_runtime_white(perturbed) - (sample.unrounded_eval_white + delta * coefficient)));
+                    if (error > max_slope_error) {
+                        max_slope_error = error;
+                        worst_parameter = param.name;
+                    }
+                }
+                *param.int_ptr = original;
             }
         }
-        return eval_white;
-    };
+        Evaluator::reset_incremental_cache();
+        std::cout << "[Texel] Local slope parity: max error " << max_slope_error
+                  << " cp (" << worst_parameter << ").\n";
+        std::cout << "[Texel] Unrounded production slope error: " << max_unrounded_error << " cp.\n";
+        // The two separately truncated side scores can change the residual by
+        // less than 2 cp. The unrounded oracle must still match the feature slope.
+        return max_slope_error <= 2.01 && max_unrounded_error <= 1e-4 ? 0 : 1;
+    }
 
     // Compute Loss
-    auto compute_current_loss = [&]() -> double {
+    auto compute_loss = [&](const std::vector<FeatureSample>& samples) -> double {
         double total_loss = 0.0;
         #pragma omp parallel for reduction(+:total_loss) schedule(static, 2048)
-        for (size_t i = 0; i < N; ++i) {
-            double eval_w = eval_sample(dataset[i]);
-            double pred = sigmoid(eval_w);
-            double err = dataset[i].target - pred;
+        for (size_t i = 0; i < samples.size(); ++i) {
+            double eval_w = eval_sample(samples[i]);
+            double pred = sigmoid(eval_w, sigmoid_k);
+            double err = samples[i].target - pred;
             total_loss += err * err;
         }
-        return total_loss / static_cast<double>(N);
+        return total_loss / static_cast<double>(samples.size());
     };
 
-    double initial_loss = compute_current_loss();
+    double initial_loss = compute_loss(dataset);
+    const double initial_validation_loss = compute_loss(validation);
+    const double initial_test_loss = compute_loss(test);
+    std::cout << "[Texel] Validation baseline MSE: " << initial_validation_loss
+              << "; samples: train=" << N << " validation=" << validation.size() << " test=" << test.size() << '\n';
     std::cout << "[Texel] Baseline Evaluation Loss (MSE): " << std::fixed << std::setprecision(6) << initial_loss << "\n\n";
 
     // Store initial values for final diff report
     std::vector<double> initial_w = w;
+    std::vector<double> best_w = w;
+    double best_validation_loss = initial_validation_loss;
+    int best_epoch = 0, stale_epochs = 0, epochs_completed = 0;
 
     // Adam Optimizer State
     std::vector<double> m(num_params, 0.0);
@@ -555,7 +692,7 @@ int main(int argc, char* argv[]) {
     const double beta1 = 0.90;
     const double beta2 = 0.999;
     const double eps = 1e-8;
-    const double k_const = std::log(10.0) / 400.0; // derivative factor of sigmoid
+    const double k_const = std::log(10.0) / sigmoid_k;
 
     auto opt_start = std::chrono::high_resolution_clock::now();
 
@@ -572,7 +709,7 @@ int main(int argc, char* argv[]) {
             for (size_t i = 0; i < N; ++i) {
                 const auto& s = dataset[i];
                 double eval_w = eval_sample(s);
-                double pred = sigmoid(eval_w);
+                double pred = sigmoid(eval_w, sigmoid_k);
                 double residual = s.target - pred;
 
                 // dL / dE = -2 * residual * sigma'(E)
@@ -598,7 +735,7 @@ int main(int argc, char* argv[]) {
         double max_grad = 0.0;
         for (size_t p = 0; p < num_params; ++p) {
             grads[p] /= static_cast<double>(N);
-            grads[p] += lambda_reg * (w[p] - initial_w[p]); // Regularization towards grandmaster defaults
+            grads[p] += lambda_reg * (w[p] - initial_w[p]); // Regularize towards the frozen baseline.
 
             if (std::abs(grads[p]) > max_grad) max_grad = std::abs(grads[p]);
 
@@ -616,7 +753,15 @@ int main(int argc, char* argv[]) {
             w[p] = std::clamp(w[p], params[p].min_val, params[p].max_val);
         }
 
-        double loss_now = compute_current_loss();
+        double loss_now = compute_loss(dataset);
+        const double validation_loss = compute_loss(validation);
+        epochs_completed = epoch;
+        if (std::isfinite(validation_loss) && validation_loss < best_validation_loss - 1e-8) {
+            best_validation_loss = validation_loss;
+            best_w = w;
+            best_epoch = epoch;
+            stale_epochs = 0;
+        } else ++stale_epochs;
         auto ep_end = std::chrono::high_resolution_clock::now();
         double ep_ms = std::chrono::duration<double, std::milli>(ep_end - ep_start).count();
         double imp_pct = ((initial_loss - loss_now) / initial_loss) * 100.0;
@@ -625,14 +770,41 @@ int main(int argc, char* argv[]) {
             std::cout << "[Epoch " << std::setw(2) << epoch << "/" << epochs << "] "
                       << "Loss: " << std::fixed << std::setprecision(6) << loss_now << " "
                       << "(Imp: " << std::setprecision(3) << imp_pct << "%) "
-                      << "MaxGrad: " << std::setprecision(6) << max_grad << " "
+                      << "Validation: " << validation_loss << " MaxGrad: " << std::setprecision(6) << max_grad << " "
                       << "in " << std::setprecision(0) << ep_ms << "ms\n" << std::flush;
+        }
+        if (stale_epochs >= patience) {
+            std::cout << "[Texel] Early stop after " << stale_epochs << " epochs without held-out improvement.\n";
+            break;
         }
     }
 
+    w = best_w;
+    for (double& weight : w) weight = std::round(weight);
+
     auto opt_end = std::chrono::high_resolution_clock::now();
     double total_sec = std::chrono::duration<double>(opt_end - opt_start).count();
-    double final_loss = compute_current_loss();
+    double final_loss = compute_loss(dataset);
+    const double final_validation_loss = compute_loss(validation);
+    const double final_test_loss = compute_loss(test);
+    const bool validation_improved = std::isfinite(final_validation_loss) &&
+        final_validation_loss < initial_validation_loss - 1e-8;
+    std::ofstream report(report_path);
+    if (!report) { std::cerr << "[Error] Cannot create candidate report.\n"; return 1; }
+    report << std::setprecision(17) << "{\"schema\":1,\"best_epoch\":" << best_epoch
+           << ",\"epochs_completed\":" << epochs_completed << ",\"sigmoid_k\":" << sigmoid_k
+           << ",\"train_baseline_mse\":" << initial_loss << ",\"train_candidate_mse\":" << final_loss
+           << ",\"validation_baseline_mse\":" << initial_validation_loss
+           << ",\"validation_candidate_mse\":" << final_validation_loss
+           << ",\"test_baseline_mse\":" << initial_test_loss << ",\"test_candidate_mse\":" << final_test_loss
+           << ",\"validation_improved\":" << (validation_improved ? "true" : "false")
+           << ",\"exported\":" << (validation_improved ? "true" : "false") << "}\n";
+    report.close();
+    if (!report) return 1;
+    if (!validation_improved) {
+        std::cout << "[Texel] Rounded candidate did not improve held-out validation; no parameter file exported.\n";
+        return 2;
+    }
 
     std::cout << "\n======================================================\n";
     std::cout << "  TEXEL TUNING COMPLETE in " << std::fixed << std::setprecision(2) << total_sec << "s\n";
@@ -664,20 +836,22 @@ int main(int argc, char* argv[]) {
     std::cout << "----------------------------------------------------------------------\n\n";
 
     // 5. Export tuned C++ header include
-    std::ofstream out("src/evaluation/tuned_eval_params.inc");
+    std::ofstream out(output_path);
     if (out.is_open()) {
         out << "// Automatically generated by Heaven's Gate Classical Texel Tuner\n";
-        out << "// Trained across " << dataset.size() << " grandmaster quiet positions\n";
-        out << "// Anchor invariant: PawnMG = 100\n\n";
+        out << "// Training positions: " << dataset.size() << "; provenance lives in the dataset manifest\n";
+        out << "// Candidate only. Requires paired-game validation before promotion.\n";
+        out << "// Anchor invariant: PawnMG = 100\n\nnamespace heavensgate {\n\n";
         out << "inline void apply_tuned_eval_params(EvalParams& p) {\n";
         for (size_t p = 0; p < num_params; ++p) {
             int new_v = static_cast<int>(std::round(w[p]));
             out << "    p." << params[p].name << " = " << new_v << ";\n";
         }
-        out << "}\n";
+        out << "}\n\n} // namespace heavensgate\n";
         out.close();
-        std::cout << "[Texel] Exported tuned parameters to: src/evaluation/tuned_eval_params.inc\n";
-    }
+        if (!out) return 1;
+        std::cout << "[Texel] Exported candidate parameters to: " << output_path << '\n';
+    } else { std::cerr << "[Error] Cannot create candidate output.\n"; return 1; }
 
     return 0;
 }

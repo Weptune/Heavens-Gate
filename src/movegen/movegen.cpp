@@ -242,7 +242,23 @@ void MoveGenerator::generate_pseudo_legal_moves(const Board& board, MoveList& mo
     }
 }
 
-static inline void filter_legal_moves(const Board& board, const MoveList& pseudo_moves, MoveList& legal_moves) {
+static inline Bitboard pinned_pieces(const Board& board, Color us, Square ksq) {
+    const Color them = ~us;
+    const Bitboard occ = board.occupied();
+    const Bitboard diag_snipers = (board.pieces(make_piece(them, PieceType::Bishop)) | board.pieces(make_piece(them, PieceType::Queen))) & MagicBitboards::bishop_attacks(ksq, EmptyBB);
+    const Bitboard ortho_snipers = (board.pieces(make_piece(them, PieceType::Rook)) | board.pieces(make_piece(them, PieceType::Queen))) & MagicBitboards::rook_attacks(ksq, EmptyBB);
+    Bitboard snipers = diag_snipers | ortho_snipers;
+    Bitboard pinned = EmptyBB;
+    while (snipers) {
+        const Square sniper_sq = pop_lsb(snipers);
+        const Bitboard blockers = AttackMasks::between(ksq, sniper_sq) & occ;
+        if (popcount(blockers) == 1) pinned |= blockers & board.pieces(us);
+    }
+    return pinned;
+}
+
+static inline void filter_legal_moves(const Board& board, const MoveList& pseudo_moves, MoveList& legal_moves,
+                                     bool stop_after_first = false) {
     legal_moves.clear();
     Color us = board.side_to_move();
     Board& mut_board = const_cast<Board&>(board);
@@ -254,6 +270,7 @@ static inline void filter_legal_moves(const Board& board, const MoveList& pseudo
                 legal_moves.push_back(pseudo_moves[i]);
             }
             mut_board.unmake_move(pseudo_moves[i]);
+            if (stop_after_first && !legal_moves.empty()) return;
         }
         return;
     }
@@ -266,25 +283,12 @@ static inline void filter_legal_moves(const Board& board, const MoveList& pseudo
                 legal_moves.push_back(pseudo_moves[i]);
             }
             mut_board.unmake_move(pseudo_moves[i]);
+            if (stop_after_first && !legal_moves.empty()) return;
         }
         return;
     }
 
-    Bitboard occ = board.occupied();
-    Color them = ~us;
-
-    Bitboard diag_snipers = (board.pieces(make_piece(them, PieceType::Bishop)) | board.pieces(make_piece(them, PieceType::Queen))) & MagicBitboards::bishop_attacks(ksq, EmptyBB);
-    Bitboard ortho_snipers = (board.pieces(make_piece(them, PieceType::Rook))   | board.pieces(make_piece(them, PieceType::Queen))) & MagicBitboards::rook_attacks(ksq, EmptyBB);
-    Bitboard snipers = diag_snipers | ortho_snipers;
-
-    Bitboard pinned = EmptyBB;
-    while (snipers) {
-        Square sniper_sq = pop_lsb(snipers);
-        Bitboard b = AttackMasks::between(ksq, sniper_sq) & occ;
-        if (popcount(b) == 1) {
-            pinned |= (b & board.pieces(us));
-        }
-    }
+    const Bitboard pinned = pinned_pieces(board, us, ksq);
 
     for (size_t i = 0; i < pseudo_moves.size(); ++i) {
         const Move& m = pseudo_moves[i];
@@ -297,6 +301,7 @@ static inline void filter_legal_moves(const Board& board, const MoveList& pseudo
                 legal_moves.push_back(m);
             }
             mut_board.unmake_move(m);
+            if (stop_after_first && !legal_moves.empty()) return;
             continue;
         }
 
@@ -307,6 +312,7 @@ static inline void filter_legal_moves(const Board& board, const MoveList& pseudo
                 legal_moves.push_back(m);
             }
             mut_board.unmake_move(m);
+            if (stop_after_first && !legal_moves.empty()) return;
             continue;
         }
 
@@ -314,12 +320,14 @@ static inline void filter_legal_moves(const Board& board, const MoveList& pseudo
         if (test_bit(pinned, from)) {
             if (test_bit(AttackMasks::line(ksq, from), m.to())) {
                 legal_moves.push_back(m);
+                if (stop_after_first) return;
             }
             continue;
         }
 
         // 4. Unpinned pieces: 100% mathematically guaranteed to be legal!
         legal_moves.push_back(m);
+        if (stop_after_first) return;
     }
 }
 
@@ -327,6 +335,43 @@ void MoveGenerator::generate_legal_moves(const Board& board, MoveList& moves) {
     MoveList pseudo_moves;
     generate_pseudo_legal_moves(board, pseudo_moves);
     filter_legal_moves(board, pseudo_moves, moves);
+}
+
+bool MoveGenerator::has_legal_move(const Board& board) {
+    const Color us = board.side_to_move();
+    const Square ksq = board.king_square(us);
+    if (static_cast<size_t>(ksq) < 64 && !in_check(board, us)) {
+        // Outside check, an unpinned non-king move cannot expose its king.
+        // This is the same exact legality proof used by filter_legal_moves,
+        // not a material-count or mobility-score approximation to stalemate.
+        const Bitboard pinned = pinned_pieces(board, us, ksq);
+        const Bitboard occ = board.occupied();
+        const Bitboard pawns = board.pieces(make_piece(us, PieceType::Pawn)) & ~pinned;
+        const Bitboard pushes = us == Color::White ? pawns << 8 : pawns >> 8;
+        if (pushes & ~occ) return true; // Includes legal quiet promotions.
+        const Bitboard destinations = ~board.pieces(us);
+        for (PieceType type : {PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen}) {
+            Bitboard pieces = board.pieces(make_piece(us, type)) & ~pinned;
+            while (pieces) {
+                const Square from = pop_lsb(pieces);
+                Bitboard attacks = EmptyBB;
+                switch (type) {
+                    case PieceType::Knight: attacks = AttackMasks::knight_attacks(from); break;
+                    case PieceType::Bishop: attacks = AttackMasks::bishop_attacks(from, occ); break;
+                    case PieceType::Rook: attacks = AttackMasks::rook_attacks(from, occ); break;
+                    case PieceType::Queen: attacks = AttackMasks::queen_attacks(from, occ); break;
+                    default: break;
+                }
+                if (attacks & destinations) return true;
+            }
+        }
+    }
+    // King-only mobility, pins, pawn captures, EP and checked nodes retain
+    // the shared full legality filter, stopping after its first legal move.
+    MoveList pseudo_moves, legal_moves;
+    generate_pseudo_legal_moves(board, pseudo_moves);
+    filter_legal_moves(board, pseudo_moves, legal_moves, true);
+    return !legal_moves.empty();
 }
 
 void MoveGenerator::generate_capture_moves(const Board& board, MoveList& moves) {

@@ -55,6 +55,7 @@ subagent_reports.txt
 find_*.py
 inspect_*.py
 extract_*.py
+!tools/extract_quiet_dataset.py
 check_book.py
 
 # Dev tools & Toolchains

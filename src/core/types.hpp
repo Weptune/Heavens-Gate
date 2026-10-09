@@ -238,6 +238,25 @@ inline std::string move_to_uci(Move m) {
     return uci;
 }
 
+// Allocation-free protocol formatting; no dependency on std::string's SSO.
+inline std::array<char, 6> move_to_uci_buffer(Move move) noexcept {
+    if (!move) return {'0', '0', '0', '0', '\0', '\0'};
+    std::array<char, 6> text{static_cast<char>('a' + static_cast<int>(file_of(move.from()))),
+                             static_cast<char>('1' + static_cast<int>(rank_of(move.from()))),
+                             static_cast<char>('a' + static_cast<int>(file_of(move.to()))),
+                             static_cast<char>('1' + static_cast<int>(rank_of(move.to()))), '\0', '\0'};
+    if (move.is_promotion()) {
+        switch (move.promotion_piece_type()) {
+            case PieceType::Knight: text[4] = 'n'; break;
+            case PieceType::Bishop: text[4] = 'b'; break;
+            case PieceType::Rook: text[4] = 'r'; break;
+            case PieceType::Queen: text[4] = 'q'; break;
+            default: break;
+        }
+    }
+    return text;
+}
+
 constexpr char piece_to_char(Piece p) noexcept {
     constexpr std::array<char, 13> PieceChars = {
         'P', 'N', 'B', 'R', 'Q', 'K',

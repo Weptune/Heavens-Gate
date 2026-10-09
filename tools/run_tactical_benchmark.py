@@ -9,7 +9,7 @@ import sys
 import time
 import subprocess
 
-ENGINE_PATH = os.path.join(os.path.dirname(__file__), "..", "heavensgate.exe")
+ENGINE_PATH = os.environ.get("HG_ENGINE", os.path.join(os.path.dirname(__file__), "..", "heavensgate.exe"))
 if not os.path.exists(ENGINE_PATH):
     ENGINE_PATH = "heavensgate.exe"
 

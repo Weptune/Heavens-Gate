@@ -1,5 +1,10 @@
 # Heaven's Gate Master Edition: Official Gauntlet Elo Rating Report
 
+2026-10-09 correction: this historical report is **not an official or validated
+CCRL rating**. Handicap settings and an assumed uncapped rating are not independent
+rating anchors. The original figures below are preserved; see
+[the fresh evidence audit](engine_skill_audit.md) for their limitations.
+
 **Date**: 2026-09-18  
 **Time Control**: 2+0 Blitz (120s Dynamic Bank)  
 **Methodology**: Maximum Likelihood Estimation (BayesElo / Bradley-Terry Logistic Model)

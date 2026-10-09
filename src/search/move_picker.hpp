@@ -23,6 +23,10 @@ private:
     std::unique_ptr<ContHistoryTables> cont_tables_;
 
 public:
+    void reset_search_moves() noexcept {
+        killer_moves_.fill({});
+        countermoves_.fill({});
+    }
     MovePicker();
     ~MovePicker();
     MovePicker(const MovePicker& other);

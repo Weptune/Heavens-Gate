@@ -13,6 +13,9 @@ struct SearchParams {
     int nmp_eval_margin = 200;
     int singular_margin = 2;
     int aspiration_window_delta = 16;
+    bool enable_nmp = true; // Diagnostic ablation; production default is unchanged.
+    bool enable_lmr = true;
+    bool enable_nmp_guards = false; // Isolated experimental candidate; never auto-promoted.
 
     void reset() noexcept {
         lmr_divisor = 3.2000f;
@@ -25,6 +28,9 @@ struct SearchParams {
         nmp_eval_margin = 200;
         singular_margin = 2;
         aspiration_window_delta = 16;
+        enable_nmp = true;
+        enable_lmr = true;
+        enable_nmp_guards = false;
     }
 };
 

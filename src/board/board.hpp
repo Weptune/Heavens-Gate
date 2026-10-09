@@ -4,7 +4,6 @@
 #include "../core/bitwise.hpp"
 #include <array>
 #include <string>
-#include <vector>
 
 namespace heavensgate {
 
@@ -13,6 +12,8 @@ struct StateInfo {
     CastlingRights castling_rights = CastlingNone;
     Square ep_square = Square::None;
     int halfmove_clock = 0;
+    int fullmove_number = 1;
+    int repetition_start = 0;
     uint64_t zobrist_key = 0ULL;
 };
 
@@ -20,6 +21,9 @@ class Board {
     friend class FEN;
 
 public:
+    static constexpr size_t HistoryCapacity = 1024;
+    bool can_push_history() const noexcept { return history_ply_ + 1 < HistoryCapacity; }
+    size_t history_ply() const noexcept { return history_ply_; }
     Board();
 
     void reset();
@@ -44,7 +48,7 @@ public:
     int halfmove_clock() const { return halfmove_clock_; }
     int fullmove_number() const { return fullmove_number_; }
     uint64_t zobrist_key() const { return zobrist_key_; }
-    Square king_square(Color c) const { return king_squares_[static_cast<size_t>(c)]; }
+    Square king_square(Color c) const { const size_t i = static_cast<size_t>(c); return i < 2 ? king_squares_[i] : Square::None; }
     bool has_non_pawn_material(Color c) const;
 
     // FEN helper setters
@@ -98,8 +102,11 @@ private:
 
     uint64_t zobrist_key_ = 0ULL;
 
-    std::vector<StateInfo> history_;
-    std::vector<uint64_t> pos_history_;
+    // Position zero is the root; 1023 pushes fit without overwriting it.
+    std::array<StateInfo, HistoryCapacity> history_{};
+    std::array<uint64_t, HistoryCapacity> pos_history_{};
+    size_t history_ply_ = 0;
+    int repetition_start_ = 0;
 };
 
 } // namespace heavensgate

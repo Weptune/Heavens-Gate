@@ -5,6 +5,7 @@
 #include <string>
 #include <array>
 #include <cstdint>
+#include <atomic>
 
 namespace heavensgate {
 
@@ -20,6 +21,7 @@ enum class WDLScore {
 struct TBCacheEntry {
     uint64_t key{0};
     WDLScore wdl{WDLScore::Unknown};
+    int halfmove_clock{-1};
 };
 
 class SyzygyTablebase {
@@ -34,41 +36,30 @@ public:
     }
 
     void init(const std::string& tb_path = "syzygy");
-    bool is_enabled() const { return enabled_; }
-    void set_enabled(bool enable) { enabled_ = enable; }
+    bool is_enabled() const { return enabled_.load(std::memory_order_relaxed); }
+    void set_enabled(bool enable) { enabled_.store(enable, std::memory_order_relaxed); }
 
-    // Probes WDL score for a board position. Returns exact centipawn score or NO_SCORE
+    // Exact, rule-aware recognition only. This is NOT a file-backed Syzygy probe.
+    // Unproven KPK/KBNK/KBBK/KNNK/fortress/Lucena patterns return NO_SCORE.
     int probe_wdl(const Board& board, int ply);
 
     // Converts WDL enum to search score bounds
     int wdl_to_score(WDLScore wdl, int ply) const;
 
 private:
-    SyzygyTablebase() : enabled_(true), max_pieces_(6) {
-        for (auto& entry : cache_) {
-            entry.key = 0;
-            entry.wdl = WDLScore::Unknown;
-        }
-    }
-
-    bool enabled_;
-    int max_pieces_;
+    SyzygyTablebase() = default;
+    std::atomic<bool> enabled_{true};
+    std::atomic<uint64_t> cache_epoch_{0};
     static constexpr size_t CACHE_SIZE = 16384;
-    std::array<TBCacheEntry, CACHE_SIZE> cache_{};
+    static thread_local std::array<TBCacheEntry, CACHE_SIZE> cache_;
+    static thread_local uint64_t local_epoch_;
 
     // Internal 3-4-5-6 piece WDL evaluator
     WDLScore evaluate_endgame_wdl(const Board& board);
 
     // Specific endgame solvers for 3, 4, 5, 6 piece positions
-    WDLScore solve_kpk(const Board& board, Color strong_side);
     WDLScore solve_krk(const Board& board, Color strong_side);
     WDLScore solve_kqk(const Board& board, Color strong_side);
-    WDLScore solve_kbnk(const Board& board, Color strong_side);
-    WDLScore solve_kbbk(const Board& board, Color strong_side);
-    WDLScore solve_knnk(const Board& board, Color strong_side);
-    WDLScore solve_krp_kr(const Board& board, Color strong_side);
-    WDLScore solve_wrong_color_bishop_pawn(const Board& board, Color strong_side);
-    WDLScore solve_opposite_colored_bishops_1p(const Board& board, Color strong_side);
 };
 
 } // namespace heavensgate

@@ -1,5 +1,8 @@
 #include "test.hpp"
 #include <iostream>
+#include "../src/core/zobrist.hpp"
+#include "../src/movegen/movegen.hpp"
+#include "../src/evaluation/eval.hpp"
 
 namespace heavensgate::test {
 
@@ -13,7 +16,7 @@ bool register_test(const std::string& name, std::function<bool()> func) {
     return true;
 }
 
-int run_all_tests() {
+int run_all_tests(const std::string& filter = {}) {
     int passed = 0;
     int failed = 0;
 
@@ -22,6 +25,7 @@ int run_all_tests() {
     std::cout << "======================================================\n\n";
 
     for (const auto& test : get_tests()) {
+        if (!filter.empty() && test.name.find(filter) == std::string::npos) continue;
         std::cout << "[RUN] " << test.name << " ... ";
         try {
             bool result = test.func();
@@ -45,18 +49,29 @@ int run_all_tests() {
     std::cout << "SUMMARY: " << passed << " PASSED, " << failed << " FAILED\n";
     std::cout << "------------------------------------------------------\n\n";
 
-    return failed == 0 ? 0 : 1;
+    return failed == 0 && passed > 0 ? 0 : 1;
 }
 
 } // namespace heavensgate::test
 
-int main() {
+int main(int argc, char** argv) {
+    std::string filter;
+    if (argc == 3 && std::string(argv[1]) == "--filter") filter = argv[2];
+    else if (argc != 1) {
+        std::cerr << "Usage: heavensgate_tests [--filter name-substring]\n";
+        return 2;
+    }
+    heavensgate::Zobrist::init();
+    heavensgate::MoveGenerator::init();
+    heavensgate::Evaluator::init();
     std::cout << "\n======================================================\n";
     std::cout << "          RUNNING ALL SYSTEM TEST MODULES             \n";
     std::cout << "======================================================\n";
-    heavensgate::test_fen();
-    heavensgate::test_movegen();
-    heavensgate::test_eval();
-    heavensgate::test_search();
-    return heavensgate::test::run_all_tests();
+    if (filter.empty()) {
+        heavensgate::test_fen();
+        heavensgate::test_movegen();
+        heavensgate::test_eval();
+        heavensgate::test_search();
+    }
+    return heavensgate::test::run_all_tests(filter);
 }

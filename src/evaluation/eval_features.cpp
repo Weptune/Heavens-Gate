@@ -194,26 +194,6 @@ ScorePair EvalFeatures::evaluate_pawn_structure(const Board& board, Color side) 
         }
     }
 
-    // 5. Pawn Levers & Central Tension Breaks (+16 cp MG, +10 cp EG)
-    // A pawn push that actively challenges an opponent pawn (e.g. c4/c5, d4/d5, e4/e5, f4/f5)
-    Bitboard occ = board.occupied();
-    Bitboard single_pushes = (side == Color::White)
-        ? ((my_pawns << 8) & ~occ)
-        : ((my_pawns >> 8) & ~occ);
-
-    Bitboard push_attacks = (side == Color::White)
-        ? (((single_pushes & not_file_a) << 7) | ((single_pushes & not_file_h) << 9))
-        : (((single_pushes & not_file_a) >> 9) | ((single_pushes & not_file_h) >> 7));
-
-    Bitboard lever_targets = push_attacks & opp_pawns;
-    if (lever_targets) {
-        // Bonus for candidate central pawn levers on files c, d, e, f
-        Bitboard central_files = file_bb(File::FileC) | file_bb(File::FileD) | file_bb(File::FileE) | file_bb(File::FileF);
-        int central_levers = popcount(lever_targets & central_files);
-        score.mg += central_levers * g_eval_params.central_lever_mg;
-        score.eg += central_levers * g_eval_params.central_lever_eg;
-    }
-
     // Active existing pawn tension (pawns attacking each other)
     Bitboard current_tension = my_pawn_attacks & opp_pawns;
     if (current_tension) {
@@ -236,8 +216,6 @@ ScorePair EvalFeatures::evaluate_passed_pawns(const Board& board, Color side) {
 
     size_t pers_idx = (side == Color::White) ? 0 : 1;
 
-    constexpr std::array<int, 8> PassedBonusMG = { 0,  5, 14, 28, 48,  82, 135, 0 };
-    constexpr std::array<int, 8> PassedBonusEG = { 0, 14, 30, 60, 105, 175, 275, 0 };
 
     while (my_pawns) {
         Square sq = pop_lsb(my_pawns);
@@ -313,7 +291,6 @@ ScorePair EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
 
         // 1. Middlegame Pawn Shield Bonus (+15 cp per shield pawn in MG, 0 in EG)
         File kf_enum = file_of(ksq);
-        Rank kr_enum = rank_of(ksq);
 
         size_t side_idx = (side == Color::White) ? 0 : 1;
         Bitboard shield_mask = KingShieldMask[side_idx][static_cast<size_t>(ksq)];
@@ -376,13 +353,6 @@ ScorePair EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
         // 4. Enemy Attackers Count & Safe Checks Danger Scale
         Bitboard king_zone = AttackMasks::king_attacks(ksq) | square_bb(ksq);
         Bitboard occ = board.occupied();
-        Bitboard my_pieces = board.pieces(side);
-
-        Bitboard not_file_a = ~file_bb(File::FileA);
-        Bitboard not_file_h = ~file_bb(File::FileH);
-        Bitboard my_pawn_attacks = (side == Color::White)
-            ? (((my_pawns & not_file_a) << 7) | ((my_pawns & not_file_h) << 9))
-            : (((my_pawns & not_file_a) >> 9) | ((my_pawns & not_file_h) >> 7));
 
         int attacker_weight = 0;
 
@@ -416,6 +386,22 @@ ScorePair EvalFeatures::evaluate_piece_activity(const Board& board, Color side) 
     Bitboard rooks   = board.pieces(make_piece(side, PieceType::Rook));
     Bitboard friendly_pawns = board.pieces(make_piece(side, PieceType::Pawn));
     Bitboard opp_pawns = board.pieces(make_piece(~side, PieceType::Pawn));
+
+    // Existing lever feature depends on NON-pawn blockers, so it must live
+    // outside the pawn-only hash. Coefficients and cold-eval semantics unchanged.
+    constexpr Bitboard not_file_a = ~file_bb(File::FileA);
+    constexpr Bitboard not_file_h = ~file_bb(File::FileH);
+    const Bitboard pushes = side == Color::White
+        ? (friendly_pawns << 8) & ~board.occupied()
+        : (friendly_pawns >> 8) & ~board.occupied();
+    const Bitboard attacks = side == Color::White
+        ? ((pushes & not_file_a) << 7) | ((pushes & not_file_h) << 9)
+        : ((pushes & not_file_a) >> 9) | ((pushes & not_file_h) >> 7);
+    const Bitboard central = file_bb(File::FileC) | file_bb(File::FileD) |
+                             file_bb(File::FileE) | file_bb(File::FileF);
+    const int levers = popcount(attacks & opp_pawns & central);
+    score.mg += levers * g_eval_params.central_lever_mg;
+    score.eg += levers * g_eval_params.central_lever_eg;
 
     // 1. Bishop Pair Bonus (+32 cp MG, +52 cp EG in open endgames)
     if (popcount(bishops) >= 2) {
@@ -475,8 +461,9 @@ ScorePair EvalFeatures::evaluate_piece_activity(const Board& board, Color side) 
     // 4. Rooks on Open File Bonus & 7th Rank Bonus
     Bitboard all_pawns = board.pieces(Piece::WhitePawn) | board.pieces(Piece::BlackPawn);
     Rank SeventhRank = (side == Color::White) ? Rank::Rank7 : Rank::Rank2;
-    while (rooks) {
-        Square rsq = pop_lsb(rooks);
+    Bitboard rooks_copy = rooks;
+    while (rooks_copy) {
+        Square rsq = pop_lsb(rooks_copy);
         File f = file_of(rsq);
         Rank r = rank_of(rsq);
         if (r == SeventhRank) {
@@ -659,9 +646,7 @@ ScorePair EvalFeatures::evaluate_material_imbalances(const Board& board, Color s
     int total_pawns = popcount(my_pawns | opp_pawns);
 
     int my_knights  = popcount(board.pieces(make_piece(side, PieceType::Knight)));
-    int opp_knights = popcount(board.pieces(make_piece(opp, PieceType::Knight)));
     int my_bishops  = popcount(board.pieces(make_piece(side, PieceType::Bishop)));
-    int opp_bishops = popcount(board.pieces(make_piece(opp, PieceType::Bishop)));
     int my_rooks    = popcount(board.pieces(make_piece(side, PieceType::Rook)));
     int opp_rooks   = popcount(board.pieces(make_piece(opp, PieceType::Rook)));
     int my_queens   = popcount(board.pieces(make_piece(side, PieceType::Queen)));
@@ -700,10 +685,7 @@ ScorePair EvalFeatures::evaluate_material_imbalances(const Board& board, Color s
         score.mg += 15;
         score.eg -= 25;
     }
-    if (opp_queens >= 1 && my_queens == 0 && my_rooks >= 2 && opp_rooks < my_rooks) {
-        score.mg -= 15;
-        score.eg += 25;
-    }
+    // Return this side's contribution only. Evaluator subtracts Black once.
 
     // 4. Endgame Rook Pair Synergy
     if (my_rooks >= 2) {

@@ -1,183 +1,148 @@
-import subprocess
-import os
+"""Game-based SPSA against a frozen HG control; no production header writes.
+
+Each +/- probe plays the SAME paired FENs against the SAME control binary.
+Results are candidate settings only and need independent strength validation.
+Do not run while a timed pilot is active.
+"""
+import argparse
 import json
+import math
+from pathlib import Path
 import random
-import re
-import numpy as np
-import time
+
+import chess
+import chess.engine
+from extract_quiet_dataset import file_hash
+from paired_match import run_paired_batch
 
 PARAM_DEFS = {
-    "lmr_divisor": {"type": "float", "val": 3.20, "c": 0.20, "min": 1.60, "max": 4.00, "uci": "LMR_Divisor"},
-    "lmr_hist_bonus": {"type": "int", "val": 425, "c": 50, "min": 150, "max": 1500, "uci": "LMR_HistBonus"},
-    "lmr_hist_malus": {"type": "int", "val": 72, "c": 20, "min": 20, "max": 300, "uci": "LMR_HistMalus"},
-    "rfp_margin": {"type": "int", "val": 163, "c": 20, "min": 60, "max": 260, "uci": "RFP_Margin"},
-    "futility_margin": {"type": "int", "val": 180, "c": 25, "min": 80, "max": 350, "uci": "Futility_Margin"},
-    "see_bad_capture_slope": {"type": "int", "val": 124, "c": 15, "min": 40, "max": 200, "uci": "SEE_BadCaptureSlope"},
-    "see_quiet_slope": {"type": "int", "val": 15, "c": 5, "min": 5, "max": 60, "uci": "SEE_QuietSlope"},
-    "nmp_eval_margin": {"type": "int", "val": 218, "c": 30, "min": 80, "max": 400, "uci": "NMP_EvalMargin"},
-    "singular_margin": {"type": "int", "val": 2, "c": 1, "min": 1, "max": 6, "uci": "Singular_Margin"},
-    "aspiration_window_delta": {"type": "int", "val": 25, "c": 5, "min": 10, "max": 60, "uci": "Aspiration_Window_Delta"},
+    "lmr_divisor": {"type": "float", "c": .20, "min": 1.60, "max": 4.00, "uci": "LMR_Divisor"},
+    "lmr_hist_bonus": {"type": "int", "c": 50, "min": 150, "max": 1500, "uci": "LMR_HistBonus"},
+    "lmr_hist_malus": {"type": "int", "c": 20, "min": 20, "max": 300, "uci": "LMR_HistMalus"},
+    "rfp_margin": {"type": "int", "c": 20, "min": 60, "max": 260, "uci": "RFP_Margin"},
+    "futility_margin": {"type": "int", "c": 25, "min": 80, "max": 350, "uci": "Futility_Margin"},
+    "see_bad_capture_slope": {"type": "int", "c": 15, "min": 40, "max": 200, "uci": "SEE_BadCaptureSlope"},
+    "see_quiet_slope": {"type": "int", "c": 5, "min": 5, "max": 60, "uci": "SEE_QuietSlope"},
+    "nmp_eval_margin": {"type": "int", "c": 30, "min": 80, "max": 400, "uci": "NMP_EvalMargin"},
+    "singular_margin": {"type": "int", "c": 1, "min": 1, "max": 6, "uci": "Singular_Margin"},
+    "aspiration_window_delta": {"type": "int", "c": 5, "min": 5, "max": 100, "uci": "Aspiration_Window_Delta"},
 }
 
-GXX = r"C:\Users\abhin\heavensgate\tools\w64devkit\bin\g++.exe"
-ENGINE_EXE = r"c:\Users\abhin\heavensgate\heavensgate.exe"
-ENV = os.environ.copy()
-ENV["PATH"] = r"C:\Users\abhin\heavensgate\tools\w64devkit\bin;" + ENV.get("PATH", "")
 
-def evaluate_params(params):
-    input_cmds = []
-    for k, pdef in PARAM_DEFS.items():
-        uci_name = pdef["uci"]
-        val = params[k]
-        if pdef["type"] == "float":
-            input_cmds.append(f"setoption name {uci_name} value {val:.4f}")
-        else:
-            input_cmds.append(f"setoption name {uci_name} value {int(round(val))}")
-    input_cmds.append("sts 10 0 6")
-    input_cmds.append("quit")
-    stdin_data = "\n".join(input_cmds) + "\n"
+def default_parameters(binary):
+    with chess.engine.SimpleEngine.popen_uci([str(binary), "uci"]) as engine:
+        values = {}
+        for name, definition in PARAM_DEFS.items():
+            option = engine.options[definition["uci"]]
+            value = float(option.default)
+            if not definition["min"] <= value <= definition["max"]:
+                raise ValueError(f"Binary default outside tuning bounds: {name}")
+            values[name] = value
+        return values
 
-    try:
-        proc = subprocess.run([ENGINE_EXE], input=stdin_data, cwd=r"c:\Users\abhin\heavensgate", env=ENV, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30)
-        out = proc.stdout
-    except Exception as e:
-        print(f"[Error] Subprocess execution failed: {e}")
-        return 0.0
 
-    total_match = re.search(r"OVERALL TOTAL\s+\d+\s+(\d+)\s*/\s*8000", out)
-    if not total_match:
-        return 0.0
+def uci_parameters(parameters):
+    return {definition["uci"]: (f"{parameters[name]:.6f}" if definition["type"] == "float"
+                               else int(round(parameters[name]))) for name, definition in PARAM_DEFS.items()}
 
-    sts_score = float(total_match.group(1))
-    return sts_score
 
-def run_spsa(iterations=10):
-    print("=" * 75)
-    print("  HEAVEN'S GATE SPSA SEARCH PARAMETER OPTIMIZATION")
-    print("=" * 75)
-    
-    curr_params = {k: v["val"] for k, v in PARAM_DEFS.items()}
-    best_params = curr_params.copy()
-    
-    print("\n[SPSA] Evaluating Baseline Parameters...")
-    best_score = evaluate_params(curr_params)
-    print(f"  Baseline STS Score: {best_score:.0f} / 8000\n")
-    
-    # SPSA Hyperparameters
-    a = 0.40
-    A = 5.0
-    alpha = 0.602
-    gamma = 0.101
-    
-    keys = list(PARAM_DEFS.keys())
-    
-    for k in range(1, iterations + 1):
-        a_k = a / ((k + A) ** alpha)
-        c_k_scale = 1.0 / (k ** gamma)
-        
-        # 1. Generate Rademacher perturbation vector delta (+1 or -1)
-        delta = {key: 1.0 if random.random() > 0.5 else -1.0 for key in keys}
-        
-        # 2. Compute theta+ and theta-
-        theta_plus = {}
-        theta_minus = {}
-        for key in keys:
-            defn = PARAM_DEFS[key]
-            pert = defn["c"] * c_k_scale * delta[key]
-            
-            p_plus = curr_params[key] + pert
-            p_minus = curr_params[key] - pert
-            
-            p_plus = max(defn["min"], min(defn["max"], p_plus))
-            p_minus = max(defn["min"], min(defn["max"], p_minus))
-            
-            if defn["type"] == "int":
-                p_plus = round(p_plus)
-                p_minus = round(p_minus)
-                
-            theta_plus[key] = p_plus
-            theta_minus[key] = p_minus
-            
-        print(f"\n--- [Iteration {k}/{iterations}] ---")
-        print(f"  Testing theta+...")
-        y_plus = evaluate_params(theta_plus)
-        print(f"    theta+ Score: {y_plus:.0f}")
-        
-        print(f"  Testing theta-...")
-        y_minus = evaluate_params(theta_minus)
-        print(f"    theta- Score: {y_minus:.0f}")
-        
-        # 3. Estimate gradient
-        diff = y_plus - y_minus
-        print(f"  Gradient Diff (y+ - y-): {diff:+.1f}")
-        
-        for key in keys:
-            defn = PARAM_DEFS[key]
-            c_eff = defn["c"] * c_k_scale * delta[key]
-            g_i = diff / (2.0 * c_eff)
-            
-            # Update
-            step = a_k * g_i * (defn["max"] - defn["min"]) * 0.05
-            new_val = curr_params[key] + step
-            new_val = max(defn["min"], min(defn["max"], new_val))
-            if defn["type"] == "int":
-                new_val = round(new_val)
-            curr_params[key] = new_val
-            
-        # Check current evaluated score
-        curr_score = evaluate_params(curr_params)
-        print(f"  Updated Parameters Evaluated Score: {curr_score:.0f} (Best: {best_score:.0f})")
-        
-        if curr_score > best_score:
-            best_score = curr_score
-            best_params = curr_params.copy()
-            print(f"  >>> NEW BEST SCORE: {best_score:.0f} / 8000! Saving search_params_best.json <<<")
-            with open(r"c:\Users\abhin\heavensgate\search_params_best.json", "w") as f:
-                json.dump({"score": best_score, "params": best_params}, f, indent=4)
-                
-    # Restore best parameters
-    print("\n" + "=" * 75)
-    print(f"SPSA OPTIMIZATION COMPLETE! Final Best Score: {best_score:.0f} / 8000")
-    print("=" * 75)
-    # Update search_params.hpp with tuned values
-    header_path = r"c:\Users\abhin\heavensgate\src\search\search_params.hpp"
-    header_content = f"""#pragma once
+def probes(parameters, iteration, rng):
+    plus, minus = {}, {}
+    for name, definition in PARAM_DEFS.items():
+        perturbation = definition["c"] * iteration ** -.101 * rng.choice((-1, 1))
+        values = [min(definition["max"], max(definition["min"], parameters[name] + sign * perturbation))
+                  for sign in (1, -1)]
+        if definition["type"] == "int": values = [round(value) for value in values]
+        plus[name], minus[name] = values
+    return plus, minus
 
-namespace heavensgate {{
 
-struct SearchParams {{
-    float lmr_divisor = {best_params['lmr_divisor']:.4f}f;
-    int lmr_hist_bonus = {int(round(best_params['lmr_hist_bonus']))};
-    int lmr_hist_malus = {int(round(best_params['lmr_hist_malus']))};
-    int rfp_margin = {int(round(best_params['rfp_margin']))};
-    int futility_margin = {int(round(best_params['futility_margin']))};
-    int see_bad_capture_slope = {int(round(best_params['see_bad_capture_slope']))};
-    int see_quiet_slope = {int(round(best_params['see_quiet_slope']))};
-    int nmp_eval_margin = {int(round(best_params['nmp_eval_margin']))};
-    int singular_margin = {int(round(best_params['singular_margin']))};
-    int aspiration_window_delta = {int(round(best_params['aspiration_window_delta']))};
+def update_parameters(parameters, plus, minus, y_plus, y_minus, iteration, gain=.01):
+    # Work in normalized parameter coordinates. Use ACTUAL signed probe spans,
+    # accounting for clipping/rounding rather than inventing the nominal span.
+    updated = {}
+    for name, definition in PARAM_DEFS.items():
+        width = definition["max"] - definition["min"]
+        span = (plus[name] - minus[name]) / width
+        gradient = (y_plus - y_minus) / span if span else 0.0
+        step = gain / (iteration + 5.0) ** .602 * gradient * width
+        updated[name] = min(definition["max"], max(definition["min"], parameters[name] + step))
+    return updated
 
-    void reset() noexcept {{
-        lmr_divisor = {best_params['lmr_divisor']:.4f}f;
-        lmr_hist_bonus = {int(round(best_params['lmr_hist_bonus']))};
-        lmr_hist_malus = {int(round(best_params['lmr_hist_malus']))};
-        rfp_margin = {int(round(best_params['rfp_margin']))};
-        futility_margin = {int(round(best_params['futility_margin']))};
-        see_bad_capture_slope = {int(round(best_params['see_bad_capture_slope']))};
-        see_quiet_slope = {int(round(best_params['see_quiet_slope']))};
-        nmp_eval_margin = {int(round(best_params['nmp_eval_margin']))};
-        singular_margin = {int(round(best_params['singular_margin']))};
-        aspiration_window_delta = {int(round(best_params['aspiration_window_delta']))};
-    }}
-}};
 
-extern SearchParams g_search_params;
+def run_spsa(candidate, control, fens, output_dir, *, iterations=10, pairs=4, seed=20261009,
+             bank_ms=10000, increment_ms=100, threads=1, hash_mb=64, gain=.01):
+    candidate, control, output_dir = Path(candidate).resolve(), Path(control).resolve(), Path(output_dir).resolve()
+    if output_dir.exists(): raise FileExistsError("Preserve existing SPSA run")
+    if iterations < 1 or pairs < 1 or not math.isfinite(gain) or gain <= 0 or not fens or bank_ms <= 0 or increment_ms < 0 or threads < 1 or hash_mb < 1:
+        raise ValueError("Invalid SPSA configuration")
+    for fen in fens:
+        if not chess.Board(fen).is_valid(): raise ValueError("Invalid tuning opening")
+    parameters = default_parameters(candidate)
+    candidate_hash, control_hash = file_hash(candidate), file_hash(control)
+    output_dir.mkdir(parents=True, exist_ok=False)
+    manifest = {"schema": 1, "objective": "paired played-game score against frozen control (not STS)",
+        "candidate": str(candidate), "control": str(control), "candidate_sha256": candidate_hash,
+        "control_sha256": control_hash, "seed": seed, "iterations": iterations, "pairs_per_probe": pairs,
+        "bank_ms": bank_ms, "increment_ms": increment_ms, "threads_each": threads,
+        "hash_mb_each": hash_mb, "gain": gain, "initial_parameters": parameters, "fens": fens,
+        "promotion": "candidate JSON only; independent paired strength test required"}
+    with (output_dir / "manifest.json").open("x") as output: json.dump(manifest, output, indent=2)
+    rng = random.Random(seed)
+    openings = list(fens)
+    rng.shuffle(openings)
+    with (output_dir / "iterations.jsonl").open("x") as evidence:
+        try:
+            for iteration in range(1, iterations + 1):
+                if file_hash(candidate) != candidate_hash or file_hash(control) != control_hash:
+                    raise RuntimeError("Frozen engine binary changed during SPSA")
+                plus, minus = probes(parameters, iteration, rng)
+                selected = [openings[((iteration - 1) * pairs + number) % len(openings)] for number in range(pairs)]
+                directory = output_dir / f"iteration-{iteration:04d}"
+                plus_result = run_paired_batch(candidate, control, uci_parameters(plus), selected, directory / "plus",
+                    bank_ms=bank_ms, increment_ms=increment_ms, threads=threads, hash_mb=hash_mb)
+                minus_result = run_paired_batch(candidate, control, uci_parameters(minus), selected, directory / "minus",
+                    bank_ms=bank_ms, increment_ms=increment_ms, threads=threads, hash_mb=hash_mb)
+                if file_hash(candidate) != candidate_hash or file_hash(control) != control_hash:
+                    raise RuntimeError("Frozen engine binary changed during SPSA probes")
+                updated = update_parameters(parameters, plus, minus, plus_result["score"], minus_result["score"], iteration, gain)
+                record = {"iteration": iteration, "before": parameters, "plus": plus, "minus": minus,
+                          "plus_result": plus_result, "minus_result": minus_result, "after": updated}
+                evidence.write(json.dumps(record) + "\n")
+                evidence.flush()
+                parameters = updated
+                print(f'[SPSA {iteration}/{iterations}] paired scores +={plus_result["score"]:.4f} -={minus_result["score"]:.4f}', flush=True)
+        except Exception as error:
+            evidence.write(json.dumps({"status": "failed", "diagnostic": str(error)}) + "\n")
+            evidence.flush()
+            raise
+    candidate_settings = {"schema": 1, "parameters": parameters, "uci_options": uci_parameters(parameters),
+                          "strength_validation": "pending; not selected by a maximum noisy STS score"}
+    with (output_dir / "candidate_search_params.json").open("x") as output:
+        json.dump(candidate_settings, output, indent=2)
+    return candidate_settings
 
-}} // namespace heavensgate
-"""
-    with open(header_path, "w", encoding="utf-8") as f:
-        f.write(header_content)
-    print(f"\n[SPSA] Successfully updated {header_path} with optimized parameters!")
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--candidate", type=Path, required=True)
+    parser.add_argument("--control", type=Path, required=True)
+    parser.add_argument("--openings", type=Path, required=True, help="One complete FEN per line; no comments")
+    parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--iterations", type=int, default=10)
+    parser.add_argument("--pairs", type=int, default=4)
+    parser.add_argument("--seed", type=int, default=20261009)
+    parser.add_argument("--bank-ms", type=int, default=10000)
+    parser.add_argument("--increment-ms", type=int, default=100)
+    parser.add_argument("--threads", type=int, default=1)
+    parser.add_argument("--hash", type=int, default=64)
+    parser.add_argument("--gain", type=float, default=.01)
+    args = parser.parse_args()
+    fens = [line.strip() for line in args.openings.read_text().splitlines() if line.strip()]
+    print(json.dumps(run_spsa(args.candidate, args.control, fens, args.output_dir,
+        iterations=args.iterations, pairs=args.pairs, seed=args.seed, bank_ms=args.bank_ms,
+        increment_ms=args.increment_ms, threads=args.threads, hash_mb=args.hash, gain=args.gain), indent=2))
+
 
 if __name__ == "__main__":
-    run_spsa(iterations=10)
+    main()

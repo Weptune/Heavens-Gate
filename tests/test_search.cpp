@@ -39,9 +39,12 @@ static bool test_alphabeta_eval_equivalence() {
     FEN::parse(FEN::StartPOS, board);
 
     SearchEngine engine;
+    engine.set_book_enabled(false);
     SearchResult ab_res = engine.search_alphabeta(board, 3, false, false);
 
-    return static_cast<bool>(ab_res.best_move);
+    MoveList legal;
+    MoveGenerator::generate_legal_moves(board, legal);
+    return std::find(legal.begin(), legal.end(), ab_res.best_move) != legal.end();
 }
 
 static bool test_alphabeta_node_reduction() {
@@ -51,6 +54,7 @@ static bool test_alphabeta_node_reduction() {
 
     SearchEngine engine;
     SearchResult mm_res = engine.search_minimax(board, 4);
+    engine.set_book_enabled(false);
     SearchResult ab_res = engine.search_alphabeta(board, 4, true, true);
 
     return ab_res.metrics.total_nodes < mm_res.metrics.total_nodes;
@@ -64,10 +68,13 @@ static bool test_move_ordering_reduction() {
     FEN::parse("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", board);
 
     SearchEngine engine;
+    engine.set_book_enabled(false);
     SearchResult ab_unordered = engine.search_alphabeta(board, 4, false, false);
-    SearchResult ab_ordered   = engine.search_alphabeta(board, 4, true, true);
+    engine.clear();
+    SearchResult ab_ordered   = engine.search_alphabeta(board, 4, true, false);
 
-    return ab_ordered.metrics.total_nodes < ab_unordered.metrics.total_nodes;
+    return ab_unordered.metrics.total_nodes > 0 && ab_ordered.metrics.total_nodes > 0 &&
+           ab_ordered.metrics.total_nodes < ab_unordered.metrics.total_nodes;
 }
 
 static bool test_zobrist_incremental_correctness() {
@@ -202,22 +209,22 @@ static bool test_endgame_patterns() {
     MoveGenerator::init();
     SyzygyTablebase::instance().init();
 
-    // 1. KBNK Win
+    // These patterns are not rule-aware proofs; each must decline an exact probe.
     {
         Board b;
         FEN::parse("8/8/8/8/8/5K1k/4B1N1/8 w - - 0 1", b);
         int score = SyzygyTablebase::instance().probe_wdl(b, 0);
         std::cout << "[KBNK: score=" << score << "] " << std::flush;
-        if (score < 20000) return false;
+        if (score != SyzygyTablebase::NO_SCORE) return false;
     }
 
-    // 2. KNNK Draw
+    // KNNK cannot generally force mate, but is not automatically a dead position.
     {
         Board b;
         FEN::parse("8/8/8/8/8/5K1k/4N1N1/8 w - - 0 1", b);
         int score = SyzygyTablebase::instance().probe_wdl(b, 0);
         std::cout << "[KNNK: score=" << score << "] " << std::flush;
-        if (score != 0) return false;
+        if (score != SyzygyTablebase::NO_SCORE) return false;
     }
 
     // 3. Wrong-color Bishop + Rook Pawn Fortress (A8 is light, bishop on Dark square C3, Black king in corner A8)
@@ -226,7 +233,7 @@ static bool test_endgame_patterns() {
         FEN::parse("k7/8/P7/8/8/2B5/8/K7 w - - 0 1", b);
         int score = SyzygyTablebase::instance().probe_wdl(b, 0);
         std::cout << "[Fortress: score=" << score << "] " << std::flush;
-        if (score != 0) return false;
+        if (score != SyzygyTablebase::NO_SCORE) return false;
     }
 
     // 4. Lucena Position (Pawn on 7th, strong King on 8th, defending King cut off)
@@ -235,7 +242,7 @@ static bool test_endgame_patterns() {
         FEN::parse("3K4/3P4/8/8/8/6k1/r7/1R6 w - - 0 1", b);
         int score = SyzygyTablebase::instance().probe_wdl(b, 0);
         std::cout << "[Lucena: score=" << score << "] " << std::flush;
-        if (score < 20000) return false;
+        if (score != SyzygyTablebase::NO_SCORE) return false;
     }
 
     // 5. Philidor Position (Defending king on 8th rank, defending rook on 6th rank)
@@ -244,7 +251,7 @@ static bool test_endgame_patterns() {
         FEN::parse("4k3/8/4r3/3KP3/8/8/8/1R6 w - - 0 1", b);
         int score = SyzygyTablebase::instance().probe_wdl(b, 0);
         std::cout << "[Philidor: score=" << score << "] " << std::flush;
-        if (score != 0) return false;
+        if (score != SyzygyTablebase::NO_SCORE) return false;
     }
 
     return true;
@@ -263,7 +270,7 @@ void test_search() {
     HEAVENSGATE_ASSERT(test::test_minimax_free_piece_capture(), "Minimax failed to capture free pawn!");
     std::cout << "PASSED" << std::endl;
 
-    std::cout << "[RUN] Search: Alpha-Beta Score & Best Move Equivalence ... " << std::flush;
+    std::cout << "[RUN] Search: Alpha-Beta returns a legal move (book disabled) ... " << std::flush;
     HEAVENSGATE_ASSERT(test::test_alphabeta_eval_equivalence(), "Alpha-Beta search failed equivalence!");
     std::cout << "PASSED" << std::endl;
 
@@ -279,7 +286,7 @@ void test_search() {
     HEAVENSGATE_ASSERT(test::test_zobrist_incremental_correctness(), "Zobrist unmake key mismatch!");
     std::cout << "PASSED" << std::endl;
 
-    std::cout << "[RUN] Transposition Table: Subtree cutoff hits & score equivalence ... " << std::flush;
+    std::cout << "[RUN] Transposition Table: Search registers TT hits ... " << std::flush;
     HEAVENSGATE_ASSERT(test::test_transposition_table_cutoffs(), "TT failed to register cutoff hits!");
     std::cout << "PASSED" << std::endl;
 
@@ -291,7 +298,7 @@ void test_search() {
     HEAVENSGATE_ASSERT(test::test_repetition_draw_score(), "2-Fold repetition detection failed!");
     std::cout << "PASSED" << std::endl;
 
-    std::cout << "[RUN] Search: Iterative Deepening Mate-in-2 ... " << std::flush;
+    std::cout << "[RUN] Search: Iterative Deepening finds a forced mate ... " << std::flush;
     HEAVENSGATE_ASSERT(test::test_iterative_deepening_mate_in_2(), "Iterative deepening mate-in-2 failed!");
     std::cout << "PASSED" << std::endl;
 
@@ -307,8 +314,8 @@ void test_search() {
     HEAVENSGATE_ASSERT(test::test_singular_extension_search(), "Singular extension search failed at depth 7!");
     std::cout << "PASSED" << std::endl;
 
-    std::cout << "[RUN] Search: Phase 4 Endgame Patterns (KBNK, KNNK, Fortress, Lucena, Philidor) ... " << std::flush;
-    HEAVENSGATE_ASSERT(test::test_endgame_patterns(), "Phase 4 endgame pattern verification failed!");
+    std::cout << "[RUN] Search: Unproven endgame patterns must not produce exact cutoffs ... " << std::flush;
+    HEAVENSGATE_ASSERT(test::test_endgame_patterns(), "Heuristic endgame incorrectly reported exact WDL!");
     std::cout << "PASSED" << std::endl;
 }
 

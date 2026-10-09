@@ -2,6 +2,10 @@
 #include "core/bitwise.hpp"
 #include "core/fen.hpp"
 #include "core/zobrist.hpp"
+#include "core/match_clock.hpp"
+#include "core/time_budget.hpp"
+#include "core/run_manifest.hpp"
+#include "core/tournament_runtime.hpp"
 #include "board/board.hpp"
 #include "movegen/movegen.hpp"
 #include "movegen/perft.hpp"
@@ -31,7 +35,7 @@ static std::string trim(const std::string& str) {
     return str.substr(first, (last - first + 1));
 }
 
-static std::string pv_to_string(const std::vector<Move>& pv) {
+static std::string pv_to_string(const PrincipalVariation& pv) {
     std::string s;
     for (size_t i = 0; i < pv.size(); ++i) {
         if (i > 0) s += " ";
@@ -83,26 +87,47 @@ const std::vector<std::string> TournamentOpenings = {
     "rnbqkb1r/p2ppppp/5n2/1ppP4/2P5/8/PP2PPPP/RNBQKBNR w KQkq b6 0 4",     // 41. Benko Gambit
 };
 
-void run_automated_tournament(int num_games, int bank_param = 0, int inc_param = 0, int batch_id = 0, int elo_param = 3500, int threads_param = 6) {
+bool run_automated_tournament(int num_games, int bank_param = 0, int inc_param = 0, int batch_id = 0, int elo_param = 3500, int threads_param = 6, const std::string& output_path = "", bool fixed_movetime = false, const TournamentOptions& options = {}) {
+    if (num_games <= 0 || threads_param < 1 || threads_param > 64 || options.hash_mb < 1 || options.hash_mb > 16384 || (options.paired && num_games % 2)) return false;
+    if (!std::isfinite(options.timing.move_overhead_ms) || options.timing.move_overhead_ms < 0 || options.timing.move_overhead_ms > 5000 ||
+        !std::isfinite(options.timing.minimum_smp_time_ms) || options.timing.minimum_smp_time_ms < 0 || options.timing.minimum_smp_time_ms > 1000) return false;
+    TournamentTimeControl tc;
+    try { tc = TournamentTimeControl::parse(bank_param, inc_param, fixed_movetime); }
+    catch (const std::exception& e) { std::cerr << "[FATAL] " << e.what() << '\n'; return false; }
     omp_set_num_threads(threads_param);
 
     bool is_fixed_depth = (bank_param > 0 && inc_param < 0);
-    int target_fixed_depth = is_fixed_depth ? bank_param : 12;
+    int target_fixed_depth = tc.fixed_depth;
 
-    bool is_fixed_movetime = (bank_param > 0 && bank_param <= 60 && inc_param == 0);
-    double fixed_movetime_ms = is_fixed_movetime ? (bank_param * 1000.0) : 0.0;
+    bool is_fixed_movetime = tc.movetime_ms > 0;
+    double fixed_movetime_ms = tc.movetime_ms;
 
-    bool is_time_control = (bank_param > 0 && !is_fixed_movetime && !is_fixed_depth);
-    int main_bank_ms = is_time_control ? ((bank_param <= 3600) ? (bank_param * 1000) : bank_param) : 0;
-    int inc_ms = is_time_control ? ((inc_param <= 60) ? (inc_param * 1000) : inc_param) : 0;
+    bool is_time_control = tc.bank_ms > 0;
+    int main_bank_ms = tc.bank_ms;
+    int inc_ms = tc.increment_ms;
 
-    std::string pgn_filename = (batch_id > 0) 
-        ? ("c:/Users/abhin/heavensgate/tournament_results_batch" + std::to_string(batch_id) + ".pgn")
-        : "c:/Users/abhin/heavensgate/tournament_results.pgn";
+    std::string pgn_filename = !output_path.empty() ? output_path : (batch_id > 0
+        ? ("tournament_results_batch" + std::to_string(batch_id) + ".pgn")
+        : "tournament_results.pgn");
 
-    // Truncate/create PGN file at start of tournament
-    std::ofstream pgn_init(pgn_filename, std::ios::trunc);
+    // Never silently overwrite earlier experiments, including their sidecars.
+    const std::string manifest_path = pgn_filename + ".manifest.json";
+    const std::string telemetry_path = pgn_filename + ".moves.jsonl";
+    for (const auto& path : {pgn_filename, manifest_path, telemetry_path,
+                            pgn_filename + ".events.jsonl", pgn_filename + ".run.json"}) {
+        if (std::filesystem::exists(path)) { std::cerr << "[FATAL] Output already exists: " << path << '\n'; return false; }
+    }
+    std::ofstream pgn_init(pgn_filename);
+    if (!pgn_init) { std::cerr << "[FATAL] Cannot create PGN\n"; return false; }
     pgn_init.close();
+    TournamentJournal journal(pgn_filename);
+    ScopedTournamentPower power_guard;
+    SuspendMonitor suspend_monitor;
+    journal.event("power_guard", std::string("\"idle_sleep_inhibited\":") + (power_guard.active() ? "true" : "false") +
+                  ",\"suspend_detection_supported\":" + (suspend_monitor.supported() ? "true" : "false"));
+    if (!power_guard.active() || !suspend_monitor.supported()) {
+        std::cerr << "[FATAL] Tournament power/suspend guard unavailable\n"; return false;
+    }
 
     std::string opp_label = (elo_param >= 3500 || elo_param <= 0) ? "Uncapped ~3500 Elo" : (std::to_string(elo_param) + " Elo");
 
@@ -120,104 +145,173 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
     std::cout << "======================================================\n\n" << std::flush;
 
     int total_a_wins = 0, total_b_wins = 0, total_draws = 0;
-    std::vector<std::string> pgn_records;
 
-    StockfishClient sf;
-    bool sf_ok = sf.init(elo_param, threads_param);
+    StockfishClient sf(options.opponent_path);
+    bool sf_ok = sf.init(elo_param, threads_param, options.hash_mb);
     if (!sf_ok) {
         std::cerr << "[FATAL] Could not start Stockfish! Aborting tournament.\n";
-        return;
+        return false;
     }
 
+    std::string book_path;
+    if (options.book) {
+        book_path = std::filesystem::exists("performance.bin") ? "performance.bin" : "tools/performance.bin";
+        if (!std::filesystem::exists(book_path)) { std::cerr << "[FATAL] Requested book is missing\n"; return false; }
+        book_path = std::filesystem::absolute(book_path).string();
+    }
+    try { write_match_manifest(manifest_path, sf.executable(), sf.identity(), sf.effective_elo(), threads_param,
+                               num_games, tc, options, book_path, TournamentOpenings); }
+    catch (const std::exception& error) { std::cerr << "[FATAL] " << error.what() << '\n'; return false; }
+    std::ofstream telemetry(telemetry_path);
+    if (!telemetry) { std::cerr << "[FATAL] Cannot create move telemetry\n"; return false; }
+    MatchRunStatus run_status;
+    bool opponent_needs_restart = false;
+
     for (int g = 1; g <= num_games; ++g) {
+        journal.event("game_start", "\"game\":" + std::to_string(g));
         Board board;
-        std::string opening_fen = TournamentOpenings[(g - 1) % TournamentOpenings.size()];
+        const size_t opening_index = (options.paired ? (g - 1) / 2 : g - 1) % TournamentOpenings.size();
+        std::string opening_fen = TournamentOpenings[opening_index];
         FEN::parse(opening_fen, board);
 
-        sf.reset_game();
+        if (opponent_needs_restart) {
+            if (!sf.init(elo_param, threads_param, options.hash_mb)) {
+                std::cerr << "[FATAL] Opponent restart after clock forfeit failed: " << sf.last_error() << '\n';
+                return false;
+            }
+            opponent_needs_restart = false;
+        }
+        if (!sf.reset_game()) { std::cerr << "[FATAL] Opponent reset failed: " << sf.last_error() << '\n'; return false; }
 
         SearchEngine master_engine;
         master_engine.set_threads(threads_param);
-        master_engine.tt().resize(64);
+        master_engine.tt().resize(options.hash_mb);
         master_engine.tt().clear();
-        master_engine.polyglot_book().load("performance.bin");
+        master_engine.set_book_enabled(options.book);
+        master_engine.set_move_overhead(options.timing.move_overhead_ms);
+        master_engine.set_minimum_smp_time(options.timing.minimum_smp_time_ms);
+        if (options.book && !master_engine.polyglot_book().load(book_path)) { std::cerr << "[FATAL] Book load failed\n"; return false; }
 
         bool a_is_white = (g % 2 != 0);
         int game_moves = 0;
-        std::string opp_name = "Stockfish 16.1 (" + opp_label + ")";
+        std::string opp_name = sf.identity() + " (" + opp_label + ")";
         std::stringstream ss_pgn;
 
         ss_pgn << "[Event \"Heaven's Gate Grandmaster Tournament\"]\n";
         ss_pgn << "[Site \"Localhost\"]\n";
-        ss_pgn << "[Date \"2026.08.13\"]\n";
+        ss_pgn << "[Date \"" << utc_date() << "\"]\n";
         ss_pgn << "[Round \"" << g << "\"]\n";
         ss_pgn << "[White \"" << (a_is_white ? "Master Edition" : opp_name) << "\"]\n";
         ss_pgn << "[Black \"" << (a_is_white ? opp_name : "Master Edition") << "\"]\n";
         ss_pgn << "[FEN \"" << opening_fen << "\"]\n";
+        ss_pgn << "[SetUp \"1\"]\n[EvalFormat \"white-pawns\"]\n[Result \"*\"]\n\n";
+        std::vector<Move> played_moves;
+        played_moves.reserve(400); // Match bookkeeping is outside engine search.
 
         std::string result_str = "*";
         std::string end_reason = "";
-        int white_clock_ms = main_bank_ms;
-        int black_clock_ms = main_bank_ms;
+        MatchFailure game_failure = MatchFailure::None;
+        bool master_flagged = false;
+        MatchClock white_clock{static_cast<double>(main_bank_ms)};
+        MatchClock black_clock{static_cast<double>(main_bank_ms)};
 
         while (game_moves < 400) {
-            MoveList legal_moves;
-            MoveGenerator::generate_legal_moves(board, legal_moves);
-
-            if (legal_moves.empty()) {
-                if (MoveGenerator::in_check(board, board.side_to_move())) {
-                    result_str = (board.side_to_move() == Color::White) ? "0-1" : "1-0";
-                    end_reason = "Checkmate";
-                } else {
-                    result_str = "1/2-1/2";
-                    end_reason = "Stalemate";
-                }
+            if (const double gap = suspend_monitor.observe(); gap > 2000.0) {
+                end_reason = "Unfinished: System Suspend";
+                journal.event("system_suspend", "\"suspended_ms\":" + std::to_string(gap));
                 break;
             }
-
-            if (board.is_repetition() && game_moves > 4) {
-                result_str = "1/2-1/2"; end_reason = "Threefold Repetition"; break;
-            }
-            if (board.halfmove_clock() >= 100) {
-                result_str = "1/2-1/2"; end_reason = "50-Move Rule"; break;
-            }
-            if (board.is_insufficient_material()) {
-                result_str = "1/2-1/2"; end_reason = "Insufficient Material"; break;
+            if (const auto ending = board_match_ending(board)) {
+                result_str = ending->result; end_reason = ending->reason; break;
             }
 
             bool current_is_master = (board.side_to_move() == Color::White) ? a_is_white : !a_is_white;
-            int active_clock_ms = (board.side_to_move() == Color::White) ? white_clock_ms : black_clock_ms;
-            double divisor = (inc_ms > 0) ? 35.0 : 45.0;
-            double clock_cap = (inc_ms > 0) ? 0.40 : 0.20;
-            double max_mult = (inc_ms > 0) ? 2.5 : 1.8;
-            double time_alloc = is_fixed_movetime ? fixed_movetime_ms : (is_time_control ? std::max(100.0, std::min((active_clock_ms / divisor) + (inc_ms * 0.8), active_clock_ms * clock_cap)) : 0.0);
-            double opt_time = is_fixed_movetime ? fixed_movetime_ms : (is_time_control ? std::min(time_alloc, active_clock_ms * 0.35) : 0.0);
-            double max_time = is_fixed_movetime ? fixed_movetime_ms : (is_time_control ? std::min(time_alloc * max_mult, active_clock_ms * clock_cap) : 0.0);
+            MatchClock& active_clock = board.side_to_move() == Color::White ? white_clock : black_clock;
+            double active_clock_ms = active_clock.remaining_ms;
+            if (is_time_control && active_clock_ms <= 0) {
+                result_str = board.side_to_move() == Color::White ? "0-1" : "1-0";
+                end_reason = "Time Out";
+                game_failure = MatchFailure::TimeForfeit;
+                master_flagged = current_is_master;
+                break;
+            }
+            const auto budget = is_time_control ? bank_search_budget(active_clock_ms, inc_ms, board.fullmove_number(), 0, options.timing.move_overhead_ms) :
+                SearchBudget{fixed_movetime_ms, fixed_movetime_ms};
+            const std::string position_command = match_position_command(opening_fen, played_moves);
+            const std::string go_command = match_go_command(tc, static_cast<int>(white_clock.remaining_ms), static_cast<int>(black_clock.remaining_ms));
+            const std::string searched_fen = FEN::to_string(board);
+            const std::string event_identity = "\"game\":" + std::to_string(g) + ",\"ply\":" + std::to_string(game_moves + 1);
+            journal.event("search_begin", event_identity + ",\"engine\":" + json_string(current_is_master ? "HG" : "opponent") +
+                ",\"fen\":" + json_string(searched_fen) + ",\"clock_before_ms\":" + std::to_string(active_clock_ms) +
+                ",\"expected_max_ms\":" + std::to_string(current_is_master ?
+                    ((is_time_control || is_fixed_movetime) ? budget.maximum_ms : 60000.0) :
+                    (is_time_control ? active_clock_ms : is_fixed_movetime ? fixed_movetime_ms + 2000 : 60000.0)));
 
-            auto move_start = std::chrono::high_resolution_clock::now();
+            auto move_start = std::chrono::steady_clock::now();
             SearchResult res;
             Move chosen_move;
+            StockfishReply opponent_reply;
+            bool score_valid = false, nodes_valid = true;
 
             if (current_is_master) {
-                res = master_engine.search_iterative_deepening(board, is_fixed_depth ? target_fixed_depth : 64, (is_fixed_movetime || is_time_control) ? max_time : 0.0, 0, (is_fixed_movetime || is_time_control) ? opt_time : 0.0);
+                res = master_engine.search_iterative_deepening(board, (is_time_control || is_fixed_movetime) ? 64 : target_fixed_depth,
+                    budget.maximum_ms, 0, budget.optimum_ms);
                 chosen_move = res.best_move;
+                score_valid = res.completed_depth > 0;
             } else {
-                if (is_fixed_movetime || is_time_control) {
-                    res = sf.get_search_result(board, 64, time_alloc, 0, 0, 0);
-                } else {
-                    res = sf.get_search_result(board, target_fixed_depth);
-                }
+                const int deadline_ms = is_time_control ? static_cast<int>(std::ceil(active_clock_ms)) :
+                    is_fixed_movetime ? tc.movetime_ms + 2000 : 60000;
+                opponent_reply = sf.get_search_result(board, position_command, go_command, deadline_ms);
+                res = opponent_reply.search;
                 chosen_move = res.best_move;
+                score_valid = opponent_reply.info && opponent_reply.info->bound == UciScoreBound::Exact;
+                nodes_valid = opponent_reply.nodes_valid;
             }
 
-            auto move_end = std::chrono::high_resolution_clock::now();
+            auto move_end = std::chrono::steady_clock::now();
             double elapsed_ms = std::chrono::duration<double, std::milli>(move_end - move_start).count();
+            const double suspend_gap = suspend_monitor.observe();
+            journal.event("search_end", event_identity + ",\"elapsed_ms\":" + std::to_string(elapsed_ms) +
+                          ",\"suspended_ms\":" + std::to_string(suspend_gap));
 
-            // Update clocks (informational — for passing to engines on next move)
-            if (board.side_to_move() == Color::White) {
-                white_clock_ms = std::max(100, static_cast<int>(white_clock_ms - elapsed_ms) + inc_ms);
-            } else {
-                black_clock_ms = std::max(100, static_cast<int>(black_clock_ms - elapsed_ms) + inc_ms);
+            telemetry << "{\"game\":" << g << ",\"ply\":" << game_moves + 1 << ",\"engine\":" << json_string(current_is_master ? "HG" : sf.identity())
+                << ",\"fen\":" << json_string(searched_fen) << ",\"position\":" << json_string(position_command) << ",\"go\":" << json_string(go_command)
+                << ",\"status\":" << json_string(current_is_master ? "ok" : reply_status_name(opponent_reply.status))
+                << ",\"diagnostic\":" << json_string(opponent_reply.diagnostic) << ",\"move\":" << json_string(move_to_uci(chosen_move))
+                << ",\"completed_depth\":" << res.completed_depth << ",\"elapsed_ms\":" << elapsed_ms
+                << ",\"threads_used\":" << (current_is_master ? std::to_string(res.threads_used) : "null")
+                << ",\"hard_budget_ms\":" << (current_is_master ? std::to_string(budget.maximum_ms) : "null")
+                << ",\"soft_budget_ms\":" << (current_is_master ? std::to_string(budget.optimum_ms) : "null")
+                << ",\"clock_before_ms\":" << active_clock_ms << ",\"nodes\":" << (nodes_valid ? std::to_string(res.metrics.total_nodes) : "null")
+                << ",\"score_valid\":" << (score_valid ? "true" : "false") << ",\"score_stm\":" << (score_valid ? std::to_string(res.best_score) : "null")
+                << ",\"score_bound\":" << json_string(current_is_master || !opponent_reply.info || opponent_reply.info->bound == UciScoreBound::Exact ? "exact" :
+                    opponent_reply.info->bound == UciScoreBound::Lower ? "lower" : "upper") << "}\n";
+            telemetry.flush();
+            if (!telemetry) { std::cerr << "[FATAL] Move telemetry write failed\n"; return false; }
+            // Sleep invalidates a timed game; it is not an engine clock loss.
+            if (suspend_gap > 2000.0) {
+                end_reason = "Unfinished: System Suspend";
+                break;
+            }
+
+            // A protocol deadline at the physical bank is a genuine clock
+            // loss. Crashes, malformed replies and early deadlines still abort.
+            const bool opponent_clock_expired = !current_is_master && is_time_control &&
+                opponent_reply.status == EngineReplyStatus::Timeout && elapsed_ms >= active_clock_ms;
+            if (!current_is_master && opponent_reply.status != EngineReplyStatus::Ok && !opponent_clock_expired) {
+                result_str = board.side_to_move() == Color::White ? "0-1" : "1-0";
+                end_reason = std::string("Engine Failure: ") + reply_status_name(opponent_reply.status);
+                game_failure = MatchFailure::EngineFailure;
+                std::cerr << "[ENGINE FAILURE] " << opponent_reply.diagnostic << '\n';
+                break;
+            }
+            if (is_time_control && !active_clock.finish_move(elapsed_ms, inc_ms)) {
+                result_str = board.side_to_move() == Color::White ? "0-1" : "1-0";
+                end_reason = "Time Out";
+                game_failure = MatchFailure::TimeForfeit;
+                master_flagged = current_is_master;
+                opponent_needs_restart = opponent_clock_expired;
+                break;
             }
 
             MoveList valid_moves;
@@ -234,29 +328,40 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
             if (!is_legal || !static_cast<bool>(chosen_move)) {
                 result_str = (board.side_to_move() == Color::White) ? "0-1" : "1-0";
                 end_reason = (board.side_to_move() == Color::White) ? "White Engine Forfeit" : "Black Engine Forfeit";
+                game_failure = MatchFailure::EngineFailure;
                 std::cerr << "[GAME FORFEIT] Engine returned illegal/empty move! Side: " << (board.side_to_move() == Color::White ? "White" : "Black") << "\n";
                 break;
             }
 
             game_moves++;
-            int move_num = (game_moves + 1) / 2;
-            if (board.side_to_move() == Color::White) {
-                ss_pgn << move_num << ". " << move_to_uci(chosen_move) << " { [%eval " << res.best_score << "] [%clk " << elapsed_ms << "ms] } ";
-            } else {
-                ss_pgn << move_to_uci(chosen_move) << " { [%eval " << res.best_score << "] [%clk " << elapsed_ms << "ms] }\n";
-            }
+            int move_num = board.fullmove_number();
+            if (board.side_to_move() == Color::White) ss_pgn << move_num << ". ";
+            else if (game_moves == 1) ss_pgn << move_num << "... ";
+            ss_pgn << move_to_uci(chosen_move) << " {";
+            if (score_valid) {
+                const int white_score = board.side_to_move() == Color::White ? res.best_score : -res.best_score;
+                if (!current_is_master && opponent_reply.info->kind == UciScoreKind::Mate)
+                    ss_pgn << " [%eval #" << (board.side_to_move() == Color::White ? opponent_reply.info->score : -opponent_reply.info->score) << "]";
+                else if (current_is_master && std::abs(white_score) >= ScoreMate - 1000)
+                    ss_pgn << " [%eval #" << (white_score < 0 ? -1 : 1) * ((ScoreMate - std::abs(white_score) + 1) / 2) << "]";
+                else ss_pgn << " [%eval " << std::fixed << std::setprecision(2) << white_score / 100.0 << "]";
+            } else ss_pgn << " [%score_valid 0]";
+            ss_pgn << " [%depth " << res.completed_depth << "]";
+            if (is_time_control) ss_pgn << " [%clk " << pgn_clock(active_clock.remaining_ms) << "]";
+            ss_pgn << " [%emt " << pgn_clock(elapsed_ms) << "] } "
+                   << (board.side_to_move() == Color::Black ? "\n" : "");
 
             std::string mover_name = current_is_master ? "Master" : opp_name;
             std::string side_str = (board.side_to_move() == Color::White) ? "W" : "B";
             std::cout << "[G" << g << " M" << move_num << " " << side_str << "] " 
                       << mover_name << ": " << move_to_uci(chosen_move) 
-                      << " | Eval: " << (res.best_score > 0 ? "+" : "") << res.best_score << " cp"
+                      << " | Eval: " << (score_valid ? std::to_string(res.best_score) + " cp (STM)" : "unavailable")
                       << " | Time: " << static_cast<int>(elapsed_ms) << "ms"
                       << " | Nodes: " << res.metrics.total_nodes << "\n" << std::flush;
 
 
-            Color side_before = board.side_to_move();
             board.make_move(chosen_move);
+            played_moves.push_back(chosen_move);
 
             // Check if game ended in checkmate or stalemate on the board
             MoveList next_legal;
@@ -273,54 +378,63 @@ void run_automated_tournament(int num_games, int bank_param = 0, int inc_param =
                 break;
             }
 
-            // Early exit for proven forced mates (Score >= 24000 cp)
-            if (std::abs(res.best_score) >= 24000) {
-                int raw_score = std::abs(res.best_score);
-                int mate_ply = (raw_score >= 29000) ? (30000 - raw_score) : (25000 - raw_score);
-                result_str = (res.best_score > 0) ? ((side_before == Color::White) ? "1-0" : "0-1") : ((side_before == Color::White) ? "0-1" : "1-0");
-                end_reason = "Forced Mate in " + std::to_string(std::max(1, mate_ply)) + " moves";
-                break;
-            }
+            // No score-based adjudication, including reported mates.
         }
 
-        if (result_str == "*") { result_str = "1/2-1/2"; end_reason = "Move Limit"; }
+        if (result_str == "*" && end_reason.empty()) { end_reason = "Unfinished: Move Limit"; }
         ss_pgn << result_str << " {" << end_reason << "}\n\n";
 
         bool master_won = (a_is_white && result_str == "1-0") || (!a_is_white && result_str == "0-1");
         bool opp_won    = (a_is_white && result_str == "0-1") || (!a_is_white && result_str == "1-0");
         if (master_won) total_a_wins++;
         else if (opp_won) total_b_wins++;
-        else total_draws++;
+        else if (result_str == "1/2-1/2") total_draws++;
 
-        pgn_records.push_back(ss_pgn.str());
+        std::string game_pgn = ss_pgn.str();
+        game_pgn.replace(game_pgn.find("[Result \"*\"]"), 12, "[Result \"" + result_str + "\"]");
 
         // Append to PGN file immediately so completed games are never lost
         std::ofstream pgn_append(pgn_filename, std::ios::app);
         if (pgn_append.is_open()) {
-            pgn_append << ss_pgn.str();
+            pgn_append << game_pgn;
             pgn_append.close();
+            if (!pgn_append) return false;
+        } else {
+            return false;
+        }
+        journal.game_written(g, result_str, end_reason);
+        if (result_str == "*") {
+            journal.finish("interrupted", end_reason, run_status.master_time_forfeits, run_status.opponent_time_forfeits);
+            std::cerr << "[FATAL] " << end_reason << " (not a draw)\n"; return false;
         }
 
         std::cout << "[TOURNAMENT] Game " << g << "/" << num_games << " (" << game_moves << " moves, " << end_reason 
                   << ") | Master " << total_a_wins << " - " << total_b_wins << " " << opp_name << " (" << total_draws << " draws)\n" << std::flush;
+        if (!run_status.record(game_failure, options.fail_fast_timeouts, master_flagged)) {
+            journal.finish("aborted", end_reason, run_status.master_time_forfeits, run_status.opponent_time_forfeits);
+            return false;
+        }
     }
 
     double total_score = total_a_wins + 0.5 * total_draws;
 
     double score_pct = (total_score / num_games) * 100.0;
-    double elo_diff = 0.0;
-    if (score_pct > 0.0 && score_pct < 100.0) {
-        elo_diff = -400.0 * std::log10(1.0 / (total_score / static_cast<double>(num_games)) - 1.0);
-    } else if (score_pct >= 100.0) { elo_diff = 800.0; }
 
     std::cout << "\n------------------------------------------------------\n";
     std::cout << "TOURNAMENT RESULTS (" << pgn_filename << "):\n";
     std::cout << "  Master Wins   : " << total_a_wins << "\n";
     std::cout << "  Opponent Wins : " << total_b_wins << "\n";
     std::cout << "  Draws         : " << total_draws  << "\n";
+    std::cout << "  Time Forfeits : " << run_status.time_forfeits << "\n";
+    std::cout << "    Master      : " << run_status.master_time_forfeits << "\n";
+    std::cout << "    Opponent    : " << run_status.opponent_time_forfeits << "\n";
+    std::cout << "  Run Status    : " << (run_status.clean() ? "Clean" : "Completed with time forfeits") << "\n";
     std::cout << "  Master Score  : " << std::fixed << std::setprecision(1) << score_pct << "%\n";
-    std::cout << "  Delta Elo     : +" << std::setprecision(0) << elo_diff << "\n";
+    std::cout << "  Rating Claim  : None (match score is not a CCRL rating)\n";
     std::cout << "------------------------------------------------------\n\n";
+    journal.finish(run_status.clean() ? "completed" : "completed_with_time_forfeits", "All requested games written",
+                   run_status.master_time_forfeits, run_status.opponent_time_forfeits);
+    return run_status.clean();
 }
 
 void run_three_way_comparison(Board& board, int depth) {
@@ -355,6 +469,26 @@ void run_three_way_comparison(Board& board, int depth) {
     std::cout << "------------------------------------------------------\n\n";
 }
 
+struct MatchTail { std::string output; TournamentOptions options; };
+static std::optional<MatchTail> parse_match_tail(int argc, char* argv[], int first) {
+    MatchTail tail;
+    try {
+        for (int i = first; i < argc; ++i) {
+            const std::string argument = argv[i];
+            if (argument == "--paired") tail.options.paired = true;
+            else if (argument == "--fail-fast-timeouts") tail.options.fail_fast_timeouts = true;
+            else if (argument.rfind("--move-overhead=", 0) == 0) tail.options.timing.move_overhead_ms = std::stod(argument.substr(16));
+            else if (argument.rfind("--smp-min-time=", 0) == 0) tail.options.timing.minimum_smp_time_ms = std::stod(argument.substr(15));
+            else if (argument == "--book-off") tail.options.book = false;
+            else if (argument.rfind("--hash=", 0) == 0) tail.options.hash_mb = std::stoi(argument.substr(7));
+            else if (argument.rfind("--sf=", 0) == 0) tail.options.opponent_path = argument.substr(5);
+            else if (argument.rfind("--", 0) != 0 && tail.output.empty()) tail.output = argument;
+            else throw std::invalid_argument("Unknown match option: " + argument);
+        }
+    } catch (const std::exception& error) { std::cerr << "[FATAL] " << error.what() << '\n'; return std::nullopt; }
+    return tail;
+}
+
 int main(int argc, char* argv[]) {
     std::setvbuf(stdout, NULL, _IONBF, 0);
     Zobrist::init();
@@ -371,15 +505,26 @@ int main(int argc, char* argv[]) {
             int batch_id = (argc > 5) ? std::stoi(argv[5]) : 0;
             int elo      = (argc > 6) ? std::stoi(argv[6]) : 3500;
             int threads  = (argc > 7) ? std::stoi(argv[7]) : 6;
-            run_automated_tournament(games, depth, inc_ms, batch_id, elo, threads);
-            return 0;
+            const auto tail = parse_match_tail(argc, argv, 8);
+            if (!tail) return 1;
+            return run_automated_tournament(games, depth, inc_ms, batch_id, elo, threads,
+                tail->output, false, tail->options) ? 0 : 1;
         } else if (cmd == "depth_match") {
             int games    = (argc > 2) ? std::stoi(argv[2]) : 10;
             int depth    = (argc > 3) ? std::stoi(argv[3]) : 12;
             int elo      = (argc > 4) ? std::stoi(argv[4]) : 3500;
             int threads  = (argc > 5) ? std::stoi(argv[5]) : 6;
-            run_automated_tournament(games, depth, -1, 1, elo, threads);
-            return 0;
+            const auto tail = parse_match_tail(argc, argv, 6);
+            if (!tail) return 1;
+            return run_automated_tournament(games, depth, -1, 0, elo, threads,
+                tail->output, false, tail->options) ? 0 : 1;
+        } else if (cmd == "movetime_match") {
+            const auto tail = parse_match_tail(argc, argv, 6);
+            if (!tail) return 1;
+            return run_automated_tournament(argc > 2 ? std::stoi(argv[2]) : 1,
+                argc > 3 ? std::stoi(argv[3]) : 1, 0, 0,
+                argc > 4 ? std::stoi(argv[4]) : 3500,
+                argc > 5 ? std::stoi(argv[5]) : 6, tail->output, true, tail->options) ? 0 : 1;
         } else if (cmd == "perft" || cmd == "perft_suite") {
             int max_d = (argc > 2) ? std::stoi(argv[2]) : 4;
             bool success = Perft::run_verification_suite(max_d);
@@ -417,7 +562,10 @@ int main(int argc, char* argv[]) {
     std::cout << "Commands:\n";
     std::cout << "  uci                         - Switch to standard UCI Protocol mode\n";
     std::cout << "  sts [time_ms] [depth] [thr] - Run Strategic Test Suite (STS) positional benchmark\n";
-    std::cout << "  tournament [games] [depth]  - Run 100-game grandmaster tournament & save PGN\n";
+    std::cout << "  tournament [games] [bank_seconds] [increment_seconds] [batch] [elo] [threads] [pgn]\n";
+    std::cout << "  depth_match [games] [depth] [elo] [threads] [pgn] - No bank clock\n";
+    std::cout << "  Match flags: --paired --book-off --hash=N --move-overhead=MS --smp-min-time=MS --fail-fast-timeouts\n";
+    std::cout << "  movetime_match [games] [seconds_per_move] [elo] [threads] [pgn]\n";
     std::cout << "  id <depth> [time_ms]        - Run Iterative Deepening + PVS + Eval\n";
     std::cout << "  alphabeta <depth> / ab <d>  - Run Move-Ordered PVS search\n";
     std::cout << "  compare <depth>             - Compare Minimax vs Raw Alpha-Beta vs Master Search\n";

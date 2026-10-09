@@ -26,7 +26,7 @@ void EngineMetrics::calculate_derived() {
 
 std::string EngineMetrics::report_markdown() const {
     std::stringstream ss;
-    ss << "### Benchmark Report - Engine " << engine_version << "\n";
+    ss << "### Benchmark Report - Engine " << engine_version.data() << "\n";
     ss << "| Metric | Value |\n";
     ss << "| :--- | :--- |\n";
     ss << "| Total Nodes | " << total_nodes << " |\n";
@@ -46,11 +46,11 @@ std::string EngineMetrics::report_markdown() const {
 void MetricsTracker::start_timer() {
     current_metrics_.total_nodes = 0;
     current_metrics_.alpha_beta_cuts = 0;
-    start_time_ = std::chrono::high_resolution_clock::now();
+    start_time_ = std::chrono::steady_clock::now();
 }
 
 void MetricsTracker::stop_timer() {
-    auto end = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::steady_clock::now();
     current_metrics_.elapsed_seconds = std::chrono::duration<double>(end - start_time_).count();
     current_metrics_.calculate_derived();
 }

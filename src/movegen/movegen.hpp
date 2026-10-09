@@ -13,6 +13,8 @@ public:
     static void init();
 
     static void generate_legal_moves(const Board& board, MoveList& moves);
+    // Exact existence test; like legal generation, requires history push capacity.
+    static bool has_legal_move(const Board& board);
     static void generate_pseudo_legal_moves(const Board& board, MoveList& moves);
     static void generate_capture_moves(const Board& board, MoveList& moves);
     static void generate_pseudo_legal_captures(const Board& board, MoveList& moves);

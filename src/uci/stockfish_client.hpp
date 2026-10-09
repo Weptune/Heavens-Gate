@@ -1,384 +1,178 @@
 #pragma once
-
-#include "../board/board.hpp"
-#include "../core/fen.hpp"
+#include "match_protocol.hpp"
 #include "../search/search.hpp"
-#include <iostream>
-#include <string>
 #include <windows.h>
-#include <sstream>
 #include <chrono>
-#include <algorithm>
-
+#include <filesystem>
 namespace heavensgate {
-
-class StockfishClient {
-private:
-    HANDLE hChildStd_IN_Wr = NULL;
-    HANDLE hChildStd_OUT_Rd = NULL;
-    PROCESS_INFORMATION piProcInfo;
-    bool is_running = false;
-    int current_elo = 2700;
-
-    // Check if the underlying child process is still alive
-    bool check_process_alive() {
-        if (!is_running || !piProcInfo.hProcess) return false;
-        DWORD exitCode = 0;
-        if (GetExitCodeProcess(piProcInfo.hProcess, &exitCode)) {
-            if (exitCode != STILL_ACTIVE) {
-                is_running = false;
-                return false;
-            }
-            return true;
-        }
-        is_running = false;
-        return false;
+enum class EngineReplyStatus { Ok, ProcessExited, Timeout, ProtocolError, IllegalMove };
+inline const char* reply_status_name(EngineReplyStatus status) {
+    switch (status) {
+        case EngineReplyStatus::Ok: return "ok";
+        case EngineReplyStatus::ProcessExited: return "process-exited";
+        case EngineReplyStatus::Timeout: return "protocol-timeout";
+        case EngineReplyStatus::ProtocolError: return "protocol-error";
+        case EngineReplyStatus::IllegalMove: return "illegal-move";
     }
-
-    // Read a complete line from pipe. Returns empty string on timeout or process death.
-    std::string read_line(int timeout_sec = 30) {
-        std::string line;
-        char ch;
-        auto start = std::chrono::high_resolution_clock::now();
-        while (true) {
-            if (!check_process_alive()) return "";
-
-            DWORD dwAvail = 0, dwRead = 0;
-            if (PeekNamedPipe(hChildStd_OUT_Rd, NULL, 0, NULL, &dwAvail, NULL) && dwAvail > 0) {
-                if (ReadFile(hChildStd_OUT_Rd, &ch, 1, &dwRead, NULL) && dwRead > 0) {
-                    if (ch == '\r') continue;
-                    if (ch == '\n') return line;
-                    line += ch;
+    return "unknown";
+}
+struct StockfishReply {
+    SearchResult search;
+    std::optional<UciInfo> info;
+    EngineReplyStatus status = EngineReplyStatus::ProtocolError;
+    bool nodes_valid = false;
+    std::string diagnostic;
+};
+class StockfishClient {
+    using Clock = std::chrono::steady_clock;
+    HANDLE input_ = nullptr, output_ = nullptr;
+    PROCESS_INFORMATION process_{};
+    std::string executable_, pending_, error_, identity_;
+    int elo_ = 0, threads_ = 1, hash_mb_ = 64;
+    bool alive() const {
+        DWORD code = 0;
+        return process_.hProcess && GetExitCodeProcess(process_.hProcess, &code) && code == STILL_ACTIVE;
+    }
+    bool send(const std::string& command) {
+        if (!alive() || !input_) { error_ = "Opponent process exited"; return false; }
+        const std::string bytes = command + '\n'; DWORD written = 0;
+        if (!WriteFile(input_, bytes.data(), static_cast<DWORD>(bytes.size()), &written, nullptr) || written != bytes.size()) {
+            error_ = "Opponent pipe write failed"; return false;
+        }
+        return true;
+    }
+    bool read_line(std::string& line, Clock::time_point deadline) {
+        while (Clock::now() < deadline) {
+            const auto newline = pending_.find('\n');
+            if (newline != std::string::npos) {
+                line = pending_.substr(0, newline); pending_.erase(0, newline + 1);
+                if (!line.empty() && line.back() == '\r') line.pop_back();
+                return true;
+            }
+            DWORD available = 0;
+            if (!output_ || !PeekNamedPipe(output_, nullptr, 0, nullptr, &available, nullptr)) {
+                error_ = "Opponent pipe closed"; return false;
+            }
+            if (available) {
+                char buffer[4096]; DWORD count = 0;
+                if (!ReadFile(output_, buffer, std::min<DWORD>(available, sizeof(buffer)), &count, nullptr) || !count) {
+                    error_ = "Opponent pipe read failed"; return false;
                 }
+                pending_.append(buffer, count);
+                if (pending_.size() > 1024 * 1024) { error_ = "Oversized opponent protocol line"; return false; }
             } else {
-                if (!line.empty()) {
-                    start = std::chrono::high_resolution_clock::now();
-                }
-                auto now = std::chrono::high_resolution_clock::now();
-                if (std::chrono::duration<double>(now - start).count() > timeout_sec) {
-                    return line; // Return whatever was read before timeout
-                }
+                if (!alive()) { error_ = "Opponent process exited"; return false; }
                 Sleep(1);
             }
         }
+        error_ = "Opponent protocol deadline expired"; return false;
     }
-
-    // Read lines until one contains the expected token. Returns that line.
-    std::string read_until(const std::string& token, int timeout_sec = 30) {
-        auto start = std::chrono::high_resolution_clock::now();
-        while (true) {
-            auto now = std::chrono::high_resolution_clock::now();
-            int remaining = timeout_sec - (int)std::chrono::duration<double>(now - start).count();
-            if (remaining <= 0) return "";
-
-            std::string line = read_line(remaining);
-            if (line.empty() && !is_running) return ""; // Process dead
-            if (line.find(token) != std::string::npos) return line;
+    bool wait_for(const std::string& token, int timeout_ms) {
+        const auto deadline = Clock::now() + std::chrono::milliseconds(timeout_ms);
+        std::string line;
+        while (read_line(line, deadline)) {
+            if (line.rfind("id name ", 0) == 0) identity_ = line.substr(8);
+            if (line == token) return true;
         }
+        return false;
     }
-
-    // Drain any leftover bytes from the pipe
-    void flush_pipe() {
-        if (!check_process_alive()) return;
-        DWORD dwAvail = 0;
-        char buf[4096];
-        while (PeekNamedPipe(hChildStd_OUT_Rd, NULL, 0, NULL, &dwAvail, NULL) && dwAvail > 0) {
-            DWORD dwRead = 0;
-            DWORD toRead = (dwAvail < sizeof(buf)) ? dwAvail : sizeof(buf);
-            if (!ReadFile(hChildStd_OUT_Rd, buf, toRead, &dwRead, NULL) || dwRead == 0) break;
-        }
-    }
-
-    void send_cmd(const std::string& cmd) {
-        if (!check_process_alive() || !hChildStd_IN_Wr) return;
-        std::string msg = cmd + "\n";
-        DWORD dw;
-        if (!WriteFile(hChildStd_IN_Wr, msg.c_str(), (DWORD)msg.size(), &dw, NULL)) {
-            is_running = false;
-        }
-        FlushFileBuffers(hChildStd_IN_Wr);
-    }
-
-    // Parse a bestmove line and match it to a legal move
-    Move parse_bestmove(const std::string& line, const Board& board) {
-        size_t bm_pos = line.find("bestmove ");
-        if (bm_pos == std::string::npos) return Move();
-
-        std::string raw_str;
-        std::stringstream ss(line.substr(bm_pos + 9));
-        ss >> raw_str;
-
-        std::string move_str;
-        for (char c : raw_str) {
-            if (std::isalnum(c)) move_str += static_cast<char>(std::tolower(c));
-        }
-
-        if (move_str.empty() || move_str == "none" || move_str == "0000") return Move();
-
-        MoveList moves;
-        MoveGenerator::generate_legal_moves(board, moves);
-
-        // Pass 1: Exact string match
-        for (const auto& m : moves) {
-            if (move_to_uci(m) == move_str) return m;
-        }
-
-        // Pass 2: Square coordinate match (from_sq & to_sq)
-        if (move_str.length() >= 4) {
-            int f1 = move_str[0] - 'a';
-            int r1 = move_str[1] - '1';
-            int f2 = move_str[2] - 'a';
-            int r2 = move_str[3] - '1';
-            if (f1 >= 0 && f1 < 8 && r1 >= 0 && r1 < 8 && f2 >= 0 && f2 < 8 && r2 >= 0 && r2 < 8) {
-                Square sq_from = make_square(static_cast<File>(f1), static_cast<Rank>(r1));
-                Square sq_to   = make_square(static_cast<File>(f2), static_cast<Rank>(r2));
-                for (const auto& m : moves) {
-                    if (m.from() == sq_from && m.to() == sq_to) return m;
-                }
-            }
-        }
-
-        std::cerr << "[SF PARSE FAIL] Could not match Stockfish move '" << move_str << "' (raw: '" << raw_str << "')!\n";
-        return Move();
-    }
-
 public:
-    StockfishClient() {
-        ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
-    }
-
+    explicit StockfishClient(std::string executable = "tools/stockfish.exe")
+        : executable_(std::filesystem::absolute(executable).string()) {}
     ~StockfishClient() { close(); }
-
-    bool init(int elo = 2700, int threads = 6) {
-        current_elo = elo;
-        if (!check_process_alive()) {
-            close();
-
-            for (int attempt = 1; attempt <= 3; ++attempt) {
-                SECURITY_ATTRIBUTES sa;
-                sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-                sa.bInheritHandle = TRUE;
-                sa.lpSecurityDescriptor = NULL;
-
-                HANDLE hOutRd, hOutWr, hInRd, hInWr;
-                if (!CreatePipe(&hOutRd, &hOutWr, &sa, 0)) { Sleep(300); continue; }
-                SetHandleInformation(hOutRd, HANDLE_FLAG_INHERIT, 0);
-                if (!CreatePipe(&hInRd, &hInWr, &sa, 0)) { CloseHandle(hOutRd); CloseHandle(hOutWr); Sleep(300); continue; }
-                SetHandleInformation(hInWr, HANDLE_FLAG_INHERIT, 0);
-
-                STARTUPINFOA si;
-                ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
-                ZeroMemory(&si, sizeof(STARTUPINFOA));
-                si.cb = sizeof(STARTUPINFOA);
-                si.hStdError = hOutWr;
-                si.hStdOutput = hOutWr;
-                si.hStdInput = hInRd;
-                si.dwFlags |= STARTF_USESTDHANDLES;
-
-                char cmd_buf[512] = "c:\\Users\\abhin\\heavensgate\\tools\\stockfish.exe";
-                BOOL ok = CreateProcessA(NULL, cmd_buf, NULL, NULL, TRUE, 0, NULL, NULL, &si, &piProcInfo);
-
-                CloseHandle(hOutWr);
-                CloseHandle(hInRd);
-
-                if (!ok) { CloseHandle(hOutRd); CloseHandle(hInWr); Sleep(300); continue; }
-
-                hChildStd_OUT_Rd = hOutRd;
-                hChildStd_IN_Wr = hInWr;
-                is_running = true;
-
-                send_cmd("uci");
-                std::string uciok = read_until("uciok", 15);
-                if (uciok.empty()) { close(); Sleep(300); continue; }
-                break;
-            }
+    StockfishClient(const StockfishClient&) = delete;
+    StockfishClient& operator=(const StockfishClient&) = delete;
+    const std::string& executable() const { return executable_; }
+    const std::string& identity() const { return identity_; }
+    const std::string& last_error() const { return error_; }
+    int effective_elo() const { return elo_; }
+    int threads() const { return threads_; }
+    int hash_mb() const { return hash_mb_; }
+    bool init(int elo = 2700, int threads = 6, int hash_mb = 64) {
+        close(); error_.clear(); identity_.clear();
+        if (threads < 1 || threads > 64 || hash_mb < 1 || hash_mb > 16384) {
+            error_ = "Invalid opponent configuration"; return false;
         }
-
-        if (!is_running) return false;
-
-        if (current_elo >= 3200 || current_elo <= 0) {
-            send_cmd("setoption name UCI_LimitStrength value false");
-        } else {
-            int sf_elo = std::clamp(current_elo, 1320, 3190);
-            send_cmd("setoption name UCI_Elo value " + std::to_string(sf_elo));
-            send_cmd("setoption name UCI_LimitStrength value true");
+        SECURITY_ATTRIBUTES security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
+        HANDLE child_output = nullptr, child_input = nullptr;
+        if (!CreatePipe(&output_, &child_output, &security, 65536) || !CreatePipe(&child_input, &input_, &security, 65536)) {
+            if (child_output) CloseHandle(child_output);
+            if (child_input) CloseHandle(child_input);
+            error_ = "Cannot create opponent pipes"; close(); return false;
         }
-        send_cmd("setoption name Threads value " + std::to_string(threads));
-        send_cmd("setoption name Hash value 256");
-        send_cmd("isready");
-
-        std::string ready = read_until("readyok", 15);
-        return !ready.empty();
+        SetHandleInformation(output_, HANDLE_FLAG_INHERIT, 0); SetHandleInformation(input_, HANDLE_FLAG_INHERIT, 0);
+        STARTUPINFOA startup{}; startup.cb = sizeof(startup); startup.dwFlags = STARTF_USESTDHANDLES;
+        startup.hStdInput = child_input; startup.hStdOutput = startup.hStdError = child_output;
+        std::string command = '"' + executable_ + '"';
+        const BOOL launched = CreateProcessA(executable_.c_str(), command.data(), nullptr, nullptr, TRUE,
+                                             CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process_);
+        CloseHandle(child_input); CloseHandle(child_output);
+        if (!launched) { error_ = "Cannot launch opponent"; close(); return false; }
+        elo_ = elo > 0 && elo < 3200 ? std::clamp(elo, 1320, 3190) : 0;
+        threads_ = threads; hash_mb_ = hash_mb;
+        if (!send("uci") || !wait_for("uciok", 10000) || identity_.empty() ||
+            !send("setoption name Threads value " + std::to_string(threads_)) ||
+            !send("setoption name Hash value " + std::to_string(hash_mb_)) ||
+            !send("setoption name MultiPV value 1") ||
+            (elo_ && !send("setoption name UCI_Elo value " + std::to_string(elo_))) ||
+            !send(std::string("setoption name UCI_LimitStrength value ") + (elo_ ? "true" : "false")) ||
+            !send("isready") || !wait_for("readyok", 10000)) { close(); return false; }
+        return true;
     }
-
-    void reset_game() {
-        if (!check_process_alive()) {
-            init(current_elo);
-            return;
-        }
-        flush_pipe();
-        send_cmd("ucinewgame");
-        send_cmd("isready");
-        read_until("readyok", 10);
-        flush_pipe();
+    bool reset_game() {
+        error_.clear();
+        return send("ucinewgame") && send("isready") && wait_for("readyok", 5000);
     }
-
-    SearchResult get_search_result(const Board& board, int depth = 8, double time_ms = 0.0, int wtime_ms = 0, int btime_ms = 0, int inc_ms = 0) {
-        SearchResult res;
-        if (!check_process_alive()) {
-            if (!init(current_elo)) return res;
-        }
-
-        std::string fen = FEN::to_string(board);
-        send_cmd("position fen " + fen);
-        send_cmd("isready");
-        read_until("readyok", 5);
-
-        // Cap expected search timeout to realistic maximum (45 seconds for blitz games)
-        int expected_search_sec = 30;
-
-        if (time_ms > 0.0) {
-            send_cmd("go movetime " + std::to_string(static_cast<int>(time_ms)));
-            expected_search_sec = static_cast<int>(time_ms / 1000.0) + 15;
-        } else if (wtime_ms > 0 && btime_ms > 0) {
-            send_cmd("go wtime " + std::to_string(wtime_ms) + " btime " + std::to_string(btime_ms) +
-                     " winc " + std::to_string(inc_ms) + " binc " + std::to_string(inc_ms));
-            int active_clock = (board.side_to_move() == Color::White) ? wtime_ms : btime_ms;
-            expected_search_sec = std::min(45, std::max(10, (active_clock / 1000) / 4 + 10));
-        } else {
-            send_cmd("go depth " + std::to_string(depth));
-            expected_search_sec = 60;
-        }
-
-        int last_score = 0;
-        uint64_t last_nodes = 0;
-        double last_time_ms_val = 1000.0;
-        bool score_received = false;
-        bool nodes_received = false;
-
-        auto search_start = std::chrono::high_resolution_clock::now();
-        bool got_bestmove = false;
-
-        while (true) {
-            if (!check_process_alive()) break;
-
-            auto now = std::chrono::high_resolution_clock::now();
-            double elapsed = std::chrono::duration<double>(now - search_start).count();
-
-            if (elapsed > expected_search_sec) {
-                send_cmd("stop");
-                std::string bm_line = read_until("bestmove", 3);
-                if (!bm_line.empty()) {
-                    res.best_move = parse_bestmove(bm_line, board);
-                    got_bestmove = true;
-                }
-                break;
-            }
-
-            std::string line = read_line(10);
-            if (line.empty()) {
-                if (!is_running) break;
-                continue;
-            }
-
-            // Parse info lines for score/nodes/time
-            if (line.rfind("info ", 0) == 0) {
-                try {
-                    size_t sp = line.find("score cp ");
-                    if (sp != std::string::npos) {
-                        std::stringstream ss(line.substr(sp + 9));
-                        ss >> last_score;
-                        score_received = true;
-                    } else {
-                        size_t mp = line.find("score mate ");
-                        if (mp != std::string::npos) {
-                            int mv = 0;
-                            std::stringstream ss(line.substr(mp + 11));
-                            ss >> mv;
-                            last_score = (mv > 0) ? (30000 - mv) : (-30000 - mv);
-                            score_received = true;
-                        }
-                    }
-                    size_t np = line.find("nodes ");
-                    if (np != std::string::npos) {
-                        std::stringstream ss(line.substr(np + 6));
-                        ss >> last_nodes;
-                        nodes_received = true;
-                    }
-                    size_t tp = line.find(" time ");
-                    if (tp != std::string::npos) {
-                        std::stringstream ss(line.substr(tp + 6));
-                        ss >> last_time_ms_val;
-                    }
-                } catch (...) {}
-            }
-
-            // Check for bestmove
-            if (line.find("bestmove ") != std::string::npos) {
-                res.best_move = parse_bestmove(line, board);
-                if (res.best_move) {
-                    got_bestmove = true;
-                    break;
+    StockfishReply get_search_result(const Board& board, const std::string& position_command,
+                                    const std::string& go_command, int deadline_ms = 60000) {
+        StockfishReply reply; error_.clear(); const auto started = Clock::now();
+        auto failed = [&]() {
+            reply.diagnostic = error_;
+            reply.status = !alive() ? EngineReplyStatus::ProcessExited :
+                error_ == "Opponent protocol deadline expired" ? EngineReplyStatus::Timeout : EngineReplyStatus::ProtocolError;
+        };
+        if (!send(position_command) || !send(go_command)) { failed(); return reply; }
+        UciSearchReports reports;
+        const auto deadline = started + std::chrono::milliseconds(std::max(1, deadline_ms));
+        std::string line; bool received = false;
+        while (read_line(line, deadline)) {
+            if (line.rfind("info ", 0) == 0) reports.ingest(line);
+            if (line.rfind("bestmove ", 0) != 0) continue;
+            std::istringstream input(line); std::string token, text; input >> token >> text;
+            reply.search.best_move = legal_uci_move(board, text);
+            if (!reply.search.best_move) {
+                reply.status = EngineReplyStatus::IllegalMove;
+                reply.diagnostic = "Illegal or empty opponent bestmove: " + text;
+            } else {
+                reply.status = EngineReplyStatus::Ok; reply.info = reports.for_move(text);
+                if (reply.info) {
+                    reply.search.depth = reply.search.completed_depth = reply.info->depth;
+                    if (reply.info->kind == UciScoreKind::Cp) reply.search.best_score = reply.info->score;
+                    else reply.search.best_score = reply.info->score > 0 ? ScoreMate - std::min(reply.info->score, 999) :
+                        -ScoreMate - std::max(reply.info->score, -999);
                 }
             }
+            received = true; break;
         }
-
-        // Auto-recovery fallback: if we still have no move, query depth 10 search
-        if (!got_bestmove || !res.best_move) {
-            send_cmd("isready");
-            read_until("readyok", 5);
-            send_cmd("go depth 10");
-            std::string bm_line = read_until("bestmove", 15);
-            if (!bm_line.empty()) {
-                res.best_move = parse_bestmove(bm_line, board);
-                if (res.best_move) got_bestmove = true;
-            }
-        }
-
-        // Second fallback: if process crashed, re-init and query depth 8 search
-        if (!got_bestmove || !res.best_move) {
-            close();
-            if (init(current_elo)) {
-                send_cmd("position fen " + fen);
-                send_cmd("isready");
-                read_until("readyok", 5);
-                send_cmd("go depth 8");
-                std::string bm_line = read_until("bestmove", 15);
-                if (!bm_line.empty()) {
-                    res.best_move = parse_bestmove(bm_line, board);
-                }
-            }
-        }
-
-        double actual_elapsed_ms = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - search_start).count();
-
-        if (!nodes_received) {
-            last_nodes = static_cast<uint64_t>(std::max(10.0, actual_elapsed_ms) * 953.5);
-        }
-
-        flush_pipe();
-        res.best_score = last_score;
-        res.metrics.elapsed_seconds = std::max(0.001, actual_elapsed_ms / 1000.0);
-        res.metrics.total_nodes = last_nodes;
-        res.metrics.nps = (res.metrics.elapsed_seconds > 0) ? (last_nodes / res.metrics.elapsed_seconds) : 953500.0;
-        return res;
+        if (!received) { failed(); close(); } // No retry/restart or synthetic fallback.
+        reply.nodes_valid = reports.nodes_valid; reply.search.metrics.total_nodes = reports.nodes;
+        reply.search.metrics.elapsed_seconds = std::chrono::duration<double>(Clock::now() - started).count();
+        if (reply.search.metrics.elapsed_seconds > 0 && reports.nodes_valid)
+            reply.search.metrics.nps = reports.nodes / reply.search.metrics.elapsed_seconds;
+        return reply;
     }
-
     void close() {
-        if (is_running) {
-            if (hChildStd_IN_Wr) {
-                const char* quit = "quit\n";
-                DWORD dw;
-                WriteFile(hChildStd_IN_Wr, quit, 5, &dw, NULL);
+        if (process_.hProcess) {
+            if (alive() && input_) send("quit");
+            if (WaitForSingleObject(process_.hProcess, 100) == WAIT_TIMEOUT) {
+                TerminateProcess(process_.hProcess, 1); WaitForSingleObject(process_.hProcess, 100);
             }
-            Sleep(50);
-            is_running = false;
-            if (piProcInfo.hProcess) { TerminateProcess(piProcInfo.hProcess, 0); CloseHandle(piProcInfo.hProcess); piProcInfo.hProcess = NULL; }
-            if (piProcInfo.hThread) { CloseHandle(piProcInfo.hThread); piProcInfo.hThread = NULL; }
-            if (hChildStd_IN_Wr) { CloseHandle(hChildStd_IN_Wr); hChildStd_IN_Wr = NULL; }
-            if (hChildStd_OUT_Rd) { CloseHandle(hChildStd_OUT_Rd); hChildStd_OUT_Rd = NULL; }
+            CloseHandle(process_.hProcess);
         }
+        if (process_.hThread) CloseHandle(process_.hThread);
+        if (input_) CloseHandle(input_);
+        if (output_) CloseHandle(output_);
+        process_ = {}; input_ = output_ = nullptr; pending_.clear();
     }
 };
-
 } // namespace heavensgate

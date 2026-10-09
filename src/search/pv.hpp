@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <initializer_list>
 
 namespace heavensgate {
 
@@ -15,6 +16,17 @@ struct PrincipalVariation {
     int length{0};
 
     void clear() noexcept { length = 0; }
+    auto begin() const noexcept { return moves.begin(); }
+    auto end() const noexcept { return moves.begin() + length; }
+    size_t size() const noexcept { return static_cast<size_t>(length); }
+    bool empty() const noexcept { return length == 0; }
+    Move operator[](size_t i) const noexcept { return moves[i]; }
+    Move front() const noexcept { return moves[0]; }
+    PrincipalVariation& operator=(std::initializer_list<Move> list) noexcept {
+        length = static_cast<int>(std::min(list.size(), moves.size()));
+        std::copy_n(list.begin(), length, moves.begin());
+        return *this;
+    }
 
     std::vector<Move> to_vector() const {
         return std::vector<Move>(moves.begin(), moves.begin() + length);

@@ -144,6 +144,7 @@ int Evaluator::evaluate_fast(const Board& board, int alpha, int beta) {
 }
 
 void Evaluator::reset_incremental_cache() {
+    s_pawn_hash_table.fill(PawnHashEntry{});
 }
 
 int Evaluator::evaluate_incremental(const Board& board, int /*ply*/, Square /*from_sq*/, Square /*to_sq*/) {

@@ -1,5 +1,14 @@
 # HEAVEN'S GATE CHESS ENGINE: MASTER ARCHITECTURAL & EMPIRICAL HANDOVER DOCUMENTATION
 
+## Current evidence notice — 2026-10-09
+
+The historical rating estimates and additive Elo-gain projections below are not
+validated CCRL ratings or demonstrated improvements. They are preserved as
+development history, not current evidence. Read [the fresh skill/data/code audit](docs/engine_skill_audit.md)
+for replay results, measurement requirements and the replacement priorities.
+The scheduled tournament was cancelled at the user's request; no new games or
+tuning runs are scheduled.
+
 **Document Version**: 4.0 (Comprehensive Omniscience Edition)  
 **Date**: September 2026  
 **Target Environment**: Windows 11 x64, MSYS2 / w64devkit GCC 13+ (C++20, AVX2, FMA, OpenMP), Python 3.10+  

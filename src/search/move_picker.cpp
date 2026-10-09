@@ -53,8 +53,7 @@ void MovePicker::clear() noexcept {
 }
 
 void MovePicker::age_history() noexcept {
-    killer_moves_.fill({});
-    countermoves_.fill({});
+    reset_search_moves();
     for (auto& c : history_scores_) {
         for (auto& f : c) {
             for (auto& val : f) {

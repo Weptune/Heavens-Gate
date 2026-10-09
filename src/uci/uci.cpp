@@ -3,6 +3,7 @@
 #include "../movegen/movegen.hpp"
 #include "../core/fen.hpp"
 #include "../core/polyglot.hpp"
+#include "../core/time_budget.hpp"
 #include "../evaluation/eval.hpp"
 #include "../search/search_params.hpp"
 #include "../benchmark/sts.hpp"
@@ -60,11 +61,11 @@ void UCI::handle_go(const std::string& line, Board& board, SearchEngine& engine)
         if (!uci_book.is_loaded()) uci_book.load("c:/Users/abhin/heavensgate/performance.bin");
     }
 
-    if (uci_book.is_loaded()) {
+    if (engine.book_enabled() && uci_book.is_loaded()) {
         Move book_move = uci_book.probe(board);
         if (static_cast<bool>(book_move)) {
             int book_eval = Evaluator::evaluate_fast(board);
-            std::cout << "info depth 1 score cp " << book_eval << " nodes 1 nps 1000000 time 0 hashfull 0 pv " << move_to_uci(book_move) << " string Book move" << std::endl;
+            std::cout << "info depth 1 score cp " << book_eval << " nodes 0 nps 0 time 0 hashfull 0 pv " << move_to_uci(book_move) << " string Book move" << std::endl;
             std::cout << "bestmove " << move_to_uci(book_move) << std::endl;
             return;
         }
@@ -100,17 +101,9 @@ void UCI::handle_go(const std::string& line, Board& board, SearchEngine& engine)
     } else if (wtime > 0 || btime > 0) {
         int my_time = (board.side_to_move() == Color::White) ? wtime : btime;
         int my_inc  = (board.side_to_move() == Color::White) ? winc  : binc;
-        int moves_expected = (movestogo > 0) ? std::min(movestogo, 35) : 35;
-        double alloc = (static_cast<double>(my_time) / moves_expected) + (my_inc * 0.8);
-        double opt_time = std::min(alloc, my_time * 0.5);
-        time_ms = std::min(alloc * 3.5, my_time * 0.85);
-
-        // Smart Opening Time Allocation: moves 1-5 use fast 150-350ms development
-        if (board.fullmove_number() <= 5) {
-            opt_time = std::min(opt_time * 0.35, 350.0);
-            opt_time = std::max(opt_time, 120.0);
-            time_ms  = opt_time * 2.0;
-        }
+        const auto budget = bank_search_budget(my_time, my_inc, board.fullmove_number(), movestogo, engine.timing_options().move_overhead_ms);
+        const double opt_time = budget.optimum_ms;
+        time_ms = budget.maximum_ms;
 
         SearchResult res = engine.search_iterative_deepening(board, depth, time_ms, max_nodes, opt_time);
         std::cout << "bestmove " << move_to_uci(res.best_move) << std::endl;
@@ -155,6 +148,13 @@ void UCI::loop() {
             std::cout << "id author Antigravity Team\n";
             std::cout << "option name Hash type spin default 256 min 1 max 16384\n";
             std::cout << "option name Threads type spin default 6 min 1 max 64\n";
+            std::cout << "option name OwnBook type check default true\n";
+            std::cout << "option name MoveOverhead type spin default 25 min 0 max 5000\n";
+            std::cout << "option name MinimumSMPTime type spin default 20 min 0 max 1000\n";
+            std::cout << "option name EnableNMP type check default true\n";
+            std::cout << "option name EnableLMR type check default true\n";
+            std::cout << "option name NMPGuards type check default false\n";
+            std::cout << "option name TTClockContexts type check default false\n";
             std::cout << "option name LMR_Divisor type string default 3.20\n";
             std::cout << "option name LMR_HistBonus type spin default 425 min 0 max 5000\n";
             std::cout << "option name LMR_HistMalus type spin default 72 min 0 max 5000\n";
@@ -162,20 +162,35 @@ void UCI::loop() {
             std::cout << "option name Futility_Margin type spin default 180 min 10 max 500\n";
             std::cout << "option name SEE_BadCaptureSlope type spin default 124 min 0 max 500\n";
             std::cout << "option name SEE_QuietSlope type spin default 15 min 0 max 500\n";
-            std::cout << "option name NMP_EvalMargin type spin default 218 min 0 max 1000\n";
+            std::cout << "option name NMP_EvalMargin type spin default " << g_search_params.nmp_eval_margin << " min 0 max 1000\n";
             std::cout << "option name Singular_Margin type spin default 2 min 0 max 20\n";
-            std::cout << "option name Aspiration_Window_Delta type spin default 25 min 5 max 100\n";
+            std::cout << "option name Aspiration_Window_Delta type spin default " << g_search_params.aspiration_window_delta << " min 5 max 100\n";
             std::cout << "uciok" << std::endl;
         } else if (cmd == "isready") {
             Evaluator::set_mode(EvalMode::MasterPositional);
             std::cout << "readyok" << std::endl;
         } else if (cmd == "setoption") {
+            stop_search(); // TT resizing and parameter/table writes require idle workers.
             std::string token, name, val;
             ss >> token; // name
             ss >> name;
             ss >> token; // value
             ss >> val;
-            if (name == "Threads" && !val.empty()) {
+            if (name == "OwnBook") {
+                engine.set_book_enabled(val == "true");
+            } else if (name == "MoveOverhead" && !val.empty()) {
+                engine.set_move_overhead(std::stod(val));
+            } else if (name == "MinimumSMPTime" && !val.empty()) {
+                engine.set_minimum_smp_time(std::stod(val));
+            } else if (name == "EnableNMP") {
+                g_search_params.enable_nmp = (val == "true");
+            } else if (name == "EnableLMR") {
+                g_search_params.enable_lmr = (val == "true");
+            } else if (name == "NMPGuards") {
+                g_search_params.enable_nmp_guards = (val == "true");
+            } else if (name == "TTClockContexts") {
+                engine.tt().set_clock_contexts(val == "true");
+            } else if (name == "Threads" && !val.empty()) {
                 engine.set_threads(std::stoi(val));
             } else if (name == "Hash" && !val.empty()) {
                 engine.tt().resize(std::stoul(val));
@@ -223,9 +238,11 @@ void UCI::loop() {
                 if (!uci_book.is_loaded()) uci_book.load("c:/Users/abhin/heavensgate/performance.bin");
             }
 
-            if (uci_book.is_loaded()) {
+            if (engine.book_enabled() && uci_book.is_loaded()) {
                 Move book_move = uci_book.probe(board);
                 if (static_cast<bool>(book_move)) {
+                    std::cout << "info depth 1 score cp " << Evaluator::evaluate_fast(board)
+                              << " nodes 0 nps 0 time 0 pv " << move_to_uci(book_move) << " string Book move\n";
                     std::cout << "bestmove " << move_to_uci(book_move) << std::endl;
                     continue;
                 }
@@ -260,17 +277,9 @@ void UCI::loop() {
             } else if (wtime > 0 || btime > 0) {
                 int my_time = (board.side_to_move() == Color::White) ? wtime : btime;
                 int my_inc  = (board.side_to_move() == Color::White) ? winc  : binc;
-                int moves_expected = (movestogo > 0) ? std::min(movestogo, 35) : 35;
-                double alloc = (static_cast<double>(my_time) / moves_expected) + (my_inc * 0.8);
-                opt_time = std::min(alloc, my_time * 0.5);
-                time_ms = std::min(alloc * 3.5, my_time * 0.85);
-
-                // Smart Opening Time Allocation: moves 1-5 use fast 150-350ms development
-                if (board.fullmove_number() <= 5) {
-                    opt_time = std::min(opt_time * 0.35, 350.0);
-                    opt_time = std::max(opt_time, 120.0);
-                    time_ms  = opt_time * 2.0;
-                }
+                const auto budget = bank_search_budget(my_time, my_inc, board.fullmove_number(), movestogo, engine.timing_options().move_overhead_ms);
+                opt_time = budget.optimum_ms;
+                time_ms = budget.maximum_ms;
             }
 
             is_searching.store(true, std::memory_order_relaxed);
@@ -309,4 +318,3 @@ void UCI::loop() {
 }
 
 } // namespace heavensgate
-

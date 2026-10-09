@@ -2,6 +2,7 @@
 
 #include "../core/types.hpp"
 #include "../core/polyglot.hpp"
+#include "../core/time_budget.hpp"
 #include "../board/board.hpp"
 #include "../movegen/movegen.hpp"
 #include "../evaluation/eval.hpp"
@@ -16,6 +17,8 @@
 
 namespace heavensgate {
 
+namespace test { struct SearchEngineTestAccess; }
+
 struct SearchResult {
     Move best_move;
     int best_score = 0;
@@ -23,21 +26,18 @@ struct SearchResult {
     int completed_depth = 0;
     EngineMetrics metrics;
     uint64_t tt_hits = 0;
+    uint64_t tt_probes = 0;
     uint64_t q_nodes = 0;
-    std::vector<Move> pv;
+#if defined(HG_TT_DIAGNOSTICS)
+    TTDiagnostics tt_diagnostics;
+#endif
+    int threads_used = 1;
+    PrincipalVariation pv;
 };
 
 class SearchEngine {
 public:
-    explicit SearchEngine(TranspositionTable* shared_tt = nullptr, MovePicker* shared_picker = nullptr)
-        : tt_ptr_(shared_tt ? shared_tt : &local_tt_),
-          move_picker_ptr_(shared_picker ? shared_picker : &local_move_picker_),
-          move_picker_(*move_picker_ptr_) {
-        if (!polyglot_book_.is_loaded()) {
-            polyglot_book_.load("performance.bin");
-            if (!polyglot_book_.is_loaded()) polyglot_book_.load("tools/performance.bin");
-        }
-    }
+    explicit SearchEngine(TranspositionTable* shared_tt = nullptr, MovePicker* shared_picker = nullptr);
 
     SearchEngine(const SearchEngine&) = delete;
     SearchEngine& operator=(const SearchEngine&) = delete;
@@ -59,8 +59,14 @@ public:
     PolyGlotBook& polyglot_book() { return polyglot_book_; }
     const PolyGlotBook& polyglot_book() const { return polyglot_book_; }
     void stop() { time_stop_flag_.store(true, std::memory_order_relaxed); }
-    void set_threads(int threads) { num_threads_ = std::max(1, threads); }
+    // Configuration is performed while idle, never from the recursive search.
+    void set_threads(int threads);
+    void set_book_enabled(bool enabled) noexcept { book_enabled_ = enabled; }
+    bool book_enabled() const noexcept { return book_enabled_; }
     int threads() const { return num_threads_; }
+    const SearchTimingOptions& timing_options() const noexcept { return timing_options_; }
+    void set_move_overhead(double ms) noexcept { timing_options_.move_overhead_ms = std::clamp(ms, 0.0, 5000.0); }
+    void set_minimum_smp_time(double ms) noexcept { timing_options_.minimum_smp_time_ms = std::clamp(ms, 0.0, 1000.0); }
     void set_uci_output(bool enabled) noexcept { uci_output_ = enabled; }
     static void init_lmr_table(float divisor = 3.20f);
     bool uci_output() const noexcept { return uci_output_; }
@@ -71,15 +77,25 @@ public:
     void set_master_stop_flag(std::atomic<bool>* flag) noexcept { master_stop_flag_ = flag; }
 
 private:
+    friend struct test::SearchEngineTestAccess;
     int quiescence_search(Board& board, int alpha, int beta, int ply);
-    int negamax_minimax(Board& board, int depth, int ply, TreeNodeJSON* json_node);
-    int negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move = Move(), TreeNodeJSON* json_node = nullptr, int prev_eval = -ScoreInfinity, Move excluded_move = Move());
+    int negamax_minimax(Board& board, int depth, int ply, SearchTreeNode* json_node);
+    int negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move = Move(), SearchTreeNode* json_node = nullptr, int prev_eval = -ScoreInfinity, Move excluded_move = Move(), bool previous_was_null = false);
     void iterative_deepening_root(Board& board, int max_depth, uint64_t max_nodes, SearchResult& final_result);
+    void prepare_search(double max_time_ms, double opt_time_ms);
+    void finish_tt_statistics(SearchResult& result) noexcept {
+        result.tt_hits = tt_statistics_.hits;
+        result.tt_probes = tt_statistics_.probes;
+#if defined(HG_TT_DIAGNOSTICS)
+        result.tt_diagnostics = tt_statistics_.diagnostics;
+#endif
+        tt().publish_statistics(tt_statistics_);
+    }
 
     bool is_time_up() {
         if (is_stopped()) return true;
         if (max_time_ms_ > 0.0) {
-            auto now = std::chrono::high_resolution_clock::now();
+            auto now = std::chrono::steady_clock::now();
             double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
             if (elapsed >= max_time_ms_) {
                 time_stop_flag_.store(true, std::memory_order_relaxed);
@@ -93,6 +109,7 @@ private:
 
     TranspositionTable* tt_ptr_{nullptr};
     TranspositionTable local_tt_;
+    TTStatistics tt_statistics_;
     PolyGlotBook polyglot_book_;
     PVTable pv_table_;
     MovePicker* move_picker_ptr_{nullptr};
@@ -107,7 +124,14 @@ private:
     std::array<Move, 256> move_stack_{};
     std::array<Piece, 256> piece_stack_{};
     int num_threads_{6};
+    static constexpr int MaxThreads = 64;
+    std::array<std::unique_ptr<SearchEngine>, MaxThreads - 1> workers_{};
+    Board worker_board_;
+    bool book_enabled_{true};
     bool uci_output_{false};
+    SearchTimingOptions timing_options_{};
+    uint64_t time_poll_mask_{2047};
+    uint64_t max_nodes_{0};
 
 public:
     void clear() noexcept {
@@ -123,10 +147,13 @@ public:
         move_stack_.fill(Move{});
         piece_stack_.fill(Piece::None);
         node_count_ = 0;
+        q_nodes_ = 0;
+        tt_statistics_.reset();
+        for (auto& worker : workers_) if (worker) worker->clear();
         time_stop_flag_.store(false, std::memory_order_relaxed);
     }
 
-    std::chrono::high_resolution_clock::time_point search_start_time_;
+    std::chrono::steady_clock::time_point search_start_time_;
     double opt_time_ms_ = 0.0;
     double max_time_ms_ = 0.0;
     std::atomic<bool> time_stop_flag_{false};

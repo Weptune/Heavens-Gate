@@ -126,6 +126,13 @@ Move PolyGlotBook::parse_polyglot_move(const Board& board, uint16_t pg_move) {
 
     Square from_sq = static_cast<Square>(from_rank * 8 + from_file);
     Square to_sq   = static_cast<Square>(to_rank * 8 + to_file);
+    // PolyGlot encodes castling as king-to-rook, unlike internal king-to-g/c.
+    if (piece_type_of(board.piece_at(from_sq)) == PieceType::King) {
+        if (from_sq == Square::e1 && to_sq == Square::h1) to_sq = Square::g1;
+        else if (from_sq == Square::e1 && to_sq == Square::a1) to_sq = Square::c1;
+        else if (from_sq == Square::e8 && to_sq == Square::h8) to_sq = Square::g8;
+        else if (from_sq == Square::e8 && to_sq == Square::a8) to_sq = Square::c8;
+    }
 
     PieceType promo_pt = PieceType::None;
     switch (promo) {
@@ -161,32 +168,31 @@ Move PolyGlotBook::probe(const Board& board) const {
     auto it = std::lower_bound(entries_.begin(), entries_.end(), key, compare);
     if (it == entries_.end() || it->key != key) return Move();
 
-    std::vector<const PolyGlotEntry*> matches;
-    uint32_t total_weight = 0;
-
-    while (it != entries_.end() && it->key == key) {
-        matches.push_back(&(*it));
-        total_weight += it->weight;
-        ++it;
-    }
-
-    if (matches.empty()) return Move();
+    const auto first = it;
+    uint64_t total_weight = 0;
+    while (it != entries_.end() && it->key == key) total_weight += (it++)->weight;
+    const auto last = it;
 
     static thread_local std::mt19937 rng(1337);
     if (total_weight > 0) {
-        std::uniform_int_distribution<uint32_t> dist(1, total_weight);
-        uint32_t random_val = dist(rng);
-        uint32_t current_sum = 0;
-
-        for (const auto* match : matches) {
-            current_sum += match->weight;
+        std::uniform_int_distribution<uint64_t> dist(1, total_weight);
+        const uint64_t random_val = dist(rng);
+        uint64_t current_sum = 0;
+        for (auto candidate = first; candidate != last; ++candidate) {
+            current_sum += candidate->weight;
             if (random_val <= current_sum) {
-                return parse_polyglot_move(board, match->move);
+                const Move move = parse_polyglot_move(board, candidate->move);
+                if (move) return move;
+                break;
             }
         }
     }
 
-    return parse_polyglot_move(board, matches[0]->move);
+    for (auto candidate = first; candidate != last; ++candidate) {
+        const Move move = parse_polyglot_move(board, candidate->move);
+        if (move) return move;
+    }
+    return Move();
 }
 
 } // namespace heavensgate
