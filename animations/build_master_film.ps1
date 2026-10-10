@@ -6,7 +6,7 @@ Write-Host "====================================================" -ForegroundCol
 Write-Host "STEP 1: RENDERING ALL 12 SEAMLESS CONTINUOUS SCENES" -ForegroundColor Cyan
 Write-Host "====================================================" -ForegroundColor Cyan
 
-& .\render_all_seamless.ps1
+& "$PSScriptRoot\render_all_seamless.ps1"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Scene rendering failed!" -ForegroundColor Red
     exit $LASTEXITCODE
