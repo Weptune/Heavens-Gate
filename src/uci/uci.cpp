@@ -1,4 +1,5 @@
 #include "uci.hpp"
+#include "../benchmark/bench.hpp"
 #include "../search/syzygy.hpp"
 #include "../board/board.hpp"
 #include "../movegen/movegen.hpp"
@@ -171,6 +172,11 @@ void UCI::loop() {
         } else if (cmd == "isready") {
             Evaluator::set_mode(EvalMode::MasterPositional);
             std::cout << "readyok" << std::endl;
+        } else if (cmd == "bench") {
+            stop_search();
+            int depth = 11;
+            ss >> depth;
+            run_bench(depth);
         } else if (cmd == "setoption") {
             stop_search(); // TT resizing and parameter/table writes require idle workers.
             std::string token, name, val;

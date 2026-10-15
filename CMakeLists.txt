@@ -53,6 +53,7 @@ set(ENGINE_SOURCES
     src/visualization/exporter.cpp
     src/benchmark/metrics.cpp
     src/benchmark/sts.cpp
+    src/benchmark/bench.cpp
     src/uci/uci.cpp
 )
 

@@ -16,6 +16,7 @@
 #include "benchmark/metrics.hpp"
 #include "benchmark/sts.hpp"
 #include "uci/uci.hpp"
+#include "benchmark/bench.hpp"
 #include "uci/stockfish_client.hpp"
 #include <iostream>
 #include <iomanip>
@@ -531,6 +532,9 @@ int main(int argc, char* argv[]) {
             return success ? 0 : 1;
         } else if (cmd == "uci") {
             UCI::loop();
+            return 0;
+        } else if (cmd == "bench") {
+            run_bench(argc > 2 ? std::stoi(argv[2]) : 11);
             return 0;
         } else if (cmd == "test_sf") {
             StockfishClient sf;
