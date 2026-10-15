@@ -474,7 +474,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
 
         // Reverse Futility Pruning (Static Null Move Pruning)
-        if (depth <= 6 && !excluded_move) {
+        if (is_non_pv && depth <= 6 && !excluded_move) {
             int margin = std::max(60, g_search_params.rfp_margin) * depth - (improving ? 30 : 0);
             if (eval - margin >= beta) {
                 metrics_tracker_.add_cut();
@@ -489,7 +489,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     }
 
     // 3. Adaptive Null Move Pruning (NMP) with continuous depth & score scaling
-    if (g_search_params.enable_nmp && depth >= 3 && !in_chk && !excluded_move && board.has_non_pawn_material(us) &&
+    if (g_search_params.enable_nmp && is_non_pv && depth >= 3 && !in_chk && !excluded_move && board.has_non_pawn_material(us) &&
         (!g_search_params.enable_nmp_guards || guarded_null_move_allowed(is_non_pv, static_eval, beta, previous_was_null))) {
         int nmp_margin = std::max(1, g_search_params.nmp_eval_margin);
         int R = 3 + depth / 4 + std::min(3, (eval - beta) / nmp_margin);
@@ -533,7 +533,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     }
 
     // 3.5 ProbCut (Probability-Based Cutoffs)
-    if (depth >= 5 && !in_chk && !excluded_move && std::abs(beta) < ScoreMate - 1000 && board.has_non_pawn_material(us)) {
+    if (is_non_pv && depth >= 5 && !in_chk && !excluded_move && std::abs(beta) < ScoreMate - 1000 && board.has_non_pawn_material(us)) {
         int prob_beta = beta + 200;
         int prob_depth = depth - 4;
         MoveList tactical_moves;
