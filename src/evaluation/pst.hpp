@@ -29,12 +29,16 @@ public:
 
     static int get_pst_value(PieceType pt, Color c, Square sq, bool is_endgame) noexcept;
 
+    // [eg][colour][piece type][square], colour flip already applied. Built from the
+    // per-piece tables during static initialisation (they are constant-initialised).
+    static std::array<std::array<std::array<std::array<int, 64>, 6>, 2>, 2> combined;
+
     static inline int get_mg(PieceType pt, Color c, Square sq) noexcept {
-        return get_pst_value(pt, c, sq, false);
+        return combined[0][static_cast<size_t>(c)][static_cast<size_t>(pt)][static_cast<size_t>(sq)];
     }
 
     static inline int get_eg(PieceType pt, Color c, Square sq) noexcept {
-        return get_pst_value(pt, c, sq, true);
+        return combined[1][static_cast<size_t>(c)][static_cast<size_t>(pt)][static_cast<size_t>(sq)];
     }
 };
 
