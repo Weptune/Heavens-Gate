@@ -155,7 +155,6 @@ void UCI::loop() {
             std::cout << "option name EnableNMP type check default true\n";
             std::cout << "option name EnableLMR type check default true\n";
             std::cout << "option name NMPGuards type check default false\n";
-            std::cout << "option name TTClockContexts type check default false\n";
             std::cout << "option name LMR_Divisor type string default 3.20\n";
             std::cout << "option name LMR_HistBonus type spin default 425 min 0 max 5000\n";
             std::cout << "option name LMR_HistMalus type spin default 72 min 0 max 5000\n";
@@ -189,8 +188,6 @@ void UCI::loop() {
                 g_search_params.enable_lmr = (val == "true");
             } else if (name == "NMPGuards") {
                 g_search_params.enable_nmp_guards = (val == "true");
-            } else if (name == "TTClockContexts") {
-                engine.tt().set_clock_contexts(val == "true");
             } else if (name == "Threads" && !val.empty()) {
                 engine.set_threads(std::stoi(val));
             } else if (name == "Hash" && !val.empty()) {

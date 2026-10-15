@@ -14,9 +14,8 @@ static bool expect_score(const char* label, int actual, int expected, const Boar
     return false;
 }
 
-static bool rule50_boundary(bool contexts = false) {
+static bool rule50_boundary() {
     TranspositionTable table(1);
-    table.set_clock_contexts(contexts);
     auto engine = std::make_unique<SearchEngine>(&table);
     bool ok = true;
     for (const char* fen : QuietSevenPieces) {
@@ -39,9 +38,8 @@ static bool rule50_boundary(bool contexts = false) {
     return ok;
 }
 
-static bool mate_and_checked_boundary(bool contexts = false) {
+static bool mate_and_checked_boundary() {
     TranspositionTable table(1);
-    table.set_clock_contexts(contexts);
     auto engine = std::make_unique<SearchEngine>(&table);
     bool ok = true;
     for (const char* fen : {"7k/6Q1/5K2/8/8/8/8/8 b - - 100 1",
@@ -71,9 +69,8 @@ static bool mate_and_checked_boundary(bool contexts = false) {
     return ok;
 }
 
-static bool crossings_and_roots(bool contexts = false) {
+static bool crossings_and_roots() {
     TranspositionTable table(1);
-    table.set_clock_contexts(contexts);
     auto engine = std::make_unique<SearchEngine>(&table);
     engine->set_book_enabled(false);
     bool ok = true;
@@ -108,9 +105,8 @@ static bool crossings_and_roots(bool contexts = false) {
     return ok;
 }
 
-static bool cached_clock_context(bool contexts = false) {
+static bool cached_clock_context() {
     TranspositionTable table(1);
-    table.set_clock_contexts(contexts);
     auto engine = std::make_unique<SearchEngine>(&table);
     bool ok = true;
     for (const char* fen : QuietSevenPieces) {
@@ -139,7 +135,7 @@ static bool cached_clock_context(bool contexts = false) {
     return ok;
 }
 
-static bool reset_and_history_contract(bool contexts = false) {
+static bool reset_and_history_contract() {
     for (auto fixture : {std::pair{"4k3/8/8/8/8/8/4P3/4K3 w - - 99 1", Move(Square::e2, Square::e4, MoveType::DoublePawnPush)},
                          std::pair{"4k3/8/8/8/4r3/8/4Q3/4K3 w - - 99 1", Move(Square::e2, Square::e4, MoveType::Capture)},
                          std::pair{"4k3/8/8/3pP3/8/8/8/4K3 w - d6 99 1", Move(Square::e5, Square::d6, MoveType::EnPassant)},
@@ -148,7 +144,6 @@ static bool reset_and_history_contract(bool contexts = false) {
         b.make_move(fixture.second);
         if (b.halfmove_clock() != 0) return false;
         TranspositionTable table(1); auto engine = std::make_unique<SearchEngine>(&table);
-        table.set_clock_contexts(contexts);
         if (SearchEngineTestAccess::qsearch(*engine, b, -ScoreInfinity, ScoreInfinity, 1) == ScoreDraw) return false;
         b.unmake_move(fixture.second);
         if (!before.unchanged(b)) return false;
@@ -179,19 +174,23 @@ static bool tt_metadata_contract() {
                 TTEntry entry;
                 if (!table.probe(b.zobrist_key(), entry) || entry.rule50_clock != clock ||
                     !entry.score_matches_rule50(clock) || entry.score_matches_rule50(100) ||
-                    entry.score_matches_rule50((clock + 1) % 100) || (entry.data_word() >> 56) != static_cast<uint64_t>(clock)) return false;
+                    (entry.data_word() >> 56) != static_cast<uint64_t>(clock)) return false;
+                // Production contract: interchangeable while both clocks are < 80, exact match otherwise.
+                for (int other : {0, 1, 79, 80, 98, 99})
+                    if (entry.score_matches_rule50(other) != ((clock < 80 && other < 80) || clock == other)) return false;
                 ok &= expect_score("matching-clock cutoff (negamax)", SearchEngineTestAccess::negamax(*engine, b, 2, 3, alpha, beta), 900, b, before);
                 ok &= expect_score("matching-clock cutoff (qsearch)", SearchEngineTestAccess::qsearch(*engine, b, alpha, beta, 3), 900, b, before);
             }
         }
-        // An incompatible deep bound must not prevent storing a shallower new-context result.
+        // One slot per position: a shallow non-exact result from another clock must not
+        // displace a deeper same-generation entry (the 2026-10-09 regression mechanism).
         table.clear();
         const Move hint(Square::d2, Square::e2);
         table.store(b.zobrist_key(), hint, 900, 16, TTBound::Exact, 0, 0);
         table.store(b.zobrist_key(), Move{}, 0, 1, TTBound::Upper, 0, 99);
         TTEntry entry;
-        if (!table.probe(b.zobrist_key(), entry) || entry.rule50_clock != 99 || entry.score != 0 || entry.depth != 1 ||
-            entry.bound != TTBound::Upper || entry.move != hint) return false;
+        if (!table.probe(b.zobrist_key(), entry) || entry.rule50_clock != 0 || entry.score != 900 || entry.depth != 16 ||
+            entry.bound != TTBound::Exact || entry.move != hint || entry.score_matches_rule50(99)) return false;
         // All bound kinds at the wrong clock must be ignored, including eval refinement/singularity metadata.
         for (TTBound bound : {TTBound::Exact, TTBound::Lower, TTBound::Upper}) {
             b.set_halfmove_clock(99); const PositionSnapshot before(b);
@@ -203,14 +202,10 @@ static bool tt_metadata_contract() {
     return ok;
 }
 
-static const bool boundary_registered = register_test("Rule50: 7-piece draw boundary before stand-pat/TT (both colors)", [] { return rule50_boundary(); });
-static const bool mate_registered = register_test("Rule50: checkmate precedence and checked legal replies", [] { return mate_and_checked_boundary(); });
-static const bool root_registered = register_test("Rule50: quiet crossing, mate on halfmove100 and root claims", [] { return crossings_and_roots(); });
-static const bool cache_registered = register_test("Rule50: TT bounds cannot cross halfmove-clock contexts", [] { return cached_clock_context(); });
-static const bool reset_registered = register_test("Rule50: pawn/capture/EP/promotion resets and unchanged repetition identity", [] { return reset_and_history_contract(); });
-static const bool metadata_registered = register_test("Rule50: compatible bounds retained, clock metadata and context replacement", tt_metadata_contract);
-static const bool contexts_registered = register_test("TTContexts: mirrored rule50/mate/reset/cache contracts with contexts enabled", [] {
-    return rule50_boundary(true) && mate_and_checked_boundary(true) && crossings_and_roots(true) &&
-           cached_clock_context(true) && reset_and_history_contract(true);
-});
+static const bool boundary_registered = register_test("Rule50: 7-piece draw boundary before stand-pat/TT (both colors)", rule50_boundary);
+static const bool mate_registered = register_test("Rule50: checkmate precedence and checked legal replies", mate_and_checked_boundary);
+static const bool root_registered = register_test("Rule50: quiet crossing, mate on halfmove100 and root claims", crossings_and_roots);
+static const bool cache_registered = register_test("Rule50: TT bounds cannot cross halfmove-clock contexts", cached_clock_context);
+static const bool reset_registered = register_test("Rule50: pawn/capture/EP/promotion resets and unchanged repetition identity", reset_and_history_contract);
+static const bool metadata_registered = register_test("Rule50: compatible bounds retained, clock metadata and deep-entry retention", tt_metadata_contract);
 } // namespace heavensgate::test

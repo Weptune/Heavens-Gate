@@ -107,7 +107,11 @@ class StockfishClient {
             if (polled > 0 && (ready.revents & (POLLIN | POLLHUP))) {
                 char buffer[4096];
                 const ssize_t count = ::read(output_, buffer, sizeof(buffer));
-                if (count <= 0) { error_ = alive() ? "Opponent pipe read failed" : "Opponent process exited"; return false; }
+                if (count <= 0) {
+                    // EOF normally means the child is exiting; let it be reaped before classifying.
+                    for (int i = 0; i < 500 && alive(); ++i) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    error_ = alive() ? "Opponent pipe read failed" : "Opponent process exited"; return false;
+                }
                 pending_.append(buffer, static_cast<size_t>(count));
                 if (pending_.size() > 1024 * 1024) { error_ = "Oversized opponent protocol line"; return false; }
             } else if (polled < 0 || !alive()) {

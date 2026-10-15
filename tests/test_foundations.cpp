@@ -174,8 +174,6 @@ static bool allocation_free_search() {
     engine->set_book_enabled(false);
     Board board; board.load_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
     const auto root = FEN::to_string(board), key = std::to_string(board.zobrist_key());
-    for (bool contexts : {false, true}) {
-    engine->tt().set_clock_contexts(contexts);
     for (int threads : {1, 6}) {
         engine->set_threads(threads);
         engine->clear();
@@ -189,8 +187,6 @@ static bool allocation_free_search() {
             result.tt_hits != engine->tt().hits() || result.tt_probes != engine->tt().probes() ||
             !result.q_nodes || FEN::to_string(board) != root || std::to_string(board.zobrist_key()) != key) return false;
     }
-    }
-    engine->tt().set_clock_contexts(false);
     engine->set_threads(1);
     engine->clear();
     // Timed fallback must not allocate even when six workers are configured.

@@ -119,7 +119,7 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
     int orig_alpha = alpha;
     Move tt_move = Move();
     TTEntry snapshot;
-    TTEntry* tt_entry = tt().probe(board.zobrist_key(), snapshot, tt_statistics_, board.halfmove_clock()) ? &snapshot : nullptr;
+    TTEntry* tt_entry = tt().probe(board.zobrist_key(), snapshot, tt_statistics_) ? &snapshot : nullptr;
     if (tt_entry) {
         if (static_cast<bool>(tt_entry->move)) {
             tt_move = tt_entry->move;
@@ -353,7 +353,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     // 1. Transposition Table Probing
     if (use_tt) {
         tt().prefetch(board.zobrist_key());
-        tt_entry = tt().probe(board.zobrist_key(), snapshot, tt_statistics_, board.halfmove_clock()) ? &snapshot : nullptr;
+        tt_entry = tt().probe(board.zobrist_key(), snapshot, tt_statistics_) ? &snapshot : nullptr;
         if (tt_entry) {
             if (static_cast<bool>(tt_entry->move)) {
                 tt_move = tt_entry->move;
@@ -1381,9 +1381,6 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                   << ",\"score_cutoffs\":" << diagnostic.score_cutoffs
                   << ",\"store_attempts\":" << diagnostic.store_attempts
                   << ",\"stored\":" << diagnostic.stored
-                  << ",\"context_replacements\":" << diagnostic.context_replacements
-                  << ",\"shallower_context_replacements\":" << diagnostic.shallower_context_replacements
-                  << ",\"qsearch_context_replacements_of_deeper\":" << diagnostic.qsearch_context_replacements_of_deeper
                   << ",\"rejected_clock_deciles\":[";
         for (size_t i = 0; i < diagnostic.rejected_clock_deciles.size(); ++i) {
             if (i) std::cout << ',';

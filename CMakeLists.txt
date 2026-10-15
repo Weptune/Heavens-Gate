@@ -77,7 +77,7 @@ add_executable(heavensgate_tests
     tests/test_null_move_policy.cpp
     tests/test_qsearch_contract.cpp
     tests/test_rule50_contract.cpp
-    tests/test_tt_contexts.cpp
+    tests/test_tt.cpp
     ${ENGINE_SOURCES}
 )
 target_include_directories(heavensgate_tests PRIVATE src tests)
@@ -138,7 +138,7 @@ enable_testing()
 add_test(NAME AllTests COMMAND heavensgate_tests)
 add_test(NAME QsearchContracts COMMAND heavensgate_tests --filter Qsearch)
 add_test(NAME Rule50Contracts COMMAND heavensgate_tests --filter Rule50)
-add_test(NAME TTContextContracts COMMAND heavensgate_tests --filter TTContexts)
+add_test(NAME TTContracts COMMAND heavensgate_tests --filter "TT:")
 add_test(NAME TexelParity COMMAND heavensgate_texel_tuner 0 0.5
     ${CMAKE_SOURCE_DIR}/tests/texel_parity_positions.txt --parity-only)
 find_package(Python3 COMPONENTS Interpreter QUIET)

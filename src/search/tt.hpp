@@ -1,9 +1,9 @@
 #pragma once
 
 #include "../core/types.hpp"
-#include <vector>
-#include <cstdint>
+#include <array>
 #include <atomic>
+#include <cstdint>
 #include <memory>
 
 namespace heavensgate {
@@ -15,37 +15,67 @@ enum class TTBound : uint8_t {
     Upper = 3  // Fail-low cutoff (score <= alpha)
 };
 
-struct alignas(16) TTEntry {
+// Decoded, value-type snapshot of one table slot. Probes copy into this; nothing
+// ever holds a pointer into shared storage.
+struct TTEntry {
     uint64_t key{0};
     Move move;
     int16_t score{0};
     uint8_t depth{0};
     TTBound bound{TTBound::None};
     uint8_t generation{0};
-    // Reuse padding: score bounds depend on the reversible halfmove count.
-    // A different count can still supply a move hint, never a score/extension.
+    // Halfmove clock at store time. Scores are reusable across clocks only far
+    // from the 50-move boundary; elsewhere a mismatch leaves a move hint only.
     uint8_t rule50_clock{0};
+
     bool score_matches_rule50(int clock) const noexcept {
-        // Opening and middlegame positions far from the 50-move draw boundary (<80)
-        // are fully compatible and cannot trigger a 50-move draw within search depth.
+        // Positions far from the boundary (<80) cannot reach a 50-move draw within
+        // the search, so their scores are interchangeable. Near it, clocks must match.
         if (clock < 80 && rule50_clock < 80) return true;
         return clock >= 0 && clock < 100 && rule50_clock == clock;
     }
 
+    // Packed layout (little end first): move 16 | score 16 | depth 8 | bound 8 | generation 8 | clock 8.
     uint64_t data_word() const noexcept {
-        uint64_t d = 0;
-        // 8 bytes: Move (2B), score (2B), depth (1B), bound (1B), generation (1B), rule50 (1B)
-        const char* src = reinterpret_cast<const char*>(&move);
-        char* dst = reinterpret_cast<char*>(&d);
-        for (int i = 0; i < 8; ++i) dst[i] = src[i];
-        return d;
+        return uint64_t(move.raw()) | (uint64_t(uint16_t(score)) << 16) | (uint64_t(depth) << 32) |
+               (uint64_t(bound) << 40) | (uint64_t(generation) << 48) | (uint64_t(rule50_clock) << 56);
+    }
+    static TTEntry decode(uint64_t key, uint64_t data) noexcept {
+        TTEntry entry;
+        entry.key = key;
+        entry.move = Move::from_raw(static_cast<uint16_t>(data));
+        entry.score = static_cast<int16_t>(static_cast<uint16_t>(data >> 16));
+        entry.depth = static_cast<uint8_t>(data >> 32);
+        entry.bound = static_cast<TTBound>(static_cast<uint8_t>(data >> 40) & 3);
+        entry.generation = static_cast<uint8_t>(data >> 48);
+        entry.rule50_clock = static_cast<uint8_t>(data >> 56);
+        return entry;
+    }
+};
+
+// Lockless slot (Hyatt/Mann XOR scheme). key_xor holds key ^ data. A reader that
+// observes a torn pair (data from one store, key_xor from another) recomputes a
+// key that does not match the probe and treats the slot as a miss. Relaxed
+// atomics make concurrent access well-defined without adding fences on x86-64.
+struct TTSlot {
+    std::atomic<uint64_t> key_xor{0};
+    std::atomic<uint64_t> data{0};
+
+    uint64_t load_key(uint64_t& data_out) const noexcept {
+        data_out = data.load(std::memory_order_relaxed);
+        return key_xor.load(std::memory_order_relaxed) ^ data_out;
+    }
+    void write(uint64_t key, uint64_t new_data) noexcept {
+        data.store(new_data, std::memory_order_relaxed);
+        key_xor.store(key ^ new_data, std::memory_order_relaxed);
     }
 };
 
 struct alignas(64) TTBucket {
-    std::array<TTEntry, 4> entries{};
+    std::array<TTSlot, 4> slots{};
 };
-static_assert(sizeof(TTEntry) == 16 && sizeof(TTBucket) == 64);
+static_assert(sizeof(TTSlot) == 16 && sizeof(TTBucket) == 64, "one bucket must be one cache line");
+static_assert(std::atomic<uint64_t>::is_always_lock_free, "TT requires lock-free 64-bit atomics");
 
 #if defined(HG_TT_DIAGNOSTICS)
 struct TTDiagnostics {
@@ -55,9 +85,6 @@ struct TTDiagnostics {
     uint64_t score_cutoffs{0};
     uint64_t store_attempts{0};
     uint64_t stored{0};
-    uint64_t context_replacements{0};
-    uint64_t shallower_context_replacements{0};
-    uint64_t qsearch_context_replacements_of_deeper{0};
     // Diagnostic bins only, not thresholds used by search/reuse policy.
     std::array<uint64_t, 10> rejected_clock_deciles{};
     void add(const TTDiagnostics& other) noexcept {
@@ -67,9 +94,6 @@ struct TTDiagnostics {
         score_cutoffs += other.score_cutoffs;
         store_attempts += other.store_attempts;
         stored += other.stored;
-        context_replacements += other.context_replacements;
-        shallower_context_replacements += other.shallower_context_replacements;
-        qsearch_context_replacements_of_deeper += other.qsearch_context_replacements_of_deeper;
         for (size_t i = 0; i < rejected_clock_deciles.size(); ++i)
             rejected_clock_deciles[i] += other.rejected_clock_deciles[i];
     }
@@ -100,15 +124,10 @@ struct alignas(64) TTStatistics {
 
 class TranspositionTable {
 private:
-    std::vector<TTBucket> table_;
-    // Contention becomes a cache miss/dropped store, never an unbounded spin.
-    std::unique_ptr<std::atomic_flag[]> locks_;
+    std::unique_ptr<TTBucket[]> table_;
     size_t num_buckets_{0};
     size_t mask_{0};
     std::atomic<uint8_t> generation_{0};
-    bool clock_contexts_{false}; // Experimental; configured only while idle.
-
-    bool probe_context(uint64_t key, TTEntry& entry, int rule50_clock) noexcept;
 
     // Published current-search totals, updated only while idle/after the SMP barrier.
     std::atomic<uint64_t> hits_{0};
@@ -123,10 +142,11 @@ public:
     void new_search() noexcept { generation_.fetch_add(1, std::memory_order_relaxed); }
     uint8_t generation() const noexcept { return generation_.load(std::memory_order_relaxed); }
 
+    // Compatibility API returns a thread-local snapshot, never a pointer into the table.
     TTEntry* probe(uint64_t key) noexcept;
-    // Raw compatibility probes do not alter diagnostic totals.
-    bool probe(uint64_t key, TTEntry& entry) noexcept;
-    bool probe(uint64_t key, TTEntry& entry, TTStatistics& statistics) noexcept;
+    // Raw probes do not alter statistics.
+    bool probe(uint64_t key, TTEntry& entry) const noexcept;
+    bool probe(uint64_t key, TTEntry& entry, TTStatistics& statistics) const noexcept;
     // Raw/test callers default to clock 0. Search callers must pass the board clock.
     void store(uint64_t key, Move move, int score, int depth, TTBound bound, int ply, int rule50_clock = 0,
                TTStatistics* statistics = nullptr) noexcept;
@@ -142,15 +162,6 @@ public:
     double hit_rate() const noexcept { const auto n = probes(); return n ? (100.0 * hits()) / n : 0.0; }
     size_t capacity() const noexcept { return num_buckets_ * 4; }
     int hashfull() const noexcept;
-    bool clock_contexts() const noexcept { return clock_contexts_; }
-    void set_clock_contexts(bool enabled) noexcept {
-        if (clock_contexts_ != enabled) {
-            clock_contexts_ = enabled;
-            clear(); // Never mix single-context and multi-context layouts.
-        }
-    }
-    // Prefer a matching score context; otherwise return a board-only move hint.
-    bool probe(uint64_t key, TTEntry& entry, TTStatistics& statistics, int rule50_clock) noexcept;
 };
 
 } // namespace heavensgate

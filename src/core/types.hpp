@@ -138,6 +138,7 @@ public:
     constexpr Square to() const noexcept { return static_cast<Square>((data_ >> 6) & 0x3F); }
     constexpr MoveType type() const noexcept { return static_cast<MoveType>((data_ >> 12) & 0x0F); }
     constexpr uint16_t raw() const noexcept { return data_; }
+    static constexpr Move from_raw(uint16_t raw) noexcept { Move m; m.data_ = raw; return m; }
 
     constexpr bool is_quiet() const noexcept {
         return type() == MoveType::Quiet || type() == MoveType::DoublePawnPush || 
