@@ -100,6 +100,8 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
     metrics_tracker_.add_nodes(1);
     q_nodes_++;
     node_count_++;
+    // Every return path must leave an empty PV at this ply, or the parent copies a stale line.
+    if (ply < MaxSearchDepth) pv_table_.init_ply(ply);
     if (!board.can_push_history()) return Evaluator::evaluate_fast(board, alpha, beta);
 
     if (is_stopped() || ((node_count_ & time_poll_mask_) == 0 && is_time_up())) return 0;
@@ -311,6 +313,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     }
     metrics_tracker_.add_nodes(1);
     node_count_++;
+    // Every return path (repetition, 50-move, TT cutoff) must leave an empty PV at this ply.
+    if (ply < MaxSearchDepth) pv_table_.init_ply(ply);
     // Stack safety, not an extension budget. Check-extension rule below is unchanged.
     if (ply >= 255 || !board.can_push_history()) return Evaluator::evaluate_fast(board, alpha, beta);
 
@@ -329,9 +333,6 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         depth++;
     }
 
-    if (ply < MaxSearchDepth) {
-        pv_table_.init_ply(ply);
-    }
 
     int orig_alpha = alpha;
     Move tt_move = pv_move;
