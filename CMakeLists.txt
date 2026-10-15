@@ -83,9 +83,9 @@ add_executable(heavensgate_tests
 target_include_directories(heavensgate_tests PRIVATE src tests)
 
 # Keep the offline tuner tied to the same evaluator implementation. Its
-# parity mode checks both the exact baseline and local parameter slopes.
+# --parity checks the exact linear model against the engine eval.
 add_executable(heavensgate_texel_tuner
-    tools/tune_classical_texel.cpp
+    tools/tune_hce.cpp
     src/board/board.cpp
     src/core/fen.cpp
     src/core/zobrist.cpp
@@ -139,8 +139,8 @@ add_test(NAME AllTests COMMAND heavensgate_tests)
 add_test(NAME QsearchContracts COMMAND heavensgate_tests --filter Qsearch)
 add_test(NAME Rule50Contracts COMMAND heavensgate_tests --filter Rule50)
 add_test(NAME TTContracts COMMAND heavensgate_tests --filter "TT:")
-add_test(NAME TexelParity COMMAND heavensgate_texel_tuner 0 0.5
-    ${CMAKE_SOURCE_DIR}/tests/texel_parity_positions.txt --parity-only)
+add_test(NAME TexelParity COMMAND heavensgate_texel_tuner
+    --parity ${CMAKE_SOURCE_DIR}/tests/texel_parity_positions.txt)
 find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND)
     add_test(NAME TexelTrainingContract COMMAND ${Python3_EXECUTABLE}

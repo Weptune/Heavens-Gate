@@ -43,6 +43,7 @@ public:
 
     static ScorePair evaluate_pawn_structure(const Board& board, Color side);
     static ScorePair evaluate_passed_pawns(const Board& board, Color side);
+    static ScorePair evaluate_passed_extras(const Board& board, Color side);
     static ScorePair evaluate_king_safety(const Board& board, Color side);
     static ScorePair evaluate_piece_activity(const Board& board, Color side);
     static ScorePair evaluate_threats(const Board& board, Color side);

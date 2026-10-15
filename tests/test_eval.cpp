@@ -25,7 +25,6 @@ void test_eval() {
     Evaluator::set_mode(EvalMode::MasterPositional);
     Board board;
     board.reset();
-    HEAVENSGATE_ASSERT(g_eval_params.tempo_mg == 15, "Current tuned move-1 tempo changed");
     HEAVENSGATE_ASSERT(Evaluator::evaluate(board) == g_eval_params.tempo_mg, "Startpos must equal configured tempo");
     HEAVENSGATE_ASSERT(board.game_phase() == 24, "Startpos phase must be 24");
 
@@ -38,7 +37,7 @@ void test_eval() {
         board.load_fen(fen);
         const auto mirror = color_mirror(board);
         HEAVENSGATE_ASSERT(Evaluator::evaluate(board) == Evaluator::evaluate(mirror), "Color-reflected STM scores differ");
-        for (const auto feature : {EvalFeatures::evaluate_pawn_structure, EvalFeatures::evaluate_passed_pawns,
+        for (const auto feature : {EvalFeatures::evaluate_pawn_structure, EvalFeatures::evaluate_passed_pawns, EvalFeatures::evaluate_passed_extras,
                                   EvalFeatures::evaluate_piece_activity, EvalFeatures::evaluate_material_imbalances,
                                   EvalFeatures::evaluate_king_safety, EvalFeatures::evaluate_threats, EvalFeatures::evaluate_mobility}) {
             for (Color side : {Color::White, Color::Black}) {
@@ -65,7 +64,7 @@ void test_eval() {
     const auto boxed = EvalFeatures::evaluate_piece_activity(board, Color::White);
     board.load_fen("k7/8/8/8/8/8/7P/4K2R w - - 0 1");
     const auto free = EvalFeatures::evaluate_piece_activity(board, Color::White);
-    HEAVENSGATE_ASSERT(free.mg - boxed.mg == 45 && free.eg == boxed.eg, "Boxed rook penalty is unreachable");
+    HEAVENSGATE_ASSERT(free.mg - boxed.mg == g_eval_params.trapped_rook_mg && free.eg == boxed.eg, "Boxed rook penalty is unreachable");
 
     board.load_fen("4k3/rr6/8/8/8/8/8/3QK3 w - - 0 1");
     const auto queen = EvalFeatures::evaluate_material_imbalances(board, Color::White);

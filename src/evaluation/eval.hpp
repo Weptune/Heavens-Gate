@@ -26,6 +26,9 @@ public:
     static int evaluate_fast(const Board& board, int alpha = -ScoreInfinity, int beta = ScoreInfinity);
     static int evaluate_incremental(const Board& board, int ply, Square from_sq = Square::None, Square to_sq = Square::None);
     static void reset_incremental_cache();
+    // Uncached sum of every positional term for one side (no material/PST/tempo).
+    // The single definition shared by the search eval and the tuners.
+    static ScorePair positional_terms(const Board& board, Color side);
 
     static void set_mode(EvalMode mode) { current_mode_ = mode; }
     static EvalMode mode() { return current_mode_; }

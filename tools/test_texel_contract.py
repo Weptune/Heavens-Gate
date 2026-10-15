@@ -1,9 +1,12 @@
-"""Compiled-tuner CLI regression. Run only AFTER the timed pilot ends.
+"""HCE tuner contract (tools/tune_hce.cpp). CTest passes the tuner binary.
 
-CTest supplies the freshly built tuner executable as the sole argument.
+- parity: the linear model reproduces the engine eval exactly, including under
+  random parameter perturbations (checked by the binary itself);
+- training: a short fit on labelled data writes both source files, keeps the
+  PawnMG anchor, and does not increase validation error.
 """
-import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -11,42 +14,32 @@ import unittest
 
 BINARY = None
 ROOT = Path(__file__).resolve().parent.parent
-FIXTURE = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1|0.5\n'
 
 
-class TexelContractTests(unittest.TestCase):
-    def run_tuner(self, arguments):
-        return subprocess.run([str(BINARY), *map(str, arguments)], cwd=ROOT,
-                              capture_output=True, text=True, timeout=30)
+class HceTunerContract(unittest.TestCase):
+    def run_tuner(self, *arguments, timeout=300):
+        return subprocess.run([str(BINARY), *map(str, arguments)], cwd=ROOT, capture_output=True, text=True, timeout=timeout)
 
-    def test_training_requires_heldout_paths_and_explicit_outputs(self):
-        result = self.run_tuner([0, .5, ROOT / 'tests/texel_parity_positions.txt'])
-        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertIn('Training requires', result.stderr)
+    def test_parity(self):
+        result = self.run_tuner('--parity', ROOT / 'tests/texel_parity_positions.txt')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertLess(float(re.search(r'max \|model - engine\| = ([0-9.e+-]+)', result.stdout).group(1)), 1e-6)
 
-    def test_zero_epoch_model_exports_report_but_no_parameters(self):
+    def test_short_training_run(self):
         with tempfile.TemporaryDirectory() as temporary:
-            directory = Path(temporary)
-            for split in ('train', 'validation', 'test'): (directory / f'{split}.txt').write_text(FIXTURE)
-            candidate, report = directory / 'candidate.inc', directory / 'loss.json'
-            arguments = [0, .5, directory / 'train.txt', '--validation', directory / 'validation.txt',
-                         '--test', directory / 'test.txt', '--output', candidate, '--report', report]
-            result = self.run_tuner(arguments)
-            self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-            self.assertFalse(candidate.exists())
-            summary = json.loads(report.read_text())
-            self.assertFalse(summary['validation_improved'])
-            self.assertFalse(summary['exported'])
-            self.assertEqual(summary['epochs_completed'], 0)
-            self.assertEqual(self.run_tuner(arguments).returncode, 1)  # Never overwrite evidence.
+            result = self.run_tuner('--tune', ROOT / 'data/quiet_positions.txt', '--limit', 3000,
+                                    '--epochs', 200, '--val', 0.2, '--out', temporary)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            out = Path(temporary)
+            params = (out / 'tuned_eval_params.inc').read_text()
+            self.assertIn('p.pawn_mg = 100;', params)
+            self.assertEqual((out / 'pst_tables.inc').read_text().count('PieceSquareTables::'), 12)
+            start = float(re.search(r'val MSE ([0-9.e-]+)', result.stdout).group(1))
+            best = float(re.search(r'best val MSE ([0-9.e-]+)', result.stdout).group(1))
+            self.assertLessEqual(best, start)
 
-    def test_malformed_targets_fail_instead_of_being_skipped(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            fixture = Path(temporary) / 'malformed.txt'
-            for target in ('nan', '2', '0.5garbage'):
-                fixture.write_text(FIXTURE.split('|')[0] + '|' + target + '\n')
-                result = self.run_tuner([0, .5, fixture, '--parity-only'])
-                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+    def test_rejects_unknown_arguments(self):
+        self.assertEqual(self.run_tuner('--bogus').returncode, 2)
 
 
 if __name__ == '__main__':

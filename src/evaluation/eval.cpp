@@ -12,6 +12,7 @@ thread_local EvalMode Evaluator::current_mode_ = EvalMode::MasterPositional;
 
 void Evaluator::init() {
     PST::init();
+    g_eval_params.init_v2_tables();
     apply_tuned_eval_params(g_eval_params);
     EvalFeatures::init();
     TropicalEvaluator::instance().load_weights("heavensgate_tropical.trm");
@@ -25,6 +26,18 @@ struct PawnHashEntry {
 
 static constexpr size_t PAWN_HASH_SIZE = 32768;
 static thread_local std::array<PawnHashEntry, PAWN_HASH_SIZE> s_pawn_hash_table{};
+
+// Terms that depend on pieces, i.e. everything outside the pawn-only hash.
+static ScorePair non_pawn_terms(const Board& board, Color side) {
+    return EvalFeatures::evaluate_king_safety(board, side) + EvalFeatures::evaluate_piece_activity(board, side)
+         + EvalFeatures::evaluate_threats(board, side) + EvalFeatures::evaluate_mobility(board, side)
+         + EvalFeatures::evaluate_material_imbalances(board, side) + EvalFeatures::evaluate_passed_extras(board, side);
+}
+
+ScorePair Evaluator::positional_terms(const Board& board, Color side) {
+    return EvalFeatures::evaluate_pawn_structure(board, side) + EvalFeatures::evaluate_passed_pawns(board, side)
+         + non_pawn_terms(board, side);
+}
 
 int Evaluator::evaluate_side(const Board& board, Color side) {
     int mg_material = board.mg_material(side);
@@ -67,13 +80,7 @@ int Evaluator::evaluate_side(const Board& board, Color side) {
         }
     }
 
-    ScorePair king_safety  = EvalFeatures::evaluate_king_safety(board, side);
-    ScorePair activity     = EvalFeatures::evaluate_piece_activity(board, side);
-    ScorePair threats      = EvalFeatures::evaluate_threats(board, side);
-    ScorePair mobility     = EvalFeatures::evaluate_mobility(board, side);
-    ScorePair imbalances   = EvalFeatures::evaluate_material_imbalances(board, side);
-
-    ScorePair pos_total = pawn_struct + passed_pawns + king_safety + activity + threats + mobility + imbalances;
+    ScorePair pos_total = pawn_struct + passed_pawns + non_pawn_terms(board, side);
 
     int game_phase = board.game_phase();
 

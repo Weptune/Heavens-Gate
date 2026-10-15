@@ -242,139 +242,150 @@ ScorePair EvalFeatures::evaluate_passed_pawns(const Board& board, Color side) {
     return score;
 }
 
+// All attacks of one colour (pieces and king), for safety/threat terms.
+static Bitboard attacks_of(const Board& board, Color c, Bitboard occ) noexcept {
+    const Bitboard not_a = ~file_bb(File::FileA), not_h = ~file_bb(File::FileH);
+    const Bitboard pawns = board.pieces(make_piece(c, PieceType::Pawn));
+    Bitboard a = c == Color::White ? (((pawns & not_a) << 7) | ((pawns & not_h) << 9))
+                                   : (((pawns & not_a) >> 9) | ((pawns & not_h) >> 7));
+    for (Bitboard b = board.pieces(make_piece(c, PieceType::Knight)); b;) a |= AttackMasks::knight_attacks(pop_lsb(b));
+    for (Bitboard b = board.pieces(make_piece(c, PieceType::Bishop)); b;) a |= AttackMasks::bishop_attacks(pop_lsb(b), occ);
+    for (Bitboard b = board.pieces(make_piece(c, PieceType::Rook)); b;) a |= AttackMasks::rook_attacks(pop_lsb(b), occ);
+    for (Bitboard b = board.pieces(make_piece(c, PieceType::Queen)); b;) a |= AttackMasks::queen_attacks(pop_lsb(b), occ);
+    const Square k = board.king_square(c);
+    if (k != Square::None) a |= AttackMasks::king_attacks(k);
+    return a;
+}
+
 ScorePair EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
     ScorePair score{0, 0};
+    const auto& p = g_eval_params;
 
     Square ksq = board.king_square(side);
     if (ksq == Square::None) return score;
 
-    int kr_idx = static_cast<int>(rank_of(ksq));
-    int kf_idx = static_cast<int>(file_of(ksq));
+    // Without queens the king is a piece: its placement is the king PST and the
+    // passed-pawn king-distance terms. Safety terms apply only with queens on.
+    if (popcount(board.pieces(Piece::WhiteQueen) | board.pieces(Piece::BlackQueen)) == 0) return score;
 
-    // Check if Queens are off the board (Endgame Phase)
-    int queens_count = popcount(board.pieces(Piece::WhiteQueen) | board.pieces(Piece::BlackQueen));
-    if (queens_count == 0) {
-        // Symmetrical Chebyshev distance to 2x2 board center (d4, e4, d5, e5)
-        int r_dist = std::min(std::abs(kr_idx - 3), std::abs(kr_idx - 4));
-        int f_dist = std::min(std::abs(kf_idx - 3), std::abs(kf_idx - 4));
-        int center_dist = std::max(r_dist, f_dist);
-        score.eg += (3 - center_dist) * 12;
+    const Color opp = ~side;
+    const int kr = static_cast<int>(rank_of(ksq));
+    const int kf = static_cast<int>(file_of(ksq));
 
-        // Dynamic King Proximity to Passed Pawns in Endgame
-        Square opp_ksq = board.king_square(~side);
-        if (opp_ksq != Square::None) {
-            Bitboard my_pawns = board.pieces(make_piece(side, PieceType::Pawn));
-            Bitboard opp_pawns = board.pieces(make_piece(~side, PieceType::Pawn));
-            size_t pers_idx = (side == Color::White) ? 0 : 1;
-            while (my_pawns) {
-                Square psq = pop_lsb(my_pawns);
-                Bitboard mask = PassedPawnMask[pers_idx][static_cast<size_t>(psq)];
-                if ((opp_pawns & mask) == EmptyBB) {
-                    int my_dist = std::max(std::abs(static_cast<int>(file_of(psq)) - kf_idx),
-                                           std::abs(static_cast<int>(rank_of(psq)) - kr_idx));
-                    int opp_dist = std::max(std::abs(static_cast<int>(file_of(psq)) - static_cast<int>(file_of(opp_ksq))),
-                                            std::abs(static_cast<int>(rank_of(psq)) - static_cast<int>(rank_of(opp_ksq))));
-                    int king_proximity_factor = (opp_dist * 2 - my_dist);
-                    score.eg += std::clamp(king_proximity_factor * 6, -35, 60);
-                }
-            }
-        }
-    } else {
-        // 0. Uncastled Exposed King Penalty (-120 cp MG, -20 cp EG)
-        int kr = static_cast<int>(rank_of(ksq));
-        int kf = static_cast<int>(file_of(ksq));
-        if ((side == Color::White && kr <= 3 && kf >= 2 && kf <= 5) ||
-            (side == Color::Black && kr >= 4 && kf >= 2 && kf <= 5)) {
-            score.mg -= g_eval_params.uncastled_king_mg;
-            score.eg -= g_eval_params.uncastled_king_eg;
-        }
-
-        // 1. Middlegame Pawn Shield Bonus (+15 cp per shield pawn in MG, 0 in EG)
-        File kf_enum = file_of(ksq);
-
-        size_t side_idx = (side == Color::White) ? 0 : 1;
-        Bitboard shield_mask = KingShieldMask[side_idx][static_cast<size_t>(ksq)];
-
-        Bitboard my_pawns = board.pieces(make_piece(side, PieceType::Pawn));
-        int shield_pawns = popcount(my_pawns & shield_mask);
-        score.mg += shield_pawns * g_eval_params.pawn_shield_mg;
-
-        // 2. Pawn Storm Evaluation: Penalize advancing enemy pawns near our king
-        Bitboard opp_pawns = board.pieces(make_piece(~side, PieceType::Pawn));
-        Bitboard adj_opp_pawns = opp_pawns & KingAdjacentFilesMask[static_cast<size_t>(ksq)];
-        if (adj_opp_pawns != EmptyBB) {
-            for (int df = -1; df <= 1; ++df) {
-                int f_idx = static_cast<int>(kf_enum) + df;
-                if (f_idx >= 0 && f_idx < 8) {
-                    Bitboard file_opp_pawns = adj_opp_pawns & file_bb(static_cast<File>(f_idx));
-                    if (file_opp_pawns) {
-                        if (side == Color::White) {
-                            Square psq = lsb(file_opp_pawns);
-                            Rank pr = rank_of(psq);
-                            if (pr == Rank::Rank5) score.mg -= 25;
-                            else if (pr == Rank::Rank4) score.mg -= 55;
-                            else if (pr == Rank::Rank3) score.mg -= 105;
-                        } else {
-                            Square psq = msb(file_opp_pawns);
-                            Rank pr = rank_of(psq);
-                            if (pr == Rank::Rank4) score.mg -= 25;
-                            else if (pr == Rank::Rank5) score.mg -= 55;
-                            else if (pr == Rank::Rank6) score.mg -= 105;
-                        }
-                    }
-                }
-            }
-        }
-
-        // 3. Open/Semi-Open File King Threat Penalty
-        Bitboard enemy_majors = board.pieces(make_piece(~side, PieceType::Rook)) | board.pieces(make_piece(~side, PieceType::Queen));
-        Bitboard adj_enemy_majors = enemy_majors & KingAdjacentFilesMask[static_cast<size_t>(ksq)];
-        if (adj_enemy_majors != EmptyBB) {
-            Bitboard all_pawns = board.pieces(Piece::WhitePawn) | board.pieces(Piece::BlackPawn);
-            for (int df = -1; df <= 1; ++df) {
-                int f_idx = static_cast<int>(kf_enum) + df;
-                if (f_idx >= 0 && f_idx < 8) {
-                    File f = static_cast<File>(f_idx);
-                    Bitboard f_mask = file_bb(f);
-                    int majors_on_file = popcount(adj_enemy_majors & f_mask);
-                    if (majors_on_file > 0) {
-                        if ((all_pawns & f_mask) == EmptyBB) {
-                            score.mg -= majors_on_file * 50;
-                            score.eg -= majors_on_file * 15; // Fully open file aimed at king ring
-                        } else if ((my_pawns & f_mask) == EmptyBB) {
-                            score.mg -= majors_on_file * 32;
-                            score.eg -= majors_on_file * 10; // Semi-open file
-                        }
-                    }
-                }
-            }
-        }
-
-        // 4. Enemy Attackers Count & Safe Checks Danger Scale
-        Bitboard king_zone = AttackMasks::king_attacks(ksq) | square_bb(ksq);
-        Bitboard occ = board.occupied();
-
-        int attacker_weight = 0;
-
-        auto check_attackers = [&](PieceType pt, int weight, auto attack_fn) {
-            Bitboard pieces = board.pieces(make_piece(~side, pt));
-            while (pieces) {
-                Square psq = pop_lsb(pieces);
-                Bitboard attacks = attack_fn(psq, occ);
-                if (attacks & king_zone) {
-                    attacker_weight += weight;
-                }
-            }
-        };
-
-        check_attackers(PieceType::Knight, 3, [](Square s, Bitboard) { return AttackMasks::knight_attacks(s); });
-        check_attackers(PieceType::Bishop, 3, [](Square s, Bitboard o) { return AttackMasks::bishop_attacks(s, o); });
-        check_attackers(PieceType::Rook,   5, [](Square s, Bitboard o) { return AttackMasks::rook_attacks(s, o); });
-        check_attackers(PieceType::Queen,  8, [](Square s, Bitboard o) { return AttackMasks::queen_attacks(s, o); });
-        size_t danger_idx = std::min(static_cast<size_t>(attacker_weight), static_cast<size_t>(31));
-        score.mg -= KingDangerTable[danger_idx];
+    // 0. Uncastled exposed king.
+    if ((side == Color::White && kr <= 3 && kf >= 2 && kf <= 5) ||
+        (side == Color::Black && kr >= 4 && kf >= 2 && kf <= 5)) {
+        score.mg -= p.uncastled_king_mg;
+        score.eg -= p.uncastled_king_eg;
     }
 
+    // 1. Pawn shield.
+    const size_t side_idx = side == Color::White ? 0 : 1;
+    const Bitboard my_pawns = board.pieces(make_piece(side, PieceType::Pawn));
+    score.mg += popcount(my_pawns & KingShieldMask[side_idx][static_cast<size_t>(ksq)]) * p.pawn_shield_mg;
+
+    // 2. Pawn storm: closest enemy pawn on each king-adjacent file, by distance.
+    const Bitboard opp_pawns = board.pieces(make_piece(opp, PieceType::Pawn));
+    const Bitboard adj_opp_pawns = opp_pawns & KingAdjacentFilesMask[static_cast<size_t>(ksq)];
+    for (int df = -1; df <= 1 && adj_opp_pawns; ++df) {
+        const int f_idx = kf + df;
+        if (f_idx < 0 || f_idx > 7) continue;
+        const Bitboard file_opp_pawns = adj_opp_pawns & file_bb(static_cast<File>(f_idx));
+        if (!file_opp_pawns) continue;
+        // Relative rank of the most advanced enemy pawn (from our side): 4 = rank 5, 3 = rank 4, 2 = rank 3.
+        const int rel = side == Color::White ? static_cast<int>(rank_of(lsb(file_opp_pawns)))
+                                             : 7 - static_cast<int>(rank_of(msb(file_opp_pawns)));
+        if (rel >= 2 && rel <= 4) score.mg -= p.pawn_storm_mg[static_cast<size_t>(4 - rel)];
+    }
+
+    // 3. Enemy rooks/queens on open or semi-open files next to the king.
+    const Bitboard enemy_majors = (board.pieces(make_piece(opp, PieceType::Rook)) | board.pieces(make_piece(opp, PieceType::Queen)))
+                                  & KingAdjacentFilesMask[static_cast<size_t>(ksq)];
+    if (enemy_majors) {
+        const Bitboard all_pawns = board.pieces(Piece::WhitePawn) | board.pieces(Piece::BlackPawn);
+        for (int df = -1; df <= 1; ++df) {
+            const int f_idx = kf + df;
+            if (f_idx < 0 || f_idx > 7) continue;
+            const Bitboard f_mask = file_bb(static_cast<File>(f_idx));
+            const int majors_on_file = popcount(enemy_majors & f_mask);
+            if (!majors_on_file) continue;
+            if ((all_pawns & f_mask) == EmptyBB) {
+                score.mg -= majors_on_file * p.king_open_file_mg;
+                score.eg -= majors_on_file * p.king_open_file_eg;
+            } else if ((my_pawns & f_mask) == EmptyBB) {
+                score.mg -= majors_on_file * p.king_semi_open_file_mg;
+                score.eg -= majors_on_file * p.king_semi_open_file_eg;
+            }
+        }
+    }
+
+    // 4. King-zone attackers: weighted units index a tuned table, only with >= 2 attackers.
+    const Bitboard king_zone = AttackMasks::king_attacks(ksq) | square_bb(ksq);
+    const Bitboard occ = board.occupied();
+    int attacker_weight = 0, attackers = 0;
+    auto count_attackers = [&](PieceType pt, int weight, auto attack_fn) {
+        for (Bitboard b = board.pieces(make_piece(opp, pt)); b;) {
+            const Square psq = pop_lsb(b);
+            if (attack_fn(psq, occ) & king_zone) { attacker_weight += weight; ++attackers; }
+        }
+    };
+    count_attackers(PieceType::Knight, 3, [](Square s, Bitboard) { return AttackMasks::knight_attacks(s); });
+    count_attackers(PieceType::Bishop, 3, [](Square s, Bitboard o) { return AttackMasks::bishop_attacks(s, o); });
+    count_attackers(PieceType::Rook,   5, [](Square s, Bitboard o) { return AttackMasks::rook_attacks(s, o); });
+    count_attackers(PieceType::Queen,  8, [](Square s, Bitboard o) { return AttackMasks::queen_attacks(s, o); });
+    if (attackers >= 2) {
+        const size_t idx = std::min<size_t>(static_cast<size_t>(attacker_weight), 31);
+        score.mg -= p.king_danger_mg[idx];
+        score.eg -= p.king_danger_eg[idx];
+    }
+
+    // 5. Safe checks: squares where an enemy piece can check us and we do not defend.
+    const Bitboard ours = attacks_of(board, side, occ);
+    const Bitboard safe = ~ours & ~board.pieces(opp);
+    const Bitboard knight_checks = AttackMasks::knight_attacks(ksq) & safe;
+    const Bitboard bishop_checks = AttackMasks::bishop_attacks(ksq, occ) & safe;
+    const Bitboard rook_checks = AttackMasks::rook_attacks(ksq, occ) & safe;
+    Bitboard n_att = 0, b_att = 0, r_att = 0, q_att = 0;
+    for (Bitboard b = board.pieces(make_piece(opp, PieceType::Knight)); b;) n_att |= AttackMasks::knight_attacks(pop_lsb(b));
+    for (Bitboard b = board.pieces(make_piece(opp, PieceType::Bishop)); b;) b_att |= AttackMasks::bishop_attacks(pop_lsb(b), occ);
+    for (Bitboard b = board.pieces(make_piece(opp, PieceType::Rook)); b;) r_att |= AttackMasks::rook_attacks(pop_lsb(b), occ);
+    for (Bitboard b = board.pieces(make_piece(opp, PieceType::Queen)); b;) q_att |= AttackMasks::queen_attacks(pop_lsb(b), occ);
+    const int nc = popcount(knight_checks & n_att), bc = popcount(bishop_checks & b_att);
+    const int rc = popcount(rook_checks & r_att), qc = popcount((bishop_checks | rook_checks) & q_att);
+    score.mg -= nc * p.safe_check_knight_mg + bc * p.safe_check_bishop_mg + rc * p.safe_check_rook_mg + qc * p.safe_check_queen_mg;
+    score.eg -= nc * p.safe_check_knight_eg + bc * p.safe_check_bishop_eg + rc * p.safe_check_rook_eg + qc * p.safe_check_queen_eg;
+
+    return score;
+}
+
+// Passed-pawn terms that depend on pieces (kept out of the pawn-only hash).
+ScorePair EvalFeatures::evaluate_passed_extras(const Board& board, Color side) {
+    ScorePair score{0, 0};
+    const auto& p = g_eval_params;
+    const Bitboard opp_pawns = board.pieces(make_piece(~side, PieceType::Pawn));
+    const Square own_k = board.king_square(side), opp_k = board.king_square(~side);
+    const size_t pers_idx = side == Color::White ? 0 : 1;
+    auto dist = [](Square a, Square b) {
+        return std::max(std::abs(static_cast<int>(file_of(a)) - static_cast<int>(file_of(b))),
+                        std::abs(static_cast<int>(rank_of(a)) - static_cast<int>(rank_of(b))));
+    };
+    for (Bitboard pawns = board.pieces(make_piece(side, PieceType::Pawn)); pawns;) {
+        const Square sq = pop_lsb(pawns);
+        if (opp_pawns & PassedPawnMask[pers_idx][static_cast<size_t>(sq)]) continue;
+        const int rel = side == Color::White ? static_cast<int>(rank_of(sq)) : 7 - static_cast<int>(rank_of(sq));
+        if (rel < 1 || rel > 6) continue;
+        const size_t r = static_cast<size_t>(rel - 1);
+        const Square stop = static_cast<Square>(static_cast<int>(sq) + (side == Color::White ? 8 : -8));
+        if (board.piece_at(stop) != Piece::None) { score.mg += p.passed_blocked_mg[r]; score.eg += p.passed_blocked_eg[r]; }
+        if (own_k != Square::None) {
+            const int d = dist(own_k, stop);
+            score.mg += d * p.passed_own_king_mg[r]; score.eg += d * p.passed_own_king_eg[r];
+        }
+        if (opp_k != Square::None) {
+            const int d = dist(opp_k, stop);
+            score.mg += d * p.passed_opp_king_mg[r]; score.eg += d * p.passed_opp_king_eg[r];
+        }
+    }
     return score;
 }
 
@@ -483,29 +494,29 @@ ScorePair EvalFeatures::evaluate_piece_activity(const Board& board, Color side) 
     // Trapped Bishops on the rim
     if (side == Color::White) {
         if (board.piece_at(Square::a7) == Piece::WhiteBishop && (opp_pawns & square_bb(Square::b6))) {
-            score.mg -= 70; score.eg -= 110;
+            score.mg -= g_eval_params.trapped_bishop_deep_mg; score.eg -= g_eval_params.trapped_bishop_deep_eg;
         }
         if (board.piece_at(Square::h7) == Piece::WhiteBishop && (opp_pawns & square_bb(Square::g6))) {
-            score.mg -= 70; score.eg -= 110;
+            score.mg -= g_eval_params.trapped_bishop_deep_mg; score.eg -= g_eval_params.trapped_bishop_deep_eg;
         }
         if (board.piece_at(Square::b8) == Piece::WhiteBishop && (opp_pawns & square_bb(Square::c7))) {
-            score.mg -= 60; score.eg -= 90;
+            score.mg -= g_eval_params.trapped_bishop_mg; score.eg -= g_eval_params.trapped_bishop_eg;
         }
         if (board.piece_at(Square::g8) == Piece::WhiteBishop && (opp_pawns & square_bb(Square::f7))) {
-            score.mg -= 60; score.eg -= 90;
+            score.mg -= g_eval_params.trapped_bishop_mg; score.eg -= g_eval_params.trapped_bishop_eg;
         }
     } else {
         if (board.piece_at(Square::a2) == Piece::BlackBishop && (opp_pawns & square_bb(Square::b3))) {
-            score.mg -= 70; score.eg -= 110;
+            score.mg -= g_eval_params.trapped_bishop_deep_mg; score.eg -= g_eval_params.trapped_bishop_deep_eg;
         }
         if (board.piece_at(Square::h2) == Piece::BlackBishop && (opp_pawns & square_bb(Square::g3))) {
-            score.mg -= 70; score.eg -= 110;
+            score.mg -= g_eval_params.trapped_bishop_deep_mg; score.eg -= g_eval_params.trapped_bishop_deep_eg;
         }
         if (board.piece_at(Square::b1) == Piece::BlackBishop && (opp_pawns & square_bb(Square::c2))) {
-            score.mg -= 60; score.eg -= 90;
+            score.mg -= g_eval_params.trapped_bishop_mg; score.eg -= g_eval_params.trapped_bishop_eg;
         }
         if (board.piece_at(Square::g1) == Piece::BlackBishop && (opp_pawns & square_bb(Square::f2))) {
-            score.mg -= 60; score.eg -= 90;
+            score.mg -= g_eval_params.trapped_bishop_mg; score.eg -= g_eval_params.trapped_bishop_eg;
         }
     }
 
@@ -515,23 +526,23 @@ ScorePair EvalFeatures::evaluate_piece_activity(const Board& board, Color side) 
         if (side == Color::White) {
             if ((ksq == Square::f1 || ksq == Square::g1) && (rooks & (square_bb(Square::h1) | square_bb(Square::h2)))) {
                 if ((all_pawns & file_bb(File::FileH)) != EmptyBB) {
-                    score.mg -= 45; // Trapped Kingside Rook
+                    score.mg -= g_eval_params.trapped_rook_mg; // Trapped Kingside Rook
                 }
             }
             if ((ksq == Square::c1 || ksq == Square::d1) && (rooks & (square_bb(Square::a1) | square_bb(Square::a2)))) {
                 if ((all_pawns & file_bb(File::FileA)) != EmptyBB) {
-                    score.mg -= 45; // Trapped Queenside Rook
+                    score.mg -= g_eval_params.trapped_rook_mg; // Trapped Queenside Rook
                 }
             }
         } else {
             if ((ksq == Square::f8 || ksq == Square::g8) && (rooks & (square_bb(Square::h8) | square_bb(Square::h7)))) {
                 if ((all_pawns & file_bb(File::FileH)) != EmptyBB) {
-                    score.mg -= 45; // Trapped Kingside Rook
+                    score.mg -= g_eval_params.trapped_rook_mg; // Trapped Kingside Rook
                 }
             }
             if ((ksq == Square::c8 || ksq == Square::d8) && (rooks & (square_bb(Square::a8) | square_bb(Square::a7)))) {
                 if ((all_pawns & file_bb(File::FileA)) != EmptyBB) {
-                    score.mg -= 45; // Trapped Queenside Rook
+                    score.mg -= g_eval_params.trapped_rook_mg; // Trapped Queenside Rook
                 }
             }
         }
@@ -600,6 +611,21 @@ ScorePair EvalFeatures::evaluate_threats(const Board& board, Color side) {
     score.mg += pawn_push_threats * g_eval_params.pawn_push_threat_mg;
     score.eg += pawn_push_threats * g_eval_params.pawn_push_threat_eg;
 
+    // 4. Pawns attacking enemy pieces.
+    const Bitboard pawn_attacks = (side == Color::White)
+        ? (((my_pawns & not_file_a) << 7) | ((my_pawns & not_file_h) << 9))
+        : (((my_pawns & not_file_a) >> 9) | ((my_pawns & not_file_h) >> 7));
+    const int pawn_on_minor = popcount(pawn_attacks & opp_minors);
+    const int pawn_on_major = popcount(pawn_attacks & (opp_rooks | opp_queens));
+    score.mg += pawn_on_minor * g_eval_params.pawn_threat_minor_mg + pawn_on_major * g_eval_params.pawn_threat_major_mg;
+    score.eg += pawn_on_minor * g_eval_params.pawn_threat_minor_eg + pawn_on_major * g_eval_params.pawn_threat_major_eg;
+
+    // 5. Hanging enemy pieces: attacked by us and not defended.
+    const Bitboard ours = attacks_of(board, side, occ), theirs = attacks_of(board, opp, occ);
+    const int hanging = popcount((opp_minors | opp_rooks | opp_queens) & ours & ~theirs);
+    score.mg += hanging * g_eval_params.hanging_mg;
+    score.eg += hanging * g_eval_params.hanging_eg;
+
     return score;
 }
 
@@ -618,21 +644,21 @@ ScorePair EvalFeatures::evaluate_mobility(const Board& board, Color side) {
 
     Bitboard safe_mask = ~(my_pieces | opp_pawn_attacks);
 
-    auto add_mob = [&](PieceType pt, int mg_w, int eg_w, auto attack_fn) {
+    const auto& p = g_eval_params;
+    auto add_mob = [&](PieceType pt, const auto& mg_tab, const auto& eg_tab, auto attack_fn) {
         Bitboard pieces = board.pieces(make_piece(side, pt));
         while (pieces) {
             Square psq = pop_lsb(pieces);
-            Bitboard attacks = attack_fn(psq, occ) & safe_mask;
-            int count = popcount(attacks);
-            score.mg += count * mg_w;
-            score.eg += count * eg_w;
+            const size_t count = std::min<size_t>(static_cast<size_t>(popcount(attack_fn(psq, occ) & safe_mask)), mg_tab.size() - 1);
+            score.mg += mg_tab[count];
+            score.eg += eg_tab[count];
         }
     };
 
-    add_mob(PieceType::Knight, g_eval_params.knight_mob_mg, g_eval_params.knight_mob_eg, [](Square s, Bitboard) { return AttackMasks::knight_attacks(s); });
-    add_mob(PieceType::Bishop, g_eval_params.bishop_mob_mg, g_eval_params.bishop_mob_eg, [](Square s, Bitboard o) { return AttackMasks::bishop_attacks(s, o); });
-    add_mob(PieceType::Rook,   g_eval_params.rook_mob_mg,   g_eval_params.rook_mob_eg,   [](Square s, Bitboard o) { return AttackMasks::rook_attacks(s, o); });
-    add_mob(PieceType::Queen,  g_eval_params.queen_mob_mg,  g_eval_params.queen_mob_eg,  [](Square s, Bitboard o) { return AttackMasks::queen_attacks(s, o); });
+    add_mob(PieceType::Knight, p.knight_mob_tab_mg, p.knight_mob_tab_eg, [](Square s, Bitboard) { return AttackMasks::knight_attacks(s); });
+    add_mob(PieceType::Bishop, p.bishop_mob_tab_mg, p.bishop_mob_tab_eg, [](Square s, Bitboard o) { return AttackMasks::bishop_attacks(s, o); });
+    add_mob(PieceType::Rook,   p.rook_mob_tab_mg,   p.rook_mob_tab_eg,   [](Square s, Bitboard o) { return AttackMasks::rook_attacks(s, o); });
+    add_mob(PieceType::Queen,  p.queen_mob_tab_mg,  p.queen_mob_tab_eg,  [](Square s, Bitboard o) { return AttackMasks::queen_attacks(s, o); });
 
     return score;
 }

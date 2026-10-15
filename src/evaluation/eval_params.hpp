@@ -87,6 +87,41 @@ struct EvalParams {
     int tempo_mg = 18;
     int tempo_eg = 4;
 
+    // 8. Eval v2 terms. Every term below enters the evaluation linearly in its
+    // parameter (a count times a weight, or a table entry selected by a count),
+    // so the HCE tuner can extract exact coefficients per position.
+    std::array<int, 9>  knight_mob_tab_mg{}, knight_mob_tab_eg{};
+    std::array<int, 14> bishop_mob_tab_mg{}, bishop_mob_tab_eg{};
+    std::array<int, 15> rook_mob_tab_mg{}, rook_mob_tab_eg{};
+    std::array<int, 28> queen_mob_tab_mg{}, queen_mob_tab_eg{};
+    // Indexed by weighted king-zone attackers (N3 B3 R5 Q8), applied with >= 2 attackers.
+    std::array<int, 32> king_danger_mg{}, king_danger_eg{};
+    std::array<int, 3> pawn_storm_mg = {25, 55, 105};          // Enemy pawn 3, 2, 1 ranks from our shield.
+    int king_open_file_mg = 50, king_open_file_eg = 15;
+    int king_semi_open_file_mg = 32, king_semi_open_file_eg = 10;
+    int trapped_bishop_deep_mg = 70, trapped_bishop_deep_eg = 110;
+    int trapped_bishop_mg = 60, trapped_bishop_eg = 90;
+    int trapped_rook_mg = 45;
+    int pawn_threat_minor_mg = 22, pawn_threat_minor_eg = 28;  // Our pawn attacks an enemy minor.
+    int pawn_threat_major_mg = 22, pawn_threat_major_eg = 28;  // Our pawn attacks an enemy rook or queen.
+    int hanging_mg = 0, hanging_eg = 0;                        // Enemy non-pawn attacked by us, undefended.
+    int safe_check_knight_mg = 0, safe_check_knight_eg = 0;    // Squares from which the enemy can give a safe check.
+    int safe_check_bishop_mg = 0, safe_check_bishop_eg = 0;
+    int safe_check_rook_mg = 0, safe_check_rook_eg = 0;
+    int safe_check_queen_mg = 0, safe_check_queen_eg = 0;
+    std::array<int, 6> passed_blocked_mg{}, passed_blocked_eg{};       // Stop square occupied, by relative rank.
+    std::array<int, 6> passed_own_king_mg{}, passed_own_king_eg{};     // Per square of own-king distance.
+    std::array<int, 6> passed_opp_king_mg{}, passed_opp_king_eg{};     // Per square of enemy-king distance.
+
+    // Seed the v2 tables from the scalar weights they replace (used only before a tune).
+    void init_v2_tables() {
+        for (size_t c = 0; c < knight_mob_tab_mg.size(); ++c) { knight_mob_tab_mg[c] = int(c) * knight_mob_mg; knight_mob_tab_eg[c] = int(c) * knight_mob_eg; }
+        for (size_t c = 0; c < bishop_mob_tab_mg.size(); ++c) { bishop_mob_tab_mg[c] = int(c) * bishop_mob_mg; bishop_mob_tab_eg[c] = int(c) * bishop_mob_eg; }
+        for (size_t c = 0; c < rook_mob_tab_mg.size(); ++c) { rook_mob_tab_mg[c] = int(c) * rook_mob_mg; rook_mob_tab_eg[c] = int(c) * rook_mob_eg; }
+        for (size_t c = 0; c < queen_mob_tab_mg.size(); ++c) { queen_mob_tab_mg[c] = int(c) * queen_mob_mg; queen_mob_tab_eg[c] = int(c) * queen_mob_eg; }
+        // King danger starts at zero: configurations absent from the data add nothing.
+    }
+
     struct ParamRef {
         std::string name;
         int* ptr;
@@ -95,7 +130,7 @@ struct EvalParams {
     };
 
     std::vector<ParamRef> get_tunable_params() {
-        return {
+        std::vector<ParamRef> refs = {
             {"pawn_eg", &pawn_eg, 80, 180},
             {"knight_mg", &knight_mg, 250, 400},
             {"knight_eg", &knight_eg, 240, 390},
@@ -162,24 +197,47 @@ struct EvalParams {
             {"rook_threat_queen_eg", &rook_threat_queen_eg, 10, 70},
             {"pawn_push_threat_mg", &pawn_push_threat_mg, 0, 40},
             {"pawn_push_threat_eg", &pawn_push_threat_eg, 0, 50},
-            {"pawn_attack_threat_mg", &pawn_attack_threat_mg, 5, 50},
-            {"pawn_attack_threat_eg", &pawn_attack_threat_eg, 5, 60},
 
-            {"knight_mob_mg", &knight_mob_mg, 0, 10},
-            {"knight_mob_eg", &knight_mob_eg, 0, 10},
-            {"bishop_mob_mg", &bishop_mob_mg, 0, 10},
-            {"bishop_mob_eg", &bishop_mob_eg, 0, 10},
-            {"rook_mob_mg", &rook_mob_mg, 0, 8},
-            {"rook_mob_eg", &rook_mob_eg, 0, 8},
-            {"queen_mob_mg", &queen_mob_mg, 0, 5},
-            {"queen_mob_eg", &queen_mob_eg, 0, 5},
 
             {"pawn_shield_mg", &pawn_shield_mg, 0, 35},
             {"uncastled_king_mg", &uncastled_king_mg, 40, 200},
             {"uncastled_king_eg", &uncastled_king_eg, 0, 50},
             {"tempo_mg", &tempo_mg, 0, 35},
-            {"tempo_eg", &tempo_eg, 0, 15}
+            {"tempo_eg", &tempo_eg, 0, 15},
+            {"king_open_file_mg", &king_open_file_mg, -400, 400}, {"king_open_file_eg", &king_open_file_eg, -400, 400},
+            {"king_semi_open_file_mg", &king_semi_open_file_mg, -400, 400}, {"king_semi_open_file_eg", &king_semi_open_file_eg, -400, 400},
+            {"trapped_bishop_deep_mg", &trapped_bishop_deep_mg, -400, 400}, {"trapped_bishop_deep_eg", &trapped_bishop_deep_eg, -400, 400},
+            {"trapped_bishop_mg", &trapped_bishop_mg, -400, 400}, {"trapped_bishop_eg", &trapped_bishop_eg, -400, 400},
+            {"trapped_rook_mg", &trapped_rook_mg, -400, 400},
+            {"pawn_threat_minor_mg", &pawn_threat_minor_mg, -400, 400}, {"pawn_threat_minor_eg", &pawn_threat_minor_eg, -400, 400},
+            {"pawn_threat_major_mg", &pawn_threat_major_mg, -400, 400}, {"pawn_threat_major_eg", &pawn_threat_major_eg, -400, 400},
+            {"hanging_mg", &hanging_mg, -400, 400}, {"hanging_eg", &hanging_eg, -400, 400},
+            {"safe_check_knight_mg", &safe_check_knight_mg, -400, 400}, {"safe_check_knight_eg", &safe_check_knight_eg, -400, 400},
+            {"safe_check_bishop_mg", &safe_check_bishop_mg, -400, 400}, {"safe_check_bishop_eg", &safe_check_bishop_eg, -400, 400},
+            {"safe_check_rook_mg", &safe_check_rook_mg, -400, 400}, {"safe_check_rook_eg", &safe_check_rook_eg, -400, 400},
+            {"safe_check_queen_mg", &safe_check_queen_mg, -400, 400}, {"safe_check_queen_eg", &safe_check_queen_eg, -400, 400},
         };
+        auto table = [&](const char* name, int* data, size_t n) {
+            for (size_t i = 0; i < n; ++i) refs.push_back({std::string(name) + "[" + std::to_string(i) + "]", data + i, -2000, 2000});
+        };
+        table("pawn_storm_mg", pawn_storm_mg.data(), pawn_storm_mg.size());
+        table("knight_mob_tab_mg", knight_mob_tab_mg.data(), knight_mob_tab_mg.size());
+        table("knight_mob_tab_eg", knight_mob_tab_eg.data(), knight_mob_tab_eg.size());
+        table("bishop_mob_tab_mg", bishop_mob_tab_mg.data(), bishop_mob_tab_mg.size());
+        table("bishop_mob_tab_eg", bishop_mob_tab_eg.data(), bishop_mob_tab_eg.size());
+        table("rook_mob_tab_mg", rook_mob_tab_mg.data(), rook_mob_tab_mg.size());
+        table("rook_mob_tab_eg", rook_mob_tab_eg.data(), rook_mob_tab_eg.size());
+        table("queen_mob_tab_mg", queen_mob_tab_mg.data(), queen_mob_tab_mg.size());
+        table("queen_mob_tab_eg", queen_mob_tab_eg.data(), queen_mob_tab_eg.size());
+        table("king_danger_mg", king_danger_mg.data(), king_danger_mg.size());
+        table("king_danger_eg", king_danger_eg.data(), king_danger_eg.size());
+        table("passed_blocked_mg", passed_blocked_mg.data(), passed_blocked_mg.size());
+        table("passed_blocked_eg", passed_blocked_eg.data(), passed_blocked_eg.size());
+        table("passed_own_king_mg", passed_own_king_mg.data(), passed_own_king_mg.size());
+        table("passed_own_king_eg", passed_own_king_eg.data(), passed_own_king_eg.size());
+        table("passed_opp_king_mg", passed_opp_king_mg.data(), passed_opp_king_mg.size());
+        table("passed_opp_king_eg", passed_opp_king_eg.data(), passed_opp_king_eg.size());
+        return refs;
     }
 };
 
