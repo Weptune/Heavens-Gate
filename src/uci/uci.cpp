@@ -118,7 +118,8 @@ void UCI::loop() {
     Board board;
     FEN::parse(FEN::StartPOS, board);
     SearchEngine engine;
-    engine.set_threads(6);
+    engine.set_threads(1); // UCI convention: GUIs and testers set Threads explicitly.
+    engine.set_book_enabled(false); // Testers supply openings; OwnBook is opt-in.
     engine.set_uci_output(true);
 
     Evaluator::set_mode(EvalMode::MasterPositional);
@@ -147,8 +148,8 @@ void UCI::loop() {
             std::cout << "id name Heaven's Gate Master Edition\n";
             std::cout << "id author Antigravity Team\n";
             std::cout << "option name Hash type spin default 256 min 1 max 16384\n";
-            std::cout << "option name Threads type spin default 6 min 1 max 64\n";
-            std::cout << "option name OwnBook type check default true\n";
+            std::cout << "option name Threads type spin default 1 min 1 max 64\n";
+            std::cout << "option name OwnBook type check default false\n";
             std::cout << "option name MoveOverhead type spin default 25 min 0 max 5000\n";
             std::cout << "option name MinimumSMPTime type spin default 20 min 0 max 1000\n";
             std::cout << "option name EnableNMP type check default true\n";

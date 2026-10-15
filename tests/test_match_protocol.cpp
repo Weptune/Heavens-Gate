@@ -71,11 +71,19 @@ static bool timeout_policy() {
     MatchRunStatus gate;
     return !gate.record(MatchFailure::TimeForfeit, true) && gate.time_forfeits == 1 && !gate.clean();
 }
+
+#if defined(_WIN32)
+static void set_fake_mode(const char* mode) { SetEnvironmentVariableA("HG_FAKE_UCI_MODE", mode); }
+static unsigned long current_pid() { return GetCurrentProcessId(); }
+#else
+static void set_fake_mode(const char* mode) { if (mode) setenv("HG_FAKE_UCI_MODE", mode, 1); else unsetenv("HG_FAKE_UCI_MODE"); }
+static unsigned long current_pid() { return static_cast<unsigned long>(getpid()); }
+#endif
 static bool opponent_failures() {
     Board board; board.reset();
-    struct EnvCleanup { ~EnvCleanup() { SetEnvironmentVariableA("HG_FAKE_UCI_MODE", nullptr); } } cleanup;
+    struct EnvCleanup { ~EnvCleanup() { set_fake_mode(nullptr); } } cleanup;
     for (const std::string mode : {"associated", "mismatch", "bound", "illegal", "crash", "timeout"}) {
-        SetEnvironmentVariableA("HG_FAKE_UCI_MODE", mode.c_str());
+        set_fake_mode(mode.c_str());
         StockfishClient client(HG_FAKE_UCI_PATH);
         if (!client.init(2400, 1, 16) || !client.reset_game()) return false;
         const auto reply = client.get_search_result(board, match_position_command(std::string(StartposFEN), {}), "go depth 4", mode == "timeout" ? 20 : 2000);
@@ -90,7 +98,7 @@ static bool opponent_failures() {
     return true;
 }
 static bool manifest_fingerprint() {
-    const auto path = std::filesystem::temp_directory_path() / ("hg-sha-" + std::to_string(GetCurrentProcessId()) + ".txt");
+    const auto path = std::filesystem::temp_directory_path() / ("hg-sha-" + std::to_string(current_pid()) + ".txt");
     { std::ofstream file(path, std::ios::binary); file << "abc"; }
     const auto hash = file_sha256(path.string());
     std::filesystem::remove(path);

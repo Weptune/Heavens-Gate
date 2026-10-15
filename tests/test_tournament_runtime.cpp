@@ -32,7 +32,11 @@ static bool suspend_accounting() {
         suspended_ms(start, {61100, 11000000, false}) != 0) return false;
     SuspendMonitor monitor;
     ScopedTournamentPower guard;
+#if defined(_WIN32)
     return guard.active() && monitor.supported() && monitor.observe() < 2000;
+#else
+    return !guard.active() && monitor.supported() && monitor.observe() < 2000; // No POSIX inhibitor.
+#endif
 }
 static const bool clock_registered = register_test("Sudden-death future reserve and 200-move budget stress model", future_clock_reserve);
 static const bool suspend_registered = register_test("Scoped idle-sleep inhibition and suspend accounting", suspend_accounting);

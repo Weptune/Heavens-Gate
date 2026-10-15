@@ -74,7 +74,7 @@ static bool concurrent_context_snapshots() {
                         clock % 32, TTBound::Exact, 0, clock, &stats[thread]);
             TTEntry entry;
             if (table.probe(key, entry, stats[thread], clock) &&
-                (entry.key != key || entry.rule50_clock >= 100 || entry.score != entry.rule50_clock * 10 + key % 10 ||
+                (entry.key != key || entry.rule50_clock >= 100 || entry.score != static_cast<int>(entry.rule50_clock * 10 + key % 10) ||
                  entry.depth != entry.rule50_clock % 32 || entry.bound != TTBound::Exact)) ++errors;
         }
     }

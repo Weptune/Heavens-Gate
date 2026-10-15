@@ -149,7 +149,7 @@ void TranspositionTable::store(uint64_t key, Move move, int score, int depth, TT
         else if (empty) target = empty;
     }
     const bool same_position = target->bound != TTBound::None && target->key == key;
-    const bool same = same_position && target->score_matches_rule50(clock);
+    [[maybe_unused]] const bool same = same_position && target->score_matches_rule50(clock);
     const bool can_replace = !same_position || bound == TTBound::Exact || depth >= target->depth || gen != target->generation;
     if (can_replace) {
 #if defined(HG_TT_DIAGNOSTICS)

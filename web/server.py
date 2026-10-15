@@ -43,6 +43,10 @@ class EngineBridge:
                 line = self.process.stdout.readline()
                 if not line or line.strip() == "uciok":
                     break
+            # The engine's UCI defaults are now Threads=1 and OwnBook=false (tester
+            # convention). Pin the arena's previous settings explicitly.
+            self._send_command("setoption name Threads value 6")
+            self._send_command("setoption name OwnBook value true")
             self._send_command("isready")
             while True:
                 line = self.process.stdout.readline()

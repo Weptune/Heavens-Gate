@@ -3,8 +3,12 @@
 #include "time_budget.hpp"
 #include "../evaluation/eval_params.hpp"
 #include "../search/search_params.hpp"
+#include "sha256.hpp"
+#if defined(_WIN32)
 #include <windows.h>
-#include <bcrypt.h>
+#else
+#include <unistd.h>
+#endif
 #include <array>
 #include <ctime>
 #include <filesystem>
@@ -29,44 +33,33 @@ inline std::string json_string(const std::string& value) {
     out << '"'; return out.str();
 }
 inline std::string running_executable() {
+#if defined(_WIN32)
     std::array<char, 32768> path{};
     const auto size = GetModuleFileNameA(nullptr, path.data(), static_cast<DWORD>(path.size()));
     if (!size || size >= path.size()) throw std::runtime_error("Cannot identify running executable");
     return std::string(path.data(), size);
+#else
+    std::error_code error;
+    const auto path = std::filesystem::read_symlink("/proc/self/exe", error);
+    if (error || path.empty()) throw std::runtime_error("Cannot identify running executable");
+    return path.string();
+#endif
 }
-inline std::string file_sha256(const std::string& path) {
-    std::ifstream input(path, std::ios::binary);
-    if (!input) throw std::runtime_error("Cannot fingerprint file: " + path);
-    BCRYPT_ALG_HANDLE algorithm = nullptr; BCRYPT_HASH_HANDLE hash = nullptr;
-    std::vector<unsigned char> object;
-    struct Cleanup {
-        BCRYPT_ALG_HANDLE& algorithm; BCRYPT_HASH_HANDLE& hash;
-        ~Cleanup() { if (hash) BCryptDestroyHash(hash); if (algorithm) BCryptCloseAlgorithmProvider(algorithm, 0); }
-    } cleanup{algorithm, hash};
-    auto require = [](NTSTATUS status) { if (status < 0) throw std::runtime_error("SHA256 provider failed"); };
-    require(BCryptOpenAlgorithmProvider(&algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0));
-    DWORD bytes = 0, object_size = 0;
-    require(BCryptGetProperty(algorithm, BCRYPT_OBJECT_LENGTH, reinterpret_cast<PUCHAR>(&object_size), sizeof(object_size), &bytes, 0));
-    object.resize(object_size);
-    require(BCryptCreateHash(algorithm, &hash, object.data(), object_size, nullptr, 0, 0));
-    std::array<unsigned char, 65536> buffer{};
-    while (input) {
-        input.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
-        const auto count = input.gcount();
-        if (count) require(BCryptHashData(hash, buffer.data(), static_cast<ULONG>(count), 0));
-    }
-    if (!input.eof()) throw std::runtime_error("Fingerprint file read failed");
-    std::array<unsigned char, 32> digest{};
-    require(BCryptFinishHash(hash, digest.data(), digest.size(), 0));
-    // The provider object storage must outlive the hash handle.
-    BCryptDestroyHash(hash); hash = nullptr;
-    std::ostringstream result;
-    for (auto byte : digest) result << std::hex << std::setw(2) << std::setfill('0') << unsigned(byte);
-    return result.str();
+inline unsigned long current_process_id() {
+#if defined(_WIN32)
+    return GetCurrentProcessId();
+#else
+    return static_cast<unsigned long>(getpid());
+#endif
 }
+inline std::string file_sha256(const std::string& path) { return sha256_file(path); }
 inline std::string utc_date(bool timestamp = false) {
     const auto now = std::time(nullptr); std::tm parts{};
+#if defined(_WIN32)
     gmtime_s(&parts, &now);
+#else
+    gmtime_r(&now, &parts);
+#endif
     char output[32];
     std::strftime(output, sizeof(output), timestamp ? "%Y-%m-%dT%H:%M:%SZ" : "%Y.%m.%d", &parts);
     return output;

@@ -1,8 +1,11 @@
 #pragma once
 #include "run_manifest.hpp"
+#include <cstdint>
+#include <ctime>
 
 namespace heavensgate {
 // These diagnostics and file writes are outside the engine search path.
+#if defined(_WIN32)
 class ScopedTournamentPower {
     EXECUTION_STATE previous_;
 public:
@@ -20,6 +23,32 @@ inline SuspendSample suspend_sample() noexcept {
     sample.elapsed_ms = GetTickCount64(); // Includes time spent suspended.
     return sample;
 }
+#else
+// POSIX has no portable idle-sleep inhibitor; report inactive rather than pretend.
+class ScopedTournamentPower {
+public:
+    ScopedTournamentPower() = default;
+    bool active() const noexcept { return false; }
+    ScopedTournamentPower(const ScopedTournamentPower&) = delete;
+    ScopedTournamentPower& operator=(const ScopedTournamentPower&) = delete;
+};
+
+struct SuspendSample { uint64_t elapsed_ms = 0, awake_100ns = 0; bool valid = false; };
+inline SuspendSample suspend_sample() noexcept {
+    SuspendSample sample;
+    timespec boot{}, awake{};
+#if defined(CLOCK_BOOTTIME)
+    const bool boot_ok = clock_gettime(CLOCK_BOOTTIME, &boot) == 0;   // Includes suspend.
+#else
+    const bool boot_ok = false;
+#endif
+    const bool awake_ok = clock_gettime(CLOCK_MONOTONIC, &awake) == 0; // Excludes suspend on Linux.
+    sample.valid = boot_ok && awake_ok;
+    sample.elapsed_ms = uint64_t(boot.tv_sec) * 1000 + uint64_t(boot.tv_nsec) / 1000000;
+    sample.awake_100ns = uint64_t(awake.tv_sec) * 10000000 + uint64_t(awake.tv_nsec) / 100;
+    return sample;
+}
+#endif
 inline double suspended_ms(SuspendSample before, SuspendSample after) noexcept {
     if (!before.valid || !after.valid || after.elapsed_ms < before.elapsed_ms ||
         after.awake_100ns < before.awake_100ns) return 0;
@@ -46,7 +75,7 @@ class TournamentJournal {
 public:
     explicit TournamentJournal(const std::string& pgn) : events_(pgn + ".events.jsonl"), status_path_(pgn + ".run.json") {
         if (!events_) throw std::runtime_error("Cannot create tournament event journal");
-        event("run_start", "\"pid\":" + std::to_string(GetCurrentProcessId()));
+        event("run_start", "\"pid\":" + std::to_string(current_process_id()));
     }
     ~TournamentJournal() {
         if (!finished_) {
