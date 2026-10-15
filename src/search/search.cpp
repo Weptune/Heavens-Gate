@@ -1082,13 +1082,13 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
     return result;
 }
 
-void SearchEngine::iterative_deepening_root(Board& board, int max_depth, uint64_t max_nodes, SearchResult& final_result) {
+void SearchEngine::iterative_deepening_root(Board& board, int max_depth, uint64_t max_nodes, SearchResult& final_result, int start_depth) {
     Move best_pv_move = Move();
     int last_score = 0;
     int stable_move_count = 0;
 
-    for (int d = 1; d <= max_depth; ++d) {
-        if (d > 1 && is_time_up()) break;
+    for (int d = std::max(1, start_depth); d <= max_depth; ++d) {
+        if (d > start_depth && is_time_up()) break;
         if (max_nodes > 0 && metrics_tracker_.get_metrics().total_nodes >= max_nodes) break;
         metrics_tracker_.set_depth(d);
 
@@ -1327,27 +1327,12 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
                 Board& helper_board = helper.worker_board_;
                 Evaluator::set_mode(mode);
 
-                int depth_offset = (tid % 2);
-                for (int d = 1 + depth_offset; d <= max_depth; ++d) {
-                    if (helper.is_time_up() || !helper_board.can_push_history()) break;
-
-                    MoveList moves;
-                    MoveGenerator::generate_legal_moves(helper_board, moves);
-                    if (moves.empty()) break;
-
-                    helper.move_picker_.score_and_sort_moves(helper_board, moves, 0);
-
-                    for (const auto& m : moves) {
-                        if (helper.is_stopped()) break;
-                        helper.move_stack_[0] = m;
-                        helper.piece_stack_[0] = helper_board.piece_at(m.from());
-                        helper_board.make_move(m);
-                        helper.negamax_alphabeta(helper_board, d - 1, 1, -ScoreInfinity, ScoreInfinity, true, true, Move(), nullptr);
-                        helper_board.unmake_move(m);
-                        helper.move_stack_[0] = Move();
-                        helper.piece_stack_[0] = Piece::None;
-                    }
-                }
+                // Same iterative deepening as the main thread (aspiration windows, root PVS),
+                // odd helpers one ply ahead so threads desynchronise. Helpers ignore the soft
+                // limit and run until the main thread raises the shared stop flag.
+                helper.opt_time_ms_ = 0.0;
+                SearchResult helper_result;
+                helper.iterative_deepening_root(helper_board, max_depth, 0, helper_result, 1 + (tid % 2));
             }
         }
         // The implicit barrier makes aggregation safe; workers count privately.
