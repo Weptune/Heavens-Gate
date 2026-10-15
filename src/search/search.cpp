@@ -1294,6 +1294,25 @@ SearchResult SearchEngine::search_iterative_deepening(Board& board, int max_dept
             return res;
         }
     }
+    {
+        // Root inside the loaded Syzygy tables: play the DTZ-optimal, WDL-preserving move.
+        int tb_score = 0;
+        const Move tb_move = SyzygyTablebase::instance().probe_root(board, tb_score);
+        if (static_cast<bool>(tb_move)) {
+            SearchResult res;
+            res.best_move = tb_move;
+            res.best_score = tb_score;
+            res.depth = res.completed_depth = 1;
+            res.pv = {tb_move};
+            if (uci_output_)
+                std::cout << "info depth 1 score cp " << tb_score << " nodes 0 tbhits 1 pv " << move_to_uci(tb_move)
+                          << " string Syzygy root" << std::endl;
+            metrics_tracker_.stop_timer();
+            res.metrics = metrics_tracker_.get_metrics();
+            finish_tt_statistics(res);
+            return res;
+        }
+    }
 
     tt().new_search();
 

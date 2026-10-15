@@ -42,6 +42,11 @@ public:
     // Exact, rule-aware recognition only. This is NOT a file-backed Syzygy probe.
     // Unproven KPK/KBNK/KBBK/KNNK/fortress/Lucena patterns return NO_SCORE.
     int probe_wdl(const Board& board, int ply);
+    // Root probe with DTZ: a WDL-preserving move (DTZ-optimal) or Move{} if unavailable.
+    // Not thread-safe; call once per search at the root.
+    Move probe_root(const Board& board, int& score);
+    // Largest piece count covered by loaded Syzygy files (0 if none).
+    int largest() const;
 
     // Converts WDL enum to search score bounds
     int wdl_to_score(WDLScore wdl, int ply) const;

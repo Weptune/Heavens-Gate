@@ -1,14 +1,58 @@
 #include "syzygy.hpp"
 #include "../movegen/movegen.hpp"
+#include "../external/fathom/tbprobe.h"
+#include <iostream>
 
 namespace heavensgate {
 thread_local std::array<TBCacheEntry, SyzygyTablebase::CACHE_SIZE> SyzygyTablebase::cache_{};
 thread_local uint64_t SyzygyTablebase::local_epoch_ = UINT64_MAX;
 
-void SyzygyTablebase::init(const std::string& /*tb_path*/) {
-    // No tablebase files are read by this built-in recognizer.
+void SyzygyTablebase::init(const std::string& tb_path) {
+    // Fathom (Syzygy WDL/DTZ). An empty or missing path leaves TB_LARGEST at 0,
+    // in which case only the built-in draw recognizer below is active.
+    tb_free();
+    if (!tb_path.empty() && tb_path != "<empty>") tb_init(tb_path.c_str());
     cache_epoch_.fetch_add(1, std::memory_order_relaxed);
     set_enabled(true);
+}
+
+int SyzygyTablebase::largest() const { return static_cast<int>(TB_LARGEST); }
+
+namespace {
+struct FathomPosition { uint64_t white, black, kings, queens, rooks, bishops, knights, pawns; unsigned ep; bool turn; };
+FathomPosition to_fathom(const Board& b) {
+    auto both = [&](PieceType pt) { return b.pieces(make_piece(Color::White, pt)) | b.pieces(make_piece(Color::Black, pt)); };
+    return {b.pieces(Color::White), b.pieces(Color::Black), both(PieceType::King), both(PieceType::Queen),
+            both(PieceType::Rook), both(PieceType::Bishop), both(PieceType::Knight), both(PieceType::Pawn),
+            b.ep_square() == Square::None ? 0u : static_cast<unsigned>(b.ep_square()),
+            b.side_to_move() == Color::White};
+}
+} // namespace
+
+Move SyzygyTablebase::probe_root(const Board& board, int& score) {
+    if (!is_enabled() || TB_LARGEST == 0 || popcount(board.occupied()) > static_cast<int>(TB_LARGEST) ||
+        board.castling_rights() != 0) return Move{};
+    const auto f = to_fathom(board);
+    const unsigned r = tb_probe_root(f.white, f.black, f.kings, f.queens, f.rooks, f.bishops, f.knights, f.pawns,
+                                     static_cast<unsigned>(board.halfmove_clock()), 0, f.ep, f.turn, nullptr);
+    if (r == TB_RESULT_FAILED || r == TB_RESULT_CHECKMATE || r == TB_RESULT_STALEMATE) return Move{};
+    const auto from = static_cast<Square>(TB_GET_FROM(r)), to = static_cast<Square>(TB_GET_TO(r));
+    const unsigned promo = TB_GET_PROMOTES(r);
+    PieceType want = PieceType::None;
+    if (promo == TB_PROMOTES_QUEEN) want = PieceType::Queen;
+    else if (promo == TB_PROMOTES_ROOK) want = PieceType::Rook;
+    else if (promo == TB_PROMOTES_BISHOP) want = PieceType::Bishop;
+    else if (promo == TB_PROMOTES_KNIGHT) want = PieceType::Knight;
+    MoveList legal;
+    MoveGenerator::generate_legal_moves(board, legal);
+    for (const Move m : legal) {
+        if (m.from() != from || m.to() != to) continue;
+        if (m.is_promotion() ? m.promotion_piece_type() != want : want != PieceType::None) continue;
+        const unsigned wdl = TB_GET_WDL(r), dtz = TB_GET_DTZ(r);
+        score = wdl == TB_WIN ? ScoreTBWin - static_cast<int>(dtz) : wdl == TB_LOSS ? -ScoreTBWin + static_cast<int>(dtz) : ScoreDraw;
+        return m;
+    }
+    return Move{};
 }
 
 int SyzygyTablebase::wdl_to_score(WDLScore wdl, int ply) const {
@@ -33,6 +77,22 @@ int SyzygyTablebase::probe_wdl(const Board& board, int ply) {
     if (legal.empty())
         return MoveGenerator::in_check(board, board.side_to_move()) ? -ScoreMate + ply : ScoreDraw;
     if (board.halfmove_clock() >= 100 || board.is_repetition(3)) return ScoreDraw;
+
+    // Syzygy WDL: exact only right after a zeroing move (Fathom requires rule50 == 0)
+    // and without castling rights.
+    if (TB_LARGEST > 0 && popcount(board.occupied()) <= static_cast<int>(TB_LARGEST) &&
+        board.halfmove_clock() == 0 && board.castling_rights() == 0) {
+        const auto f = to_fathom(board);
+        const unsigned r = tb_probe_wdl(f.white, f.black, f.kings, f.queens, f.rooks, f.bishops, f.knights, f.pawns,
+                                        0, 0, f.ep, f.turn);
+        if (r != TB_RESULT_FAILED) {
+            switch (r) {
+                case TB_WIN: return wdl_to_score(WDLScore::Win, ply);
+                case TB_LOSS: return wdl_to_score(WDLScore::Loss, ply);
+                default: return ScoreDraw; // draw, cursed win, blessed loss
+            }
+        }
+    }
 
     const auto epoch = cache_epoch_.load(std::memory_order_relaxed);
     if (local_epoch_ != epoch) { cache_.fill(TBCacheEntry{}); local_epoch_ = epoch; }

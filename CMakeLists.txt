@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(heavensgate LANGUAGES CXX)
+project(heavensgate LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -49,18 +49,22 @@ set(ENGINE_SOURCES
     src/search/search_params.cpp
     src/search/search.cpp
     src/search/syzygy.cpp
+    src/external/fathom/tbprobe.c
     src/visualization/exporter.cpp
     src/benchmark/metrics.cpp
     src/benchmark/sts.cpp
     src/uci/uci.cpp
 )
 
+# Fathom (Syzygy probing, MIT, src/external/fathom): third-party C, warnings off.
+set_source_files_properties(src/external/fathom/tbprobe.c PROPERTIES COMPILE_OPTIONS "$<IF:$<C_COMPILER_ID:MSVC>,/w,-w>")
+
 # Main engine CLI binary
 add_executable(heavensgate
     src/main.cpp
     ${ENGINE_SOURCES}
 )
-target_include_directories(heavensgate PRIVATE src)
+target_include_directories(heavensgate PRIVATE src src/external/fathom)
 
 # Unit test suite binary
 add_executable(heavensgate_tests
@@ -80,7 +84,7 @@ add_executable(heavensgate_tests
     tests/test_tt.cpp
     ${ENGINE_SOURCES}
 )
-target_include_directories(heavensgate_tests PRIVATE src tests)
+target_include_directories(heavensgate_tests PRIVATE src tests src/external/fathom)
 
 # Keep the offline tuner tied to the same evaluator implementation. Its
 # --parity checks the exact linear model against the engine eval.

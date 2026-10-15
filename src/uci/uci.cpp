@@ -1,4 +1,5 @@
 #include "uci.hpp"
+#include "../search/syzygy.hpp"
 #include "../board/board.hpp"
 #include "../movegen/movegen.hpp"
 #include "../core/fen.hpp"
@@ -148,6 +149,7 @@ void UCI::loop() {
             std::cout << "id name Heaven's Gate Master Edition\n";
             std::cout << "id author Antigravity Team\n";
             std::cout << "option name Hash type spin default 256 min 1 max 16384\n";
+            std::cout << "option name SyzygyPath type string default <empty>\n";
             std::cout << "option name Threads type spin default 1 min 1 max 64\n";
             std::cout << "option name OwnBook type check default false\n";
             std::cout << "option name MoveOverhead type spin default 25 min 0 max 5000\n";
@@ -175,7 +177,8 @@ void UCI::loop() {
             ss >> token; // name
             ss >> name;
             ss >> token; // value
-            ss >> val;
+            std::getline(ss >> std::ws, val); // Rest of line: paths may contain spaces.
+            while (!val.empty() && (val.back() == '\r' || val.back() == ' ')) val.pop_back();
             if (name == "OwnBook") {
                 engine.set_book_enabled(val == "true");
             } else if (name == "MoveOverhead" && !val.empty()) {
@@ -190,6 +193,9 @@ void UCI::loop() {
                 g_search_params.enable_nmp_guards = (val == "true");
             } else if (name == "Threads" && !val.empty()) {
                 engine.set_threads(std::stoi(val));
+            } else if (name == "SyzygyPath") {
+                SyzygyTablebase::instance().init(val);
+                std::cout << "info string Syzygy tablebases: " << SyzygyTablebase::instance().largest() << "-piece" << std::endl;
             } else if (name == "Hash" && !val.empty()) {
                 engine.tt().resize(std::stoul(val));
             } else if (name == "LMR_Divisor" && !val.empty()) {
