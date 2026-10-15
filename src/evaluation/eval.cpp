@@ -135,14 +135,25 @@ int Evaluator::evaluate(const Board& board) {
     return evaluate_fast(board);
 }
 
-int Evaluator::evaluate_fast(const Board& board, int /*alpha*/, int /*beta*/) {
-    // Full evaluation, never window-dependent. Taper once on the white-relative
-    // difference, with the endgame scale applied to the EG part.
+int Evaluator::evaluate_fast(const Board& board, int alpha, int beta) {
     const int phase = std::min(24, board.game_phase());
+    const int tempo = (g_eval_params.tempo_mg * phase + g_eval_params.tempo_eg * (24 - phase)) / 24;
+
+    // Lazy cutoff: when material + PST alone is far outside the window, skip the
+    // positional terms. Margin in tuned eval units (a pawn is ~130-170 here).
+    constexpr int LAZY_MARGIN = 320;
+    const int base_mg = board.mg_material(Color::White) + board.mg_pst(Color::White) - board.mg_material(Color::Black) - board.mg_pst(Color::Black);
+    const int base_eg = board.eg_material(Color::White) + board.eg_pst(Color::White) - board.eg_material(Color::Black) - board.eg_pst(Color::Black);
+    const int base_white = (base_mg * phase + base_eg * (24 - phase)) / 24;
+    const int simple = (board.side_to_move() == Color::White ? base_white : -base_white) + tempo;
+    if (beta < ScoreMate - 1000 && simple >= beta + LAZY_MARGIN) return simple;
+    if (alpha > -ScoreMate + 1000 && simple <= alpha - LAZY_MARGIN) return simple;
+
+    // Full evaluation: taper once on the white-relative difference, with the
+    // endgame scale applied to the EG part.
     const ScorePair w = side_totals(board, Color::White), b = side_totals(board, Color::Black);
     const int mg = w.mg - b.mg, eg = w.eg - b.eg;
     const int scaled_eg = eg * eg_scale(board, eg) / 64;
-    const int tempo = (g_eval_params.tempo_mg * phase + g_eval_params.tempo_eg * (24 - phase)) / 24;
     const int white_score = (mg * phase + scaled_eg * (24 - phase)) / 24;
     return (board.side_to_move() == Color::White) ? (white_score + tempo) : (-white_score + tempo);
 }
