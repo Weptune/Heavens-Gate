@@ -29,12 +29,15 @@ public:
     // Uncached sum of every positional term for one side (no material/PST/tempo).
     // The single definition shared by the search eval and the tuners.
     static ScorePair positional_terms(const Board& board, Color side);
+    // Endgame scale (0..64) for the white-relative EG difference.
+    static int eg_scale(const Board& board, int eg_white);
 
     static void set_mode(EvalMode mode) { current_mode_ = mode; }
     static EvalMode mode() { return current_mode_; }
 
 private:
     static int evaluate_side(const Board& board, Color side);
+    static ScorePair side_totals(const Board& board, Color side);
 
     static thread_local EvalMode current_mode_;
 };

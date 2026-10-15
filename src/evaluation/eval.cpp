@@ -39,14 +39,14 @@ ScorePair Evaluator::positional_terms(const Board& board, Color side) {
          + non_pawn_terms(board, side);
 }
 
-int Evaluator::evaluate_side(const Board& board, Color side) {
+ScorePair Evaluator::side_totals(const Board& board, Color side) {
     int mg_material = board.mg_material(side);
     int eg_material = board.eg_material(side);
     int mg_pst = board.mg_pst(side);
     int eg_pst = board.eg_pst(side);
 
     if (current_mode_ == EvalMode::MaterialOnly) {
-        return mg_material + mg_pst;
+        return {mg_material + mg_pst, mg_material + mg_pst};
     }
 
     // Pawn Hash Table Cache: Since pawns move on only ~5-10% of search nodes,
@@ -82,15 +82,34 @@ int Evaluator::evaluate_side(const Board& board, Color side) {
 
     ScorePair pos_total = pawn_struct + passed_pawns + non_pawn_terms(board, side);
 
-    int game_phase = board.game_phase();
+    return {mg_material + mg_pst + pos_total.mg, eg_material + eg_pst + pos_total.eg};
+}
 
-    int mg_total = mg_material + mg_pst + pos_total.mg;
-    int eg_total = eg_material + eg_pst + pos_total.eg;
+int Evaluator::evaluate_side(const Board& board, Color side) {
+    const ScorePair t = side_totals(board, side);
+    const int mg_weight = std::min(board.game_phase(), 24);
+    return (t.mg * mg_weight + t.eg * (24 - mg_weight)) / 24;
+}
 
-    int mg_weight = std::min(game_phase, 24);
-    int eg_weight = 24 - mg_weight;
-
-    return (mg_total * mg_weight + eg_total * eg_weight) / 24;
+// Endgame scale in 64ths, applied to the white-relative EG difference. Fixed rules
+// (not tuned): material configurations that are drawn far more often than the
+// raw score suggests.
+int Evaluator::eg_scale(const Board& board, int eg_white) {
+    const Color strong = eg_white >= 0 ? Color::White : Color::Black, weak = ~strong;
+    auto count = [&](Color c, PieceType pt) { return popcount(board.pieces(make_piece(c, pt))); };
+    auto npm = [&](Color c) {
+        return 3 * (count(c, PieceType::Knight) + count(c, PieceType::Bishop)) + 5 * count(c, PieceType::Rook) + 9 * count(c, PieceType::Queen);
+    };
+    if (count(strong, PieceType::Pawn) == 0) {
+        if (count(strong, PieceType::Knight) == 2 && npm(strong) == 6 && npm(weak) == 0) return 0; // KNN v K
+        if (npm(strong) - npm(weak) <= 3) return npm(strong) <= 3 ? 0 : 8;  // a minor (or less) up, no pawns
+    }
+    // Opposite-coloured bishops.
+    const Bitboard wb = board.pieces(Piece::WhiteBishop), bb = board.pieces(Piece::BlackBishop);
+    constexpr Bitboard Dark = 0xAA55AA55AA55AA55ULL;
+    if (popcount(wb) == 1 && popcount(bb) == 1 && (!(wb & Dark)) != (!(bb & Dark)))
+        return (npm(Color::White) == 3 && npm(Color::Black) == 3) ? 32 : 48;
+    return 64;
 }
 
 int Evaluator::evaluate(const Board& board) {
@@ -117,12 +136,15 @@ int Evaluator::evaluate(const Board& board) {
 }
 
 int Evaluator::evaluate_fast(const Board& board, int /*alpha*/, int /*beta*/) {
-    // Full evaluation, never window-dependent: the static eval feeds pruning margins,
-    // correction history and TT eval refinement, which all assume one value per position.
-    const int game_phase = std::min(24, board.game_phase());
-    const int tapered_tempo = (g_eval_params.tempo_mg * game_phase + g_eval_params.tempo_eg * (24 - game_phase)) / 24;
-    const int relative_score = evaluate_side(board, Color::White) - evaluate_side(board, Color::Black);
-    return (board.side_to_move() == Color::White) ? (relative_score + tapered_tempo) : (-relative_score + tapered_tempo);
+    // Full evaluation, never window-dependent. Taper once on the white-relative
+    // difference, with the endgame scale applied to the EG part.
+    const int phase = std::min(24, board.game_phase());
+    const ScorePair w = side_totals(board, Color::White), b = side_totals(board, Color::Black);
+    const int mg = w.mg - b.mg, eg = w.eg - b.eg;
+    const int scaled_eg = eg * eg_scale(board, eg) / 64;
+    const int tempo = (g_eval_params.tempo_mg * phase + g_eval_params.tempo_eg * (24 - phase)) / 24;
+    const int white_score = (mg * phase + scaled_eg * (24 - phase)) / 24;
+    return (board.side_to_move() == Color::White) ? (white_score + tempo) : (-white_score + tempo);
 }
 
 void Evaluator::reset_incremental_cache() {

@@ -41,7 +41,7 @@ namespace {
 
 struct Param { std::string name; int* engine_ptr; double value; bool fixed; };
 struct Feature { uint16_t idx; int16_t cm, ce; };
-struct Sample { uint32_t first, count; float rm, re, result; uint8_t phase; };
+struct Sample { uint32_t first, count; float rm, re, result; uint8_t phase, scale; int8_t stm; };
 
 std::vector<Param> params;
 std::map<std::string, size_t> param_index;
@@ -100,7 +100,7 @@ ScorePair white_terms(const Board& b) {
 }
 
 // Extracts coefficients for one position. Returns false for unusable positions.
-bool extract(Board& b, std::vector<Feature>& out, float& rm, float& re, uint8_t& phase) {
+bool extract(Board& b, std::vector<Feature>& out, float& rm, float& re, uint8_t& phase, uint8_t& scale, int8_t& stm_out) {
     out.clear();
     phase = static_cast<uint8_t>(std::min(24, b.game_phase()));
     std::vector<std::pair<size_t, int>> direct_mg, direct_eg; // (param, coef)
@@ -114,8 +114,7 @@ bool extract(Board& b, std::vector<Feature>& out, float& rm, float& re, uint8_t&
         if (t < 5) { acc[material_idx[t][0]].first += sign; acc[material_idx[t][1]].second += sign; }
         acc[pst_idx[t][rel][0]].first += sign; acc[pst_idx[t][rel][1]].second += sign;
     }
-    const int stm = b.side_to_move() == Color::White ? 1 : -1;
-    acc[tempo_idx[0]].first += stm; acc[tempo_idx[1]].second += stm;
+    stm_out = b.side_to_move() == Color::White ? 1 : -1; // Tempo is outside the scaled EG sum.
 
     const ScorePair base = white_terms(b);
     double lin_mg = 0, lin_eg = 0;
@@ -129,6 +128,8 @@ bool extract(Board& b, std::vector<Feature>& out, float& rm, float& re, uint8_t&
     }
     rm = static_cast<float>(base.mg - lin_mg);
     re = static_cast<float>(base.eg - lin_eg);
+    const int eg_total = b.eg_material(Color::White) + b.eg_pst(Color::White) - b.eg_material(Color::Black) - b.eg_pst(Color::Black) + base.eg;
+    scale = static_cast<uint8_t>(Evaluator::eg_scale(b, eg_total));
     for (const auto& [idx, c] : acc) {
         if (!c.first && !c.second) continue;
         if (std::abs(c.first) > 32767 || std::abs(c.second) > 32767) return false;
@@ -137,21 +138,25 @@ bool extract(Board& b, std::vector<Feature>& out, float& rm, float& re, uint8_t&
     return true;
 }
 
-double model_eval(const Feature* f, uint32_t n, float rm, float re, int phase, const std::vector<double>& w) {
+double model_eval(const Feature* f, uint32_t n, float rm, float re, int phase, int scale, int stm, const std::vector<double>& w) {
     double mg = rm, eg = re;
     for (uint32_t i = 0; i < n; ++i) { mg += f[i].cm * w[f[i].idx]; eg += f[i].ce * w[f[i].idx]; }
-    return (mg * phase + eg * (24 - phase)) / 24.0;
+    const double tempo = stm * (w[tempo_idx[0]] * phase + w[tempo_idx[1]] * (24 - phase)) / 24.0;
+    return (mg * phase + eg * (scale / 64.0) * (24 - phase)) / 24.0 + tempo;
 }
 
 // Engine eval (white relative) without the per-side integer rounding.
 double engine_unrounded(const Board& b) {
     const int phase = std::min(24, b.game_phase());
-    auto side = [&](Color c) {
+    auto totals = [&](Color c) {
         const ScorePair pos = Evaluator::positional_terms(b, c);
-        return ((b.mg_material(c) + b.mg_pst(c) + pos.mg) * double(phase) + (b.eg_material(c) + b.eg_pst(c) + pos.eg) * double(24 - phase)) / 24.0;
+        return ScorePair(b.mg_material(c) + b.mg_pst(c) + pos.mg, b.eg_material(c) + b.eg_pst(c) + pos.eg);
     };
+    const ScorePair w = totals(Color::White), k = totals(Color::Black);
+    const int mg = w.mg - k.mg, eg = w.eg - k.eg;
     const double tempo = (g_eval_params.tempo_mg * phase + g_eval_params.tempo_eg * (24 - phase)) / 24.0;
-    return side(Color::White) - side(Color::Black) + (b.side_to_move() == Color::White ? tempo : -tempo);
+    return (mg * double(phase) + eg * (Evaluator::eg_scale(b, eg) / 64.0) * (24 - phase)) / 24.0
+         + (b.side_to_move() == Color::White ? tempo : -tempo);
 }
 
 bool parse_line(const std::string& line, std::string& fen, float& result) {
@@ -178,16 +183,16 @@ int parity(const std::string& path) {
         std::string fen = line; float r = 0.5f;
         if (line.find('"') != std::string::npos || line.find('|') != std::string::npos) parse_line(line, fen, r);
         Board b; b.load_fen(fen);
-        float rm, re; uint8_t phase;
-        if (!extract(b, f, rm, re, phase)) { std::cerr << "extract failed: " << fen << "\n"; return 1; }
-        worst = std::max(worst, std::abs(model_eval(f.data(), uint32_t(f.size()), rm, re, phase, w) - engine_unrounded(b)));
+        float rm, re; uint8_t phase, scale; int8_t stm;
+        if (!extract(b, f, rm, re, phase, scale, stm)) { std::cerr << "extract failed: " << fen << "\n"; return 1; }
+        worst = std::max(worst, std::abs(model_eval(f.data(), uint32_t(f.size()), rm, re, phase, scale, stm, w) - engine_unrounded(b)));
         // Linearity: random perturbations of finite-difference params must be predicted exactly.
         for (int trial = 0; trial < 3; ++trial) {
             std::vector<std::pair<size_t, int>> bumps;
             for (int k = 0; k < 12; ++k) bumps.push_back({fd_begin + rng() % (params.size() - fd_begin), int(rng() % 7) - 3});
             std::vector<double> w2 = w;
             for (auto [j, d] : bumps) { *params[j].engine_ptr += d; w2[j] += d; }
-            const double predicted = model_eval(f.data(), uint32_t(f.size()), rm, re, phase, w2), actual = engine_unrounded(b);
+            const double predicted = model_eval(f.data(), uint32_t(f.size()), rm, re, phase, scale, stm, w2), actual = engine_unrounded(b);
             for (auto [j, d] : bumps) *params[j].engine_ptr -= d;
             worst = std::max(worst, std::abs(predicted - actual));
         }
@@ -278,8 +283,9 @@ int main(int argc, char** argv) {
             if (!parse_line(line, fen, r)) continue;
             Board b; b.load_fen(fen);
             if (MoveGenerator::in_check(b, b.side_to_move())) continue;
-            Sample s{}; uint8_t phase;
-            if (!extract(b, f, s.rm, s.re, phase)) continue;
+            Sample s{}; uint8_t phase, scale; int8_t stm;
+            if (!extract(b, f, s.rm, s.re, phase, scale, stm)) continue;
+            s.scale = scale; s.stm = stm;
             s.first = static_cast<uint32_t>(feats.size()); s.count = static_cast<uint32_t>(f.size());
             s.result = r; s.phase = phase;
             feats.insert(feats.end(), f.begin(), f.end());
@@ -300,7 +306,7 @@ int main(int argc, char** argv) {
         for (size_t i = 0; i < samples.size(); ++i) {
             if (bool(is_val[i]) != val) continue;
             const auto& s = samples[i];
-            const double e = model_eval(&feats[s.first], s.count, s.rm, s.re, s.phase, wv);
+            const double e = model_eval(&feats[s.first], s.count, s.rm, s.re, s.phase, s.scale, s.stm, wv);
             const double d = s.result - sigmoid(e, K); total += d * d; ++n;
         }
         return n ? total / n : 0.0;
@@ -329,14 +335,17 @@ int main(int argc, char** argv) {
             for (size_t i = 0; i < samples.size(); ++i) {
                 if (is_val[i]) continue;
                 const auto& s = samples[i];
-                const double e = model_eval(&feats[s.first], s.count, s.rm, s.re, s.phase, w);
+                const double e = model_eval(&feats[s.first], s.count, s.rm, s.re, s.phase, s.scale, s.stm, w);
                 const double p = sigmoid(e, K);
                 const double g = -2.0 * (s.result - p) * p * (1 - p) * ln10k;
                 const double gm = g * s.phase / 24.0, ge = g * (24 - s.phase) / 24.0;
+                const double ges = ge * s.scale / 64.0;
                 for (uint32_t k = 0; k < s.count; ++k) {
                     const auto& ft = feats[s.first + k];
-                    local[ft.idx] += gm * ft.cm + ge * ft.ce;
+                    local[ft.idx] += gm * ft.cm + ges * ft.ce;
                 }
+                local[tempo_idx[0]] += gm * s.stm;
+                local[tempo_idx[1]] += ge * s.stm;
             }
             #pragma omp critical
             for (size_t j = 0; j < w.size(); ++j) grad[j] += local[j];

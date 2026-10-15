@@ -242,19 +242,48 @@ ScorePair EvalFeatures::evaluate_passed_pawns(const Board& board, Color side) {
     return score;
 }
 
-// All attacks of one colour (pieces and king), for safety/threat terms.
-static Bitboard attacks_of(const Board& board, Color c, Bitboard occ) noexcept {
+// Attack maps of both colours, computed once per position and reused by the king
+// safety and threat terms (each eval used to regenerate them ~8 times per side).
+// Keyed by Zobrist key and occupancy; attacks do not depend on any parameter.
+struct AttackMaps {
+    uint64_t key{0};
+    Bitboard occ{0};
+    bool valid{false};
+    Bitboard by_type[2][6]{};   // [colour][PieceType]
+    Bitboard all[2]{}, no_king[2]{};
+};
+
+static const AttackMaps& attack_maps(const Board& board) noexcept {
+    thread_local AttackMaps maps;
+    const Bitboard occ = board.occupied();
+    if (maps.valid && maps.key == board.zobrist_key() && maps.occ == occ) return maps;
     const Bitboard not_a = ~file_bb(File::FileA), not_h = ~file_bb(File::FileH);
-    const Bitboard pawns = board.pieces(make_piece(c, PieceType::Pawn));
-    Bitboard a = c == Color::White ? (((pawns & not_a) << 7) | ((pawns & not_h) << 9))
-                                   : (((pawns & not_a) >> 9) | ((pawns & not_h) >> 7));
-    for (Bitboard b = board.pieces(make_piece(c, PieceType::Knight)); b;) a |= AttackMasks::knight_attacks(pop_lsb(b));
-    for (Bitboard b = board.pieces(make_piece(c, PieceType::Bishop)); b;) a |= AttackMasks::bishop_attacks(pop_lsb(b), occ);
-    for (Bitboard b = board.pieces(make_piece(c, PieceType::Rook)); b;) a |= AttackMasks::rook_attacks(pop_lsb(b), occ);
-    for (Bitboard b = board.pieces(make_piece(c, PieceType::Queen)); b;) a |= AttackMasks::queen_attacks(pop_lsb(b), occ);
-    const Square k = board.king_square(c);
-    if (k != Square::None) a |= AttackMasks::king_attacks(k);
-    return a;
+    for (Color c : {Color::White, Color::Black}) {
+        const size_t ci = static_cast<size_t>(c);
+        auto& t = maps.by_type[ci];
+        const Bitboard pawns = board.pieces(make_piece(c, PieceType::Pawn));
+        t[0] = c == Color::White ? (((pawns & not_a) << 7) | ((pawns & not_h) << 9))
+                                 : (((pawns & not_a) >> 9) | ((pawns & not_h) >> 7));
+        t[1] = t[2] = t[3] = t[4] = t[5] = EmptyBB;
+        for (Bitboard b = board.pieces(make_piece(c, PieceType::Knight)); b;) t[1] |= AttackMasks::knight_attacks(pop_lsb(b));
+        for (Bitboard b = board.pieces(make_piece(c, PieceType::Bishop)); b;) t[2] |= AttackMasks::bishop_attacks(pop_lsb(b), occ);
+        for (Bitboard b = board.pieces(make_piece(c, PieceType::Rook)); b;) t[3] |= AttackMasks::rook_attacks(pop_lsb(b), occ);
+        for (Bitboard b = board.pieces(make_piece(c, PieceType::Queen)); b;) t[4] |= AttackMasks::queen_attacks(pop_lsb(b), occ);
+        const Square k = board.king_square(c);
+        if (k != Square::None) t[5] = AttackMasks::king_attacks(k);
+        maps.no_king[ci] = t[0] | t[1] | t[2] | t[3] | t[4];
+        maps.all[ci] = maps.no_king[ci] | t[5];
+    }
+    maps.key = board.zobrist_key(); maps.occ = occ; maps.valid = true;
+    return maps;
+}
+
+static Bitboard attacks_of(const Board& board, Color c, Bitboard /*occ*/) noexcept {
+    return attack_maps(board).all[static_cast<size_t>(c)];
+}
+
+static Bitboard attacks_without_king(const Board& board, Color c, Bitboard /*occ*/) noexcept {
+    return attack_maps(board).no_king[static_cast<size_t>(c)];
 }
 
 ScorePair EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
@@ -345,15 +374,19 @@ ScorePair EvalFeatures::evaluate_king_safety(const Board& board, Color side) {
     const Bitboard knight_checks = AttackMasks::knight_attacks(ksq) & safe;
     const Bitboard bishop_checks = AttackMasks::bishop_attacks(ksq, occ) & safe;
     const Bitboard rook_checks = AttackMasks::rook_attacks(ksq, occ) & safe;
-    Bitboard n_att = 0, b_att = 0, r_att = 0, q_att = 0;
-    for (Bitboard b = board.pieces(make_piece(opp, PieceType::Knight)); b;) n_att |= AttackMasks::knight_attacks(pop_lsb(b));
-    for (Bitboard b = board.pieces(make_piece(opp, PieceType::Bishop)); b;) b_att |= AttackMasks::bishop_attacks(pop_lsb(b), occ);
-    for (Bitboard b = board.pieces(make_piece(opp, PieceType::Rook)); b;) r_att |= AttackMasks::rook_attacks(pop_lsb(b), occ);
-    for (Bitboard b = board.pieces(make_piece(opp, PieceType::Queen)); b;) q_att |= AttackMasks::queen_attacks(pop_lsb(b), occ);
+    const auto& opp_maps = attack_maps(board).by_type[static_cast<size_t>(opp)];
+    const Bitboard n_att = opp_maps[1], b_att = opp_maps[2], r_att = opp_maps[3], q_att = opp_maps[4];
     const int nc = popcount(knight_checks & n_att), bc = popcount(bishop_checks & b_att);
     const int rc = popcount(rook_checks & r_att), qc = popcount((bishop_checks | rook_checks) & q_att);
     score.mg -= nc * p.safe_check_knight_mg + bc * p.safe_check_bishop_mg + rc * p.safe_check_rook_mg + qc * p.safe_check_queen_mg;
     score.eg -= nc * p.safe_check_knight_eg + bc * p.safe_check_bishop_eg + rc * p.safe_check_rook_eg + qc * p.safe_check_queen_eg;
+
+    // 6. King-zone pressure: squares the enemy attacks, and those only our king defends.
+    const Bitboard theirs = attacks_of(board, opp, occ);
+    const Bitboard ours_no_king = attacks_without_king(board, side, occ);
+    const int ring = popcount(king_zone & theirs), weak = popcount(king_zone & theirs & ~ours_no_king);
+    score.mg -= ring * p.king_ring_attacks_mg + weak * p.weak_king_squares_mg;
+    score.eg -= ring * p.king_ring_attacks_eg + weak * p.weak_king_squares_eg;
 
     return score;
 }
@@ -364,6 +397,9 @@ ScorePair EvalFeatures::evaluate_passed_extras(const Board& board, Color side) {
     const auto& p = g_eval_params;
     const Bitboard opp_pawns = board.pieces(make_piece(~side, PieceType::Pawn));
     const Square own_k = board.king_square(side), opp_k = board.king_square(~side);
+    const Color opp = ~side;
+    const bool opp_has_only_pawns = !(board.pieces(make_piece(opp, PieceType::Knight)) | board.pieces(make_piece(opp, PieceType::Bishop)) |
+                                      board.pieces(make_piece(opp, PieceType::Rook)) | board.pieces(make_piece(opp, PieceType::Queen)));
     const size_t pers_idx = side == Color::White ? 0 : 1;
     auto dist = [](Square a, Square b) {
         return std::max(std::abs(static_cast<int>(file_of(a)) - static_cast<int>(file_of(b))),
@@ -377,6 +413,20 @@ ScorePair EvalFeatures::evaluate_passed_extras(const Board& board, Color side) {
         const size_t r = static_cast<size_t>(rel - 1);
         const Square stop = static_cast<Square>(static_cast<int>(sq) + (side == Color::White ? 8 : -8));
         if (board.piece_at(stop) != Piece::None) { score.mg += p.passed_blocked_mg[r]; score.eg += p.passed_blocked_eg[r]; }
+        // Squares from the pawn to its promotion square.
+        const Bitboard path = side == Color::White ? (file_bb(file_of(sq)) & ~((square_bb(sq) << 1) - 1) & ~square_bb(sq))
+                                                   : (file_bb(file_of(sq)) & ((square_bb(sq)) - 1));
+        if (!(path & board.occupied())) {
+            score.mg += p.passed_free_mg[r]; score.eg += p.passed_free_eg[r];
+            // Square rule: the enemy has only king and pawns and its king cannot catch the pawn.
+            if (opp_has_only_pawns && opp_k != Square::None) {
+                const Square promo = make_square(file_of(sq), side == Color::White ? Rank::Rank8 : Rank::Rank1);
+                int steps = 7 - rel;
+                if (rel == 1) --steps; // Double push from the start rank.
+                const int king_steps = dist(opp_k, promo) - (board.side_to_move() == ~side ? 1 : 0);
+                if (king_steps > steps) score.eg += p.unstoppable_passer_eg;
+            }
+        }
         if (own_k != Square::None) {
             const int d = dist(own_k, stop);
             score.mg += d * p.passed_own_king_mg[r]; score.eg += d * p.passed_own_king_eg[r];
@@ -548,6 +598,40 @@ ScorePair EvalFeatures::evaluate_piece_activity(const Board& board, Color side) 
         }
     }
 
+    // 6. Bishops hampered by own pawns on their square colour.
+    constexpr Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
+    for (Bitboard b = bishops; b;) {
+        const Square bsq = pop_lsb(b);
+        const Bitboard same = (square_bb(bsq) & DarkSquares) ? DarkSquares : ~DarkSquares;
+        const int n = popcount(friendly_pawns & same);
+        score.mg += n * g_eval_params.bishop_pawns_mg;
+        score.eg += n * g_eval_params.bishop_pawns_eg;
+    }
+
+    // 7. Minor pieces near their own king (distance in king steps).
+    if (ksq != Square::None) {
+        for (Bitboard b = knights | bishops; b;) {
+            const Square m = pop_lsb(b);
+            const int d = std::max(std::abs(static_cast<int>(file_of(m)) - static_cast<int>(file_of(ksq))),
+                                   std::abs(static_cast<int>(rank_of(m)) - static_cast<int>(rank_of(ksq))));
+            score.mg += d * g_eval_params.minor_king_distance_mg;
+            score.eg += d * g_eval_params.minor_king_distance_eg;
+        }
+    }
+
+    // 8. Rooks behind own passed pawns (same file, on the far side from promotion).
+    for (Bitboard r = rooks; r;) {
+        const Square rsq = pop_lsb(r);
+        for (Bitboard pw = friendly_pawns & file_bb(file_of(rsq)); pw;) {
+            const Square psq = pop_lsb(pw);
+            const bool behind = side == Color::White ? rank_of(rsq) < rank_of(psq) : rank_of(rsq) > rank_of(psq);
+            if (behind && !(opp_pawns & PassedPawnMask[s_idx][static_cast<size_t>(psq)])) {
+                score.mg += g_eval_params.rook_behind_passer_mg;
+                score.eg += g_eval_params.rook_behind_passer_eg;
+            }
+        }
+    }
+
     return score;
 }
 
@@ -558,24 +642,14 @@ ScorePair EvalFeatures::evaluate_threats(const Board& board, Color side) {
     Bitboard occ = board.occupied();
 
     Bitboard my_pawns   = board.pieces(make_piece(side, PieceType::Pawn));
-    Bitboard my_knights = board.pieces(make_piece(side, PieceType::Knight));
-    Bitboard my_bishops = board.pieces(make_piece(side, PieceType::Bishop));
-    Bitboard my_rooks   = board.pieces(make_piece(side, PieceType::Rook));
 
     Bitboard opp_rooks  = board.pieces(make_piece(opp, PieceType::Rook));
     Bitboard opp_queens = board.pieces(make_piece(opp, PieceType::Queen));
     Bitboard opp_minors = board.pieces(make_piece(opp, PieceType::Knight)) | board.pieces(make_piece(opp, PieceType::Bishop));
 
     // 1. Minor piece attacking enemy major pieces
-    Bitboard minor_attacks = EmptyBB;
-    Bitboard k_copy = my_knights;
-    while (k_copy) {
-        minor_attacks |= AttackMasks::knight_attacks(pop_lsb(k_copy));
-    }
-    Bitboard b_copy = my_bishops;
-    while (b_copy) {
-        minor_attacks |= AttackMasks::bishop_attacks(pop_lsb(b_copy), occ);
-    }
+    const auto& my_maps = attack_maps(board).by_type[static_cast<size_t>(side)];
+    const Bitboard minor_attacks = my_maps[1] | my_maps[2];
 
     int minor_on_rook = popcount(minor_attacks & opp_rooks);
     score.mg += minor_on_rook * g_eval_params.minor_threat_rook_mg;
@@ -586,11 +660,7 @@ ScorePair EvalFeatures::evaluate_threats(const Board& board, Color side) {
     score.eg += minor_on_queen * g_eval_params.minor_threat_queen_eg;
 
     // 2. Rook attacking enemy queen
-    Bitboard rook_attacks = EmptyBB;
-    Bitboard r_copy = my_rooks;
-    while (r_copy) {
-        rook_attacks |= AttackMasks::rook_attacks(pop_lsb(r_copy), occ);
-    }
+    const Bitboard rook_attacks = my_maps[3];
     int rook_on_queen = popcount(rook_attacks & opp_queens);
     score.mg += rook_on_queen * g_eval_params.rook_threat_queen_mg;
     score.eg += rook_on_queen * g_eval_params.rook_threat_queen_eg;
@@ -619,6 +689,14 @@ ScorePair EvalFeatures::evaluate_threats(const Board& board, Color side) {
     const int pawn_on_major = popcount(pawn_attacks & (opp_rooks | opp_queens));
     score.mg += pawn_on_minor * g_eval_params.pawn_threat_minor_mg + pawn_on_major * g_eval_params.pawn_threat_major_mg;
     score.eg += pawn_on_minor * g_eval_params.pawn_threat_minor_eg + pawn_on_major * g_eval_params.pawn_threat_major_eg;
+
+    // 4b. Our minors attacking enemy minors that no enemy pawn defends.
+    const Bitboard opp_pawn_defence = (opp == Color::White)
+        ? (((board.pieces(make_piece(opp, PieceType::Pawn)) & not_file_a) << 7) | ((board.pieces(make_piece(opp, PieceType::Pawn)) & not_file_h) << 9))
+        : (((board.pieces(make_piece(opp, PieceType::Pawn)) & not_file_a) >> 9) | ((board.pieces(make_piece(opp, PieceType::Pawn)) & not_file_h) >> 7));
+    const int minor_on_minor = popcount(minor_attacks & opp_minors & ~opp_pawn_defence);
+    score.mg += minor_on_minor * g_eval_params.minor_threat_minor_mg;
+    score.eg += minor_on_minor * g_eval_params.minor_threat_minor_eg;
 
     // 5. Hanging enemy pieces: attacked by us and not defended.
     const Bitboard ours = attacks_of(board, side, occ), theirs = attacks_of(board, opp, occ);

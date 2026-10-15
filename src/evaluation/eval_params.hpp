@@ -113,6 +113,16 @@ struct EvalParams {
     std::array<int, 6> passed_own_king_mg{}, passed_own_king_eg{};     // Per square of own-king distance.
     std::array<int, 6> passed_opp_king_mg{}, passed_opp_king_eg{};     // Per square of enemy-king distance.
 
+    // 9. Eval v3 terms.
+    int bishop_pawns_mg = 0, bishop_pawns_eg = 0;        // Per own pawn on the bishop's square colour.
+    int rook_behind_passer_mg = 0, rook_behind_passer_eg = 0;
+    int king_ring_attacks_mg = 0, king_ring_attacks_eg = 0; // Per king-zone square the enemy attacks.
+    int weak_king_squares_mg = 0, weak_king_squares_eg = 0; // Per king-zone square attacked and undefended.
+    int minor_king_distance_mg = 0, minor_king_distance_eg = 0; // Per square of N/B distance to own king.
+    int minor_threat_minor_mg = 0, minor_threat_minor_eg = 0;   // Our minor attacks an enemy minor not pawn-defended.
+    std::array<int, 6> passed_free_mg{}, passed_free_eg{};       // No piece on the path to promotion.
+    int unstoppable_passer_eg = 0;                                // Square rule, enemy has only pawns.
+
     // Seed the v2 tables from the scalar weights they replace (used only before a tune).
     void init_v2_tables() {
         for (size_t c = 0; c < knight_mob_tab_mg.size(); ++c) { knight_mob_tab_mg[c] = int(c) * knight_mob_mg; knight_mob_tab_eg[c] = int(c) * knight_mob_eg; }
@@ -216,6 +226,13 @@ struct EvalParams {
             {"safe_check_bishop_mg", &safe_check_bishop_mg, -400, 400}, {"safe_check_bishop_eg", &safe_check_bishop_eg, -400, 400},
             {"safe_check_rook_mg", &safe_check_rook_mg, -400, 400}, {"safe_check_rook_eg", &safe_check_rook_eg, -400, 400},
             {"safe_check_queen_mg", &safe_check_queen_mg, -400, 400}, {"safe_check_queen_eg", &safe_check_queen_eg, -400, 400},
+            {"bishop_pawns_mg", &bishop_pawns_mg, -400, 400}, {"bishop_pawns_eg", &bishop_pawns_eg, -400, 400},
+            {"rook_behind_passer_mg", &rook_behind_passer_mg, -400, 400}, {"rook_behind_passer_eg", &rook_behind_passer_eg, -400, 400},
+            {"king_ring_attacks_mg", &king_ring_attacks_mg, -400, 400}, {"king_ring_attacks_eg", &king_ring_attacks_eg, -400, 400},
+            {"weak_king_squares_mg", &weak_king_squares_mg, -400, 400}, {"weak_king_squares_eg", &weak_king_squares_eg, -400, 400},
+            {"minor_king_distance_mg", &minor_king_distance_mg, -400, 400}, {"minor_king_distance_eg", &minor_king_distance_eg, -400, 400},
+            {"minor_threat_minor_mg", &minor_threat_minor_mg, -400, 400}, {"minor_threat_minor_eg", &minor_threat_minor_eg, -400, 400},
+            {"unstoppable_passer_eg", &unstoppable_passer_eg, -2000, 2000},
         };
         auto table = [&](const char* name, int* data, size_t n) {
             for (size_t i = 0; i < n; ++i) refs.push_back({std::string(name) + "[" + std::to_string(i) + "]", data + i, -2000, 2000});
@@ -237,6 +254,8 @@ struct EvalParams {
         table("passed_own_king_eg", passed_own_king_eg.data(), passed_own_king_eg.size());
         table("passed_opp_king_mg", passed_opp_king_mg.data(), passed_opp_king_mg.size());
         table("passed_opp_king_eg", passed_opp_king_eg.data(), passed_opp_king_eg.size());
+        table("passed_free_mg", passed_free_mg.data(), passed_free_mg.size());
+        table("passed_free_eg", passed_free_eg.data(), passed_free_eg.size());
         return refs;
     }
 };
