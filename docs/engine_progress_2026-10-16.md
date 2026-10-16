@@ -106,6 +106,20 @@ Against `main`: **+50 Elo, 240 games, 95% CI [+17, +83]**, LLR 2.26 under SPRT [
 (accepted on the confidence interval, as v3lazy was). No time forfeits. Published on
 branch `eval-sf-2026-10-17` for review; not merged into `main`.
 
+Anchor rating of this build, same setup as for `main` (settings now applied, Hash 64):
+
+| Anchor | `main` | `eval-sf-2026-10-17` |
+|---|---|---|
+| Blunder 7.6 (2631), 100 games, 10+0.1 | 81.0% (2883) | 86.0% (2946) |
+| Stockfish UCI_Elo 2800, 40 games, 60+0.6 | 66.2% (2917) | 73.8% (2979) |
+| Stockfish UCI_Elo 3000, 40 games, 60+0.6 | 25.0% (2809) | 48.8% (2991) |
+| Pooled maximum likelihood | 2874 (2817-2933) | **2971 (2909-3035)** |
+
+No time forfeits in 180 games. Same caveats as above: anchors measured here, not on CCRL.
+
+A retune on the full 1,553,619-position set gave no gain over this build
+(-17 Elo, 120 games, 95% CI [-65, +29]) and was not published.
+
 ### Where the engine loses: Stockfish analysis of 49 lost games
 
 All losses against Blunder 7.6 and Stockfish 2800/3000, analysed by Stockfish at
