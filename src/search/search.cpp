@@ -1,3 +1,4 @@
+#include <array>
 #include "search.hpp"
 #include "syzygy.hpp"
 #include "search_params.hpp"
@@ -1119,6 +1120,8 @@ void SearchEngine::iterative_deepening_root(Board& board, int max_depth, uint64_
         int current_best_score = -ScoreInfinity;
         Move current_best_move = moves[0];
         bool interrupted = false;
+        // Nodes spent under each root move this iteration (time management).
+        std::array<uint64_t, 256> root_nodes{};
 
         while (true) {
             current_best_score = -ScoreInfinity;
@@ -1128,6 +1131,7 @@ void SearchEngine::iterative_deepening_root(Board& board, int max_depth, uint64_
                 const auto& m = moves[i];
                 move_stack_[0] = m;
                 piece_stack_[0] = board.piece_at(m.from());
+                const uint64_t nodes_before = node_count_;
                 board.make_move(m);
 
                 int score = 0;
@@ -1143,6 +1147,7 @@ void SearchEngine::iterative_deepening_root(Board& board, int max_depth, uint64_
                 board.unmake_move(m);
                 move_stack_[0] = Move();
                 piece_stack_[0] = Piece::None;
+                if (i < root_nodes.size()) root_nodes[i] += node_count_ - nodes_before;
 
                 if (is_stopped()) {
                     interrupted = true;
@@ -1173,6 +1178,7 @@ void SearchEngine::iterative_deepening_root(Board& board, int max_depth, uint64_
                 if (score >= beta) {
                     if (i > 0) {
                         std::swap(moves[0], moves[i]);
+                        if (i < root_nodes.size()) std::swap(root_nodes[0], root_nodes[i]);
                     }
                     break;
                 }
@@ -1181,7 +1187,6 @@ void SearchEngine::iterative_deepening_root(Board& board, int max_depth, uint64_
             if (interrupted) break;
 
             if (current_best_score <= alpha) {
-                opt_time_ms_ = std::min(max_time_ms_, opt_time_ms_ * 1.5);
                 if (alpha <= -ScoreInfinity) break;
                 alpha = std::max(-ScoreInfinity, alpha - window_delta);
                 window_delta += window_delta / 2;
@@ -1207,6 +1212,7 @@ void SearchEngine::iterative_deepening_root(Board& board, int max_depth, uint64_
         }
 
         best_pv_move = current_best_move;
+        const int previous_score = last_score;
         last_score   = current_best_score;
 
         final_result.best_move = current_best_move;
@@ -1245,22 +1251,25 @@ void SearchEngine::iterative_deepening_root(Board& board, int max_depth, uint64_
             std::cout << std::endl;
         }
 
-        // High-depth stable move early exit (saves clock time safely on rock-solid moves)
-        if (opt_time_ms_ > 0.0 && d >= 12 && stable_move_count >= 5) {
-            auto now = std::chrono::steady_clock::now();
-            double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
-            if (elapsed >= opt_time_ms_ * 0.85) {
-                break;
-            }
-        }
-
-        // Soft Time Allocation: Stop iterative deepening between iterations if optimum time expired
+        // Soft time limit between iterations. The optimum is scaled by best-move
+        // stability, by the share of nodes the best move took, and by score drops.
         if (opt_time_ms_ > 0.0 && d >= 5) {
             auto now = std::chrono::steady_clock::now();
             double elapsed = std::chrono::duration<double, std::milli>(now - search_start_time_).count();
-            if (elapsed >= opt_time_ms_ || (stable_move_count >= 4 && elapsed >= opt_time_ms_ * 0.70)) {
-                break;
+            static constexpr double stability_scale[5] = {1.40, 1.20, 1.00, 0.90, 0.80};
+            const double stability = stability_scale[std::min(stable_move_count, 4)];
+            uint64_t total = 0, best = 0;
+            for (size_t i = 0; i < moves.size() && i < root_nodes.size(); ++i) {
+                total += root_nodes[i];
+                if (moves[i] == current_best_move) best = root_nodes[i];
             }
+            const double best_share = total ? double(best) / double(total) : 0.5;
+            const double node_scale = 1.5 - best_share;              // 0.5 .. 1.5
+            const double drop = double(previous_score - current_best_score);
+            const double score_scale = std::clamp(1.0 + drop / 100.0, 0.90, 1.40);
+            const double soft = std::min(max_time_ms_ > 0.0 ? max_time_ms_ : 1e18,
+                                         opt_time_ms_ * stability * node_scale * score_scale);
+            if (elapsed >= soft) break;
         }
 
         if (is_time_up() || is_stopped()) break;
