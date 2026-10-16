@@ -116,7 +116,7 @@ void UCI::handle_go(const std::string& line, Board& board, SearchEngine& engine)
     std::cout << "bestmove " << move_to_uci(res.best_move) << std::endl;
 }
 
-void UCI::loop() {
+void UCI::loop(const std::string& first_line) {
     Board board;
     FEN::parse(FEN::StartPOS, board);
     SearchEngine engine;
@@ -138,8 +138,10 @@ void UCI::loop() {
         is_searching.store(false, std::memory_order_relaxed);
     };
 
-    std::string line;
-    while (std::getline(std::cin, line)) {
+    std::string line = first_line;
+    bool pending = !line.empty();
+    while (pending || std::getline(std::cin, line)) {
+        pending = false;
         if (line.empty()) continue;
 
         std::stringstream ss(line);
@@ -153,7 +155,7 @@ void UCI::loop() {
             std::cout << "option name SyzygyPath type string default <empty>\n";
             std::cout << "option name Threads type spin default 1 min 1 max 64\n";
             std::cout << "option name OwnBook type check default false\n";
-            std::cout << "option name MoveOverhead type spin default 25 min 0 max 5000\n";
+            std::cout << "option name MoveOverhead type spin default 50 min 0 max 5000\n";
             std::cout << "option name MinimumSMPTime type spin default 20 min 0 max 1000\n";
             std::cout << "option name EnableNMP type check default true\n";
             std::cout << "option name EnableLMR type check default true\n";

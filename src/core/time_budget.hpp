@@ -3,7 +3,7 @@
 namespace heavensgate {
 struct SearchBudget { double optimum_ms = 0; double maximum_ms = 0; };
 struct SearchTimingOptions {
-    double move_overhead_ms = 25.0;
+    double move_overhead_ms = 50.0;
     double minimum_smp_time_ms = 20.0;
 };
 // Shared UCI/harness policy. In sudden death reserve overhead for a future

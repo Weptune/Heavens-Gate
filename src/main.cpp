@@ -596,10 +596,7 @@ int main(int argc, char* argv[]) {
 
         if (line == "uci") {
             Evaluator::set_mode(EvalMode::MasterPositional);
-            std::cout << "id name Heaven's Gate Master Edition\n";
-            std::cout << "id author DeepMind Antigravity\n";
-            std::cout << "uciok" << std::endl;
-            UCI::loop();
+            UCI::loop(line);  // the UCI loop answers "uci" with the full option list
             break;
         } else if (line.rfind("setoption", 0) == 0) {
             std::string name, val;
