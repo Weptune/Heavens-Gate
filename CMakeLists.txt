@@ -87,6 +87,10 @@ add_executable(heavensgate_tests
 )
 target_include_directories(heavensgate_tests PRIVATE src tests src/external/fathom)
 
+# Self-play training data for the HCE tuner.
+add_executable(heavensgate_datagen tools/datagen.cpp ${ENGINE_SOURCES})
+target_include_directories(heavensgate_datagen PRIVATE src src/external/fathom)
+
 # Keep the offline tuner tied to the same evaluator implementation. Its
 # --parity checks the exact linear model against the engine eval.
 add_executable(heavensgate_texel_tuner
@@ -113,6 +117,7 @@ if(MSVC)
     target_compile_options(heavensgate_texel_tuner PRIVATE /W4 /O2 /permissive- /arch:AVX2)
 else()
     target_compile_options(heavensgate PRIVATE -Wall -Wextra -O3 -march=native -mavx2 -mfma)
+    target_compile_options(heavensgate_datagen PRIVATE -Wall -Wextra -O3 -march=native -mavx2 -mfma)
     target_compile_options(heavensgate_tests PRIVATE -Wall -Wextra -O3 -march=native -mavx2 -mfma)
     target_compile_options(heavensgate_texel_tuner PRIVATE -Wall -Wextra -O3 -march=native -mavx2 -mfma)
 endif()
@@ -123,7 +128,7 @@ target_compile_definitions(heavensgate_tests PRIVATE HG_FAKE_UCI_PATH="$<TARGET_
 
 option(HG_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
 if(HG_WARNINGS_AS_ERRORS)
-    foreach(HG_TARGET heavensgate heavensgate_tests heavensgate_texel_tuner heavensgate_fake_uci)
+    foreach(HG_TARGET heavensgate heavensgate_tests heavensgate_texel_tuner heavensgate_fake_uci heavensgate_datagen)
         if(MSVC)
             target_compile_options(${HG_TARGET} PRIVATE /WX)
         else()
@@ -134,6 +139,7 @@ endif()
 
 if(OpenMP_CXX_FOUND)
     target_link_libraries(heavensgate PRIVATE OpenMP::OpenMP_CXX)
+    target_link_libraries(heavensgate_datagen PRIVATE OpenMP::OpenMP_CXX)
     target_link_libraries(heavensgate_tests PRIVATE OpenMP::OpenMP_CXX)
     target_link_libraries(heavensgate_texel_tuner PRIVATE OpenMP::OpenMP_CXX)
 endif()
