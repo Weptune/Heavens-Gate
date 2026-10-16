@@ -161,7 +161,8 @@ int SearchEngine::quiescence_search(Board& board, int alpha, int beta, int ply) 
         }
     }
 
-    int stand_pat = Evaluator::evaluate_fast(board, alpha, beta);
+    // In check there is no stand-pat: the evaluation would be computed and discarded.
+    int stand_pat = in_chk ? -ScoreInfinity : Evaluator::evaluate_fast(board, alpha, beta);
     int best_score = stand_pat;
     Move best_move = Move();
 
