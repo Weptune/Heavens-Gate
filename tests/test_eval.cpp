@@ -64,12 +64,14 @@ void test_eval() {
     const auto boxed = EvalFeatures::evaluate_piece_activity(board, Color::White);
     board.load_fen("k7/8/8/8/8/8/7P/4K2R w - - 0 1");
     const auto free = EvalFeatures::evaluate_piece_activity(board, Color::White);
-    HEAVENSGATE_ASSERT(free.mg - boxed.mg == g_eval_params.trapped_rook_mg && free.eg == boxed.eg, "Boxed rook penalty is unreachable");
+    // The king also moves one square further from its h2 pawn (king_pawn_distance_eg).
+    HEAVENSGATE_ASSERT(free.mg - boxed.mg == g_eval_params.trapped_rook_mg &&
+                       free.eg - boxed.eg == g_eval_params.king_pawn_distance_eg, "Boxed rook penalty is unreachable");
 
     board.load_fen("4k3/rr6/8/8/8/8/8/3QK3 w - - 0 1");
     const auto queen = EvalFeatures::evaluate_material_imbalances(board, Color::White);
     const auto rooks = EvalFeatures::evaluate_material_imbalances(board, Color::Black);
-    HEAVENSGATE_ASSERT(queen.mg == 15 && queen.eg == -25 && rooks.mg == 0 && rooks.eg == 12,
+    HEAVENSGATE_ASSERT(queen.mg == g_eval_params.imb_queen_vs_rooks_mg && queen.eg == g_eval_params.imb_queen_vs_rooks_eg && rooks.mg == 0 && rooks.eg == g_eval_params.imb_rook_pair_eg,
                       "Queen-vs-rooks interaction must be counted once, separate from rook pair");
     std::cout << "[RUN] Classical eval: tempo, color symmetry, pawn-cache coherence, boxed rooks, single imbalance ... PASSED\n";
 }

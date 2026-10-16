@@ -194,6 +194,18 @@ ScorePair EvalFeatures::evaluate_pawn_structure(const Board& board, Color side) 
         }
     }
 
+    // Pawn islands: groups of adjacent files containing own pawns.
+    {
+        int islands = 0; bool in_island = false;
+        for (int f = 0; f < 8; ++f) {
+            const bool has = (my_pawns & file_bb(static_cast<File>(f))) != EmptyBB;
+            if (has && !in_island) ++islands;
+            in_island = has;
+        }
+        score.mg += islands * g_eval_params.pawn_islands_mg;
+        score.eg += islands * g_eval_params.pawn_islands_eg;
+    }
+
     // Active existing pawn tension (pawns attacking each other)
     Bitboard current_tension = my_pawn_attacks & opp_pawns;
     if (current_tension) {
@@ -227,6 +239,20 @@ ScorePair EvalFeatures::evaluate_passed_pawns(const Board& board, Color side) {
             if (rank_idx >= 1 && rank_idx <= 6) {
                 score.mg += g_eval_params.passed_mg[static_cast<size_t>(rank_idx - 1)];
                 score.eg += g_eval_params.passed_eg[static_cast<size_t>(rank_idx - 1)];
+            }
+
+            // Connected passers: another own passer on an adjacent file.
+            {
+                Bitboard adj = IsolatedPawnMask[static_cast<size_t>(file_of(sq))] & board.pieces(pawn_piece);
+                bool connected = false;
+                while (adj && !connected) {
+                    const Square a = pop_lsb(adj);
+                    connected = (opp_pawns & PassedPawnMask[pers_idx][static_cast<size_t>(a)]) == EmptyBB;
+                }
+                if (connected && rank_idx >= 1 && rank_idx <= 6) {
+                    score.mg += g_eval_params.connected_passer_mg[static_cast<size_t>(rank_idx - 1)];
+                    score.eg += g_eval_params.connected_passer_eg[static_cast<size_t>(rank_idx - 1)];
+                }
             }
 
             // Protected passed pawn bonus (+20 cp MG, +40 cp EG)
@@ -598,6 +624,62 @@ ScorePair EvalFeatures::evaluate_piece_activity(const Board& board, Color side) 
         }
     }
 
+    // 9. Space: central squares (files c-f) on our ranks 2-4 not attacked by enemy
+    //    pawns and not holding our pawns, counted twice when behind one of our pawns.
+    {
+        const Bitboard centre_files = file_bb(File::FileC) | file_bb(File::FileD) | file_bb(File::FileE) | file_bb(File::FileF);
+        const Bitboard own_ranks = side == Color::White ? (rank_bb(Rank::Rank2) | rank_bb(Rank::Rank3) | rank_bb(Rank::Rank4))
+                                                        : (rank_bb(Rank::Rank7) | rank_bb(Rank::Rank6) | rank_bb(Rank::Rank5));
+        const Bitboard opp_pawn_att = side == Color::White
+            ? (((opp_pawns & not_file_a) >> 9) | ((opp_pawns & not_file_h) >> 7))
+            : (((opp_pawns & not_file_a) << 7) | ((opp_pawns & not_file_h) << 9));
+        const Bitboard safe = centre_files & own_ranks & ~friendly_pawns & ~opp_pawn_att;
+        Bitboard behind = friendly_pawns;
+        if (side == Color::White) { behind |= behind >> 8; behind |= behind >> 16; }
+        else { behind |= behind << 8; behind |= behind << 16; }
+        const int space = popcount(safe) + popcount(safe & behind);
+        score.mg += space * g_eval_params.space_mg;
+    }
+
+    // 10. Endgame king activity: distance to the nearest own pawn.
+    if (ksq != Square::None && friendly_pawns) {
+        int best = 8;
+        for (Bitboard pw = friendly_pawns; pw;) {
+            const Square p = pop_lsb(pw);
+            best = std::min(best, std::max(std::abs(static_cast<int>(file_of(p)) - static_cast<int>(file_of(ksq))),
+                                           std::abs(static_cast<int>(rank_of(p)) - static_cast<int>(rank_of(ksq)))));
+        }
+        score.eg += best * g_eval_params.king_pawn_distance_eg;
+    }
+
+    // 11. Bishops on a long diagonal that see both of its central squares.
+    {
+        constexpr Bitboard a1h8 = 0x8040201008040201ULL, h1a8 = 0x0102040810204080ULL;
+        constexpr Bitboard centre = 0x0000001818000000ULL;
+        for (Bitboard b = bishops; b;) {
+            const Square bsq = pop_lsb(b);
+            const Bitboard diag = (square_bb(bsq) & a1h8) ? a1h8 : (square_bb(bsq) & h1a8) ? h1a8 : EmptyBB;
+            if (diag && (AttackMasks::bishop_attacks(bsq, board.pieces(Piece::WhitePawn) | board.pieces(Piece::BlackPawn)) & centre & diag) == (centre & diag & ~square_bb(bsq))) {
+                score.mg += g_eval_params.bishop_long_diagonal_mg;
+                score.eg += g_eval_params.bishop_long_diagonal_eg;
+            }
+        }
+    }
+
+    // 12. Minors directly behind a pawn (either colour), and rooks on the enemy queen's file.
+    {
+        const Bitboard all_pawns = friendly_pawns | opp_pawns;
+        const Bitboard shielded = side == Color::White ? (all_pawns >> 8) : (all_pawns << 8);
+        const int behind = popcount((knights | bishops) & shielded);
+        score.mg += behind * g_eval_params.minor_behind_pawn_mg;
+        score.eg += behind * g_eval_params.minor_behind_pawn_eg;
+        Bitboard qfiles = EmptyBB;
+        for (Bitboard q = board.pieces(make_piece(~side, PieceType::Queen)); q;) qfiles |= file_bb(file_of(pop_lsb(q)));
+        const int on_qfile = popcount(rooks & qfiles);
+        score.mg += on_qfile * g_eval_params.rook_queen_file_mg;
+        score.eg += on_qfile * g_eval_params.rook_queen_file_eg;
+    }
+
     // 6. Bishops hampered by own pawns on their square colour.
     constexpr Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
     for (Bitboard b = bishops; b;) {
@@ -704,6 +786,19 @@ ScorePair EvalFeatures::evaluate_threats(const Board& board, Color side) {
     score.mg += hanging * g_eval_params.hanging_mg;
     score.eg += hanging * g_eval_params.hanging_eg;
 
+    // 6. Our king attacks undefended enemy pieces or pawns.
+    const auto& maps = attack_maps(board);
+    const Bitboard opp_all = board.pieces(opp) & ~board.pieces(make_piece(opp, PieceType::King));
+    const int king_threats = popcount(maps.by_type[static_cast<size_t>(side)][5] & opp_all & ~theirs);
+    score.mg += king_threats * g_eval_params.king_threat_mg;
+    score.eg += king_threats * g_eval_params.king_threat_eg;
+
+    // 7. Restriction: squares both sides attack that enemy pawns do not cover.
+    const int restricted = popcount(maps.no_king[static_cast<size_t>(side)] & maps.no_king[static_cast<size_t>(opp)] &
+                                    ~maps.by_type[static_cast<size_t>(opp)][0]);
+    score.mg += restricted * g_eval_params.restricted_mg;
+    score.eg += restricted * g_eval_params.restricted_eg;
+
     return score;
 }
 
@@ -756,45 +851,37 @@ ScorePair EvalFeatures::evaluate_material_imbalances(const Board& board, Color s
     int my_queens   = popcount(board.pieces(make_piece(side, PieceType::Queen)));
     int opp_queens  = popcount(board.pieces(make_piece(opp, PieceType::Queen)));
 
-    // 1. Kaufman Dynamic Bishop Pair Scaling with Pawn Count
+    const auto& P = g_eval_params;
+    // 1. Bishop pair scaled by the pawn count.
     if (my_bishops >= 2) {
         if (total_pawns < 12) {
-            int open_delta = 12 - total_pawns;
-            score.mg += open_delta * 2;
-            score.eg += open_delta * 4;
+            score.mg += (12 - total_pawns) * P.imb_bpair_open_mg;
+            score.eg += (12 - total_pawns) * P.imb_bpair_open_eg;
         } else if (total_pawns > 12) {
-            int closed_delta = total_pawns - 12;
-            score.mg -= closed_delta * 2;
-            score.eg -= closed_delta * 3;
+            score.mg += (total_pawns - 12) * P.imb_bpair_closed_mg;
+            score.eg += (total_pawns - 12) * P.imb_bpair_closed_eg;
         }
     }
 
-    // 2. Minor Piece Synergy vs Pawn Count
+    // 2. Knights prefer closed positions, bishops open ones.
     if (total_pawns > 10) {
-        int closed_weight = total_pawns - 10;
-        score.mg += my_knights * closed_weight * 2;
-        score.eg += my_knights * closed_weight;
-        score.mg -= my_bishops * closed_weight;
-        score.eg -= my_bishops * closed_weight * 2;
+        const int w = total_pawns - 10;
+        score.mg += w * (my_knights * P.imb_knight_closed_mg + my_bishops * P.imb_bishop_closed_mg);
+        score.eg += w * (my_knights * P.imb_knight_closed_eg + my_bishops * P.imb_bishop_closed_eg);
     } else if (total_pawns < 8) {
-        int open_weight = 8 - total_pawns;
-        score.mg += my_bishops * open_weight * 2;
-        score.eg += my_bishops * open_weight * 3;
-        score.mg -= my_knights * open_weight * 2;
-        score.eg -= my_knights * open_weight * 3;
+        const int w = 8 - total_pawns;
+        score.mg += w * (my_bishops * P.imb_bishop_open_mg + my_knights * P.imb_knight_open_mg);
+        score.eg += w * (my_bishops * P.imb_bishop_open_eg + my_knights * P.imb_knight_open_eg);
     }
 
-    // 3. Exchange Imbalances: Queen vs 2 Rooks
+    // 3. Queen against two rooks.
     if (my_queens >= 1 && opp_queens == 0 && opp_rooks >= 2 && my_rooks < opp_rooks) {
-        score.mg += 15;
-        score.eg -= 25;
+        score.mg += P.imb_queen_vs_rooks_mg;
+        score.eg += P.imb_queen_vs_rooks_eg;
     }
-    // Return this side's contribution only. Evaluator subtracts Black once.
 
-    // 4. Endgame Rook Pair Synergy
-    if (my_rooks >= 2) {
-        score.eg += 12;
-    }
+    // 4. Rook pair in the endgame.
+    if (my_rooks >= 2) score.eg += P.imb_rook_pair_eg;
 
     return score;
 }

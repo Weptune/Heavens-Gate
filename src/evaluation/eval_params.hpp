@@ -123,6 +123,27 @@ struct EvalParams {
     std::array<int, 6> passed_free_mg{}, passed_free_eg{};       // No piece on the path to promotion.
     int unstoppable_passer_eg = 0;                                // Square rule, enemy has only pawns.
 
+    // 10. Eval v4 terms.
+    int space_mg = 0;                                   // Safe central squares behind/at own pawns (ranks 2-4).
+    int pawn_islands_mg = 0, pawn_islands_eg = 0;       // Per pawn island.
+    int king_pawn_distance_eg = 0;                      // Per square from king to nearest own pawn.
+    std::array<int, 6> connected_passer_mg{}, connected_passer_eg{}; // Passer with a passer on an adjacent file.
+    int bishop_long_diagonal_mg = 0, bishop_long_diagonal_eg = 0;    // Bishop sees both central squares of a long diagonal.
+
+    // 11. Eval v5: material imbalance made tunable (seeded with the old constants), new terms.
+    int imb_bpair_open_mg = 2, imb_bpair_open_eg = 4;       // Bishop pair, per pawn below 12 on the board.
+    int imb_bpair_closed_mg = -2, imb_bpair_closed_eg = -3; // Bishop pair, per pawn above 12.
+    int imb_knight_closed_mg = 2, imb_knight_closed_eg = 1; // Per knight, per pawn above 10.
+    int imb_bishop_closed_mg = -1, imb_bishop_closed_eg = -2;
+    int imb_bishop_open_mg = 2, imb_bishop_open_eg = 3;     // Per bishop, per pawn below 8.
+    int imb_knight_open_mg = -2, imb_knight_open_eg = -3;
+    int imb_queen_vs_rooks_mg = 15, imb_queen_vs_rooks_eg = -25;
+    int imb_rook_pair_eg = 12;
+    int minor_behind_pawn_mg = 0, minor_behind_pawn_eg = 0; // Minor directly behind a pawn.
+    int rook_queen_file_mg = 0, rook_queen_file_eg = 0;     // Rook on the enemy queen's file.
+    int king_threat_mg = 0, king_threat_eg = 0;             // King attacks an undefended enemy piece or pawn.
+    int restricted_mg = 0, restricted_eg = 0;               // Squares both sides attack, not covered by enemy pawns.
+
     // Seed the v2 tables from the scalar weights they replace (used only before a tune).
     void init_v2_tables() {
         for (size_t c = 0; c < knight_mob_tab_mg.size(); ++c) { knight_mob_tab_mg[c] = int(c) * knight_mob_mg; knight_mob_tab_eg[c] = int(c) * knight_mob_eg; }
@@ -233,6 +254,22 @@ struct EvalParams {
             {"minor_king_distance_mg", &minor_king_distance_mg, -400, 400}, {"minor_king_distance_eg", &minor_king_distance_eg, -400, 400},
             {"minor_threat_minor_mg", &minor_threat_minor_mg, -400, 400}, {"minor_threat_minor_eg", &minor_threat_minor_eg, -400, 400},
             {"unstoppable_passer_eg", &unstoppable_passer_eg, -2000, 2000},
+            {"space_mg", &space_mg, -400, 400},
+            {"pawn_islands_mg", &pawn_islands_mg, -400, 400}, {"pawn_islands_eg", &pawn_islands_eg, -400, 400},
+            {"king_pawn_distance_eg", &king_pawn_distance_eg, -400, 400},
+            {"bishop_long_diagonal_mg", &bishop_long_diagonal_mg, -400, 400}, {"bishop_long_diagonal_eg", &bishop_long_diagonal_eg, -400, 400},
+            {"imb_bpair_open_mg", &imb_bpair_open_mg, -400, 400}, {"imb_bpair_open_eg", &imb_bpair_open_eg, -400, 400},
+            {"imb_bpair_closed_mg", &imb_bpair_closed_mg, -400, 400}, {"imb_bpair_closed_eg", &imb_bpair_closed_eg, -400, 400},
+            {"imb_knight_closed_mg", &imb_knight_closed_mg, -400, 400}, {"imb_knight_closed_eg", &imb_knight_closed_eg, -400, 400},
+            {"imb_bishop_closed_mg", &imb_bishop_closed_mg, -400, 400}, {"imb_bishop_closed_eg", &imb_bishop_closed_eg, -400, 400},
+            {"imb_bishop_open_mg", &imb_bishop_open_mg, -400, 400}, {"imb_bishop_open_eg", &imb_bishop_open_eg, -400, 400},
+            {"imb_knight_open_mg", &imb_knight_open_mg, -400, 400}, {"imb_knight_open_eg", &imb_knight_open_eg, -400, 400},
+            {"imb_queen_vs_rooks_mg", &imb_queen_vs_rooks_mg, -400, 400}, {"imb_queen_vs_rooks_eg", &imb_queen_vs_rooks_eg, -400, 400},
+            {"imb_rook_pair_eg", &imb_rook_pair_eg, -400, 400},
+            {"minor_behind_pawn_mg", &minor_behind_pawn_mg, -400, 400}, {"minor_behind_pawn_eg", &minor_behind_pawn_eg, -400, 400},
+            {"rook_queen_file_mg", &rook_queen_file_mg, -400, 400}, {"rook_queen_file_eg", &rook_queen_file_eg, -400, 400},
+            {"king_threat_mg", &king_threat_mg, -400, 400}, {"king_threat_eg", &king_threat_eg, -400, 400},
+            {"restricted_mg", &restricted_mg, -400, 400}, {"restricted_eg", &restricted_eg, -400, 400},
         };
         auto table = [&](const char* name, int* data, size_t n) {
             for (size_t i = 0; i < n; ++i) refs.push_back({std::string(name) + "[" + std::to_string(i) + "]", data + i, -2000, 2000});
@@ -256,6 +293,8 @@ struct EvalParams {
         table("passed_opp_king_eg", passed_opp_king_eg.data(), passed_opp_king_eg.size());
         table("passed_free_mg", passed_free_mg.data(), passed_free_mg.size());
         table("passed_free_eg", passed_free_eg.data(), passed_free_eg.size());
+        table("connected_passer_mg", connected_passer_mg.data(), connected_passer_mg.size());
+        table("connected_passer_eg", connected_passer_eg.data(), connected_passer_eg.size());
         return refs;
     }
 };
