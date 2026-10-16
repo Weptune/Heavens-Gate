@@ -80,6 +80,51 @@ information, so ~2900 is the figure to quote. One Heaven's Gate time loss
 default Move Overhead from 25 to 50 ms. An earlier 7.6 run was discarded because
 orphaned processes from a stopped match overloaded the CPU (23 of 24 games lost on time).
 
+### Eval v5 retuned on self-play data
+
+v5 (all v4 and v5 terms, tunable imbalance) retuned on 2,585,118 positions: the
+quiet-labeled set plus 1,881,363 self-play positions from `tools/datagen.cpp`
+(5000 nodes per move, 5 random opening plies, game-result labels). Result against
+`main`: **-31 Elo, 160 games, 95% CI [-73, +11], rejected.** The tune pulled the
+endgame rook and queen values down sharply (rook 717 to 560, queen 1323 to 970),
+which points at the data: fast games fail to convert won endgames, and 5 random
+plies (3 of them White's) skew both balance and labels. Round 2 of the generator
+(`fa50a72`): 10000 nodes per move, 2 random plies, the first 8 plies skipped, and
+labels blended 75% result and 25% sigmoid(search score).
+
+### Eval tuned on Stockfish-labelled positions: +50 Elo
+
+1,691,704 unique positions (self-play rounds 1 and 2 plus 350K from the quiet-labelled
+set) were labelled by Stockfish (2026-10-13 build) at 5000 nodes; at 1.2M labels the
+set was filtered to quiet positions (best move not a capture, |score| <= 1500),
+1,104,620 kept, label = 0.8 * sigmoid(score / 400) + 0.2 * game result. The v5
+evaluation (all v4/v5 terms, tunable imbalance) was tuned for 1500 epochs
+(val MSE 0.0204). Material came out healthy (rook 676/680, queen 1494/1030), unlike
+the self-play tune.
+
+Against `main`: **+50 Elo, 240 games, 95% CI [+17, +83]**, LLR 2.26 under SPRT [0, 20]
+(accepted on the confidence interval, as v3lazy was). No time forfeits. Published on
+branch `eval-sf-2026-10-17` for review; not merged into `main`.
+
+### Where the engine loses: Stockfish analysis of 49 lost games
+
+All losses against Blunder 7.6 and Stockfish 2800/3000, analysed by Stockfish at
+60k nodes (`tools`-side script `pipe/analyze_losses.py`). A mistake is a move that
+lowers Heaven's Gate's win probability by 20 points or more.
+
+- 43 mistakes in 30 games; the other 19 losses were gradual, with no single mistake.
+- 28 of 43 in heavy middlegames (phase >= 16), 11 in lighter middlegames, 4 in endgames.
+- Only 9 of 43 were missed tactics (Stockfish's move a capture or check); most are quiet
+  positional misjudgments at depth 9-16.
+- Before the mistake, Heaven's Gate's own eval was on average **+123 cp more optimistic**
+  than Stockfish's; 22 of 43 by more than 100 cp, 4 the other way.
+- Not a scale effect: on 373 positions from won or drawn games the two evals agree
+  on average (HG +151, SF +142).
+
+Conclusion: the evaluation over-rates the engine's chances in complex middlegames
+(king safety and piece activity are the likely terms). This is what the
+Stockfish-labelled retune targets.
+
 ### Cross-check against Stockfish strength levels
 
 Stockfish (source of 2026-10-13, net nn-c9e480e92425 from official-stockfish/networks),
