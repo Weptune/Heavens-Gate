@@ -768,6 +768,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                     // Smooth continuous history reduction scaling
                     reduction -= total_hist / 8192;
                     if (!improving) reduction += 1;
+                    if (tt_move && tt_move.is_capture()) reduction += 1;  // the best known move is a capture
                     if (!is_non_pv) reduction = std::max(0, reduction - 1);
                 } else {
                     reduction = std::max(1, reduction / 2);
