@@ -492,7 +492,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     }
 
     // 3. Adaptive Null Move Pruning (NMP) with continuous depth & score scaling
-    if (g_search_params.enable_nmp && is_non_pv && depth >= 3 && !in_chk && !excluded_move && board.has_non_pawn_material(us) &&
+    if (g_search_params.enable_nmp && is_non_pv && depth >= 3 && !in_chk && !excluded_move && eval >= beta &&
+        static_eval >= beta - 20 * depth && board.has_non_pawn_material(us) &&
         (!g_search_params.enable_nmp_guards || guarded_null_move_allowed(is_non_pv, static_eval, beta, previous_was_null))) {
         int nmp_margin = std::max(1, g_search_params.nmp_eval_margin);
         int R = 3 + depth / 4 + std::min(3, (eval - beta) / nmp_margin);
