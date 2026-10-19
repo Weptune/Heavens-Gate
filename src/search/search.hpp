@@ -80,7 +80,7 @@ private:
     friend struct test::SearchEngineTestAccess;
     int quiescence_search(Board& board, int alpha, int beta, int ply);
     int negamax_minimax(Board& board, int depth, int ply, SearchTreeNode* json_node);
-    int negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move = Move(), SearchTreeNode* json_node = nullptr, int prev_eval = -ScoreInfinity, Move excluded_move = Move(), bool previous_was_null = false);
+    int negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move = Move(), SearchTreeNode* json_node = nullptr, int prev_eval = -ScoreInfinity, Move excluded_move = Move(), bool previous_was_null = false, bool cut_node = false);
     void iterative_deepening_root(Board& board, int max_depth, uint64_t max_nodes, SearchResult& final_result, int start_depth = 1);
     void prepare_search(double max_time_ms, double opt_time_ms);
     void finish_tt_statistics(SearchResult& result) noexcept {

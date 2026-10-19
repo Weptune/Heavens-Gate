@@ -308,7 +308,7 @@ int SearchEngine::negamax_minimax(Board& board, int depth, int ply, SearchTreeNo
     return best_score;
 }
 
-int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move, SearchTreeNode* json_node, int /*prev_eval*/, Move excluded_move, bool previous_was_null) {
+int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha, int beta, bool use_move_ordering, bool use_tt, Move pv_move, SearchTreeNode* json_node, int /*prev_eval*/, Move excluded_move, bool previous_was_null, bool cut_node) {
     if (max_nodes_ && node_count_ >= max_nodes_) {
         time_stop_flag_.store(true, std::memory_order_relaxed);
         return 0;
@@ -509,7 +509,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
         board.make_null_move();
 
-        int null_score = -negamax_alphabeta(board, depth - 1 - R, ply + 1, -beta, -beta + 1, use_move_ordering, use_tt, Move(), nullptr, static_eval, Move(), true);
+        int null_score = -negamax_alphabeta(board, depth - 1 - R, ply + 1, -beta, -beta + 1, use_move_ordering, use_tt, Move(), nullptr, static_eval, Move(), true, !cut_node);
 
         board.unmake_null_move();
         if (g_search_params.enable_nmp_guards) {
@@ -523,7 +523,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             if (depth >= 12 && null_score < ScoreMate - 1000) {
                 // Sentinel disables NMP at this verification node, not throughout
                 // the descendants. Preserve predecessor state at the same ply.
-                int verify_score = negamax_alphabeta(board, depth - 1 - R, ply, beta - 1, beta, use_move_ordering, use_tt, Move(), nullptr, static_eval, Move::nmp_verify_sentinel(), previous_was_null);
+                int verify_score = negamax_alphabeta(board, depth - 1 - R, ply, beta - 1, beta, use_move_ordering, use_tt, Move(), nullptr, static_eval, Move::nmp_verify_sentinel(), previous_was_null, cut_node);
                 if (verify_score >= beta) {
                     metrics_tracker_.add_cut();
                     return beta;
@@ -550,7 +550,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 piece_stack_[ply] = board.piece_at(tm.from());
             }
             board.make_move(tm);
-            int prob_score = -negamax_alphabeta(board, prob_depth, ply + 1, -prob_beta, -prob_beta + 1, use_move_ordering, use_tt, Move(), nullptr, static_eval);
+            int prob_score = -negamax_alphabeta(board, prob_depth, ply + 1, -prob_beta, -prob_beta + 1, use_move_ordering, use_tt, Move(), nullptr, static_eval, Move(), false, !cut_node);
             board.unmake_move(tm);
             if (ply < 256) {
                 move_stack_[ply] = Move();
@@ -573,7 +573,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         int singular_depth = (depth - 1) / 2;
 
         int singular_score = negamax_alphabeta(board, singular_depth, ply, singular_beta - 1, singular_beta,
-                                               use_move_ordering, use_tt, Move(), nullptr, static_eval, tt_move, previous_was_null);
+                                               use_move_ordering, use_tt, Move(), nullptr, static_eval, tt_move, previous_was_null, cut_node);
 
         if (singular_score < singular_beta) {
             singular_extension = 1;
@@ -720,7 +720,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         if (i == 0) {
             int search_depth = depth - 1 + singular_extension;
-            score = -negamax_alphabeta(board, search_depth, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), child_node, static_eval);
+            score = -negamax_alphabeta(board, search_depth, ply + 1, -beta, -alpha, use_move_ordering, use_tt, Move(), child_node, static_eval, Move(), false, is_non_pv && !cut_node);
         } else {
             int reduction = 0;
             // History-Based Late Move Reductions (LMR) for quiet moves & bad captures
@@ -730,6 +730,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                     // Smooth continuous history reduction scaling
                     reduction -= total_hist / 8192;
                     if (!improving) reduction += 1;
+                    if (cut_node) reduction += 1;  // expected fail-high node
                     if (!is_non_pv) reduction = std::max(0, reduction - 1);
                 } else {
                     reduction = std::max(1, reduction / 2);
@@ -737,15 +738,15 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
                 reduction = std::clamp(reduction, 0, depth - 2);
                 int reduced_depth = std::max(1, depth - 1 - reduction);
 
-                score = -negamax_alphabeta(board, reduced_depth, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), child_node, static_eval);
+                score = -negamax_alphabeta(board, reduced_depth, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), child_node, static_eval, Move(), false, true);
             } else {
                 // Zero-window search
-                score = -negamax_alphabeta(board, depth - 1, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), child_node, static_eval);
+                score = -negamax_alphabeta(board, depth - 1, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), child_node, static_eval, Move(), false, !cut_node);
             }
 
             // If reduced search raised alpha (including score >= beta), re-search at full depth with zero window:
             if (reduction > 0 && score > alpha) {
-                score = -negamax_alphabeta(board, depth - 1, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), child_node, static_eval);
+                score = -negamax_alphabeta(board, depth - 1, ply + 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), child_node, static_eval, Move(), false, !cut_node);
             }
 
             // PVS Re-Search: If zero-window search raised alpha at a PV node (score < beta), re-search with full [alpha, beta] window!
@@ -1012,7 +1013,7 @@ SearchResult SearchEngine::search_alphabeta(Board& board, int depth, bool use_mo
         if (i == 0) {
             score = -negamax_alphabeta(board, depth - 1, 1, -beta, -alpha, use_move_ordering, use_tt, Move(), child_json);
         } else {
-            score = -negamax_alphabeta(board, depth - 1, 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), child_json);
+            score = -negamax_alphabeta(board, depth - 1, 1, -alpha - 1, -alpha, use_move_ordering, use_tt, Move(), child_json, -ScoreInfinity, Move(), false, true);
             if (score > alpha && score < beta) {
                 score = -negamax_alphabeta(board, depth - 1, 1, -beta, -alpha, use_move_ordering, use_tt, Move(), child_json);
             }
@@ -1102,7 +1103,7 @@ void SearchEngine::iterative_deepening_root(Board& board, int max_depth, uint64_
                 if (i == 0) {
                     score = -negamax_alphabeta(board, d - 1, 1, -beta, -search_alpha, true, true, Move(), nullptr);
                 } else {
-                    score = -negamax_alphabeta(board, d - 1, 1, -search_alpha - 1, -search_alpha, true, true, Move(), nullptr);
+                    score = -negamax_alphabeta(board, d - 1, 1, -search_alpha - 1, -search_alpha, true, true, Move(), nullptr, -ScoreInfinity, Move(), false, true);
                     if (score > search_alpha && score < beta) {
                         score = -negamax_alphabeta(board, d - 1, 1, -beta, -search_alpha, true, true, Move(), nullptr);
                     }
