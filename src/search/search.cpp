@@ -433,6 +433,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     // 2. Static Eval for Pruning Decisions (computed once, reused by RFP + Futility + Multi-Table CorrHist)
     int raw_static_eval = 0;
+    bool has_static_eval = false;
     int static_eval = 0;
     int eval = 0;
     bool can_futility_prune = false;
@@ -453,10 +454,11 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
     if (!in_chk && std::abs(beta) < ScoreMate - 1000) {
         raw_static_eval = Evaluator::evaluate_fast(board, alpha, beta);
-        int pawn_corr = corr_history_[c_idx][pawn_hash];
-        int non_pawn_corr = non_pawn_corr_history_[c_idx][non_pawn_hash];
-        int major_corr = major_corr_history_[c_idx][major_hash];
-        int total_corr = std::clamp((pawn_corr + non_pawn_corr + major_corr) / 256, -1024, 1024);
+        has_static_eval = true;
+        // Entries are exponential moving averages of (search score - static eval) in
+        // 1/CorrGrain cp; the correction is their mean.
+        const int total_corr = (corr_history_[c_idx][pawn_hash] + non_pawn_corr_history_[c_idx][non_pawn_hash]
+                                + major_corr_history_[c_idx][major_hash]) / (3 * CorrGrain);
         static_eval = raw_static_eval + total_corr;
 
         // TT Evaluation Refinement: Tighten static evaluation bounds using Transposition Table score
@@ -872,15 +874,10 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
             if (use_tt && !excluded_move) {
                 tt().store(board.zobrist_key(), m, score, depth, TTBound::Lower, ply, board.halfmove_clock(), &tt_statistics_);
             }
-            if (!in_chk && raw_static_eval != 0 && std::abs(score) < ScoreMate - 1000 && !excluded_move) {
-                int err = score - raw_static_eval;
-                err = std::clamp(err, -1024, 1024);
-                int bonus = (err * depth) / 8;
-                bonus = std::clamp(bonus, -256, 256);
-                corr_history_[c_idx][pawn_hash] = std::clamp(corr_history_[c_idx][pawn_hash] + bonus, -1024, 1024);
-                non_pawn_corr_history_[c_idx][non_pawn_hash] = std::clamp(non_pawn_corr_history_[c_idx][non_pawn_hash] + bonus, -1024, 1024);
-                major_corr_history_[c_idx][major_hash] = std::clamp(major_corr_history_[c_idx][major_hash] + bonus, -1024, 1024);
-            }
+            // A fail-high is a lower bound: it only proves the static eval was too low.
+            if (has_static_eval && !m.is_capture() && !m.is_promotion() && score > raw_static_eval &&
+                std::abs(score) < ScoreMate - 1000 && !excluded_move)
+                update_correction(c_idx, pawn_hash, non_pawn_hash, major_hash, score - raw_static_eval, depth);
             if (child_node) {
                 child_node->is_pruned = true;
             }
@@ -893,15 +890,12 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
     }
 
-    if (!in_chk && raw_static_eval != 0 && std::abs(best_score) < ScoreMate - 1000 && !excluded_move) {
-        int err = best_score - raw_static_eval;
-        err = std::clamp(err, -1024, 1024);
-        int bonus = (err * depth) / 8;
-        bonus = std::clamp(bonus, -256, 256);
-        corr_history_[c_idx][pawn_hash] = std::clamp(corr_history_[c_idx][pawn_hash] + bonus, -1024, 1024);
-        non_pawn_corr_history_[c_idx][non_pawn_hash] = std::clamp(non_pawn_corr_history_[c_idx][non_pawn_hash] + bonus, -1024, 1024);
-        major_corr_history_[c_idx][major_hash] = std::clamp(major_corr_history_[c_idx][major_hash] + bonus, -1024, 1024);
-    }
+    // Exact scores correct in both directions; a fail-low (upper bound) only proves
+    // the static eval was too high. Skip when the best move was tactical.
+    if (has_static_eval && std::abs(best_score) < ScoreMate - 1000 && !excluded_move &&
+        !(best_move.is_capture() || best_move.is_promotion()) &&
+        (best_score > orig_alpha || best_score < raw_static_eval))
+        update_correction(c_idx, pawn_hash, non_pawn_hash, major_hash, best_score - raw_static_eval, depth);
 
     if (use_tt && !time_stop_flag_ && !excluded_move) {
         TTBound bound = (best_score <= orig_alpha) ? TTBound::Upper : TTBound::Exact;
