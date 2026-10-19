@@ -408,6 +408,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
     // If no TT move is found at depth >= 5 at non-PV nodes, reduce search depth by 1 ply to prevent search tree bloat.
     if (is_non_pv && use_tt && !static_cast<bool>(tt_move) && depth >= 5 && !in_chk) {
         depth--;
+        if (cut_node && depth >= 6) depth--;  // expected cut node without a TT move: reduce one more ply
     }
 
     // Only proven results may cut: probe_wdl establishes terminal legality first
