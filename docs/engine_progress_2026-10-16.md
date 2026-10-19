@@ -179,3 +179,24 @@ Reading of the eval results: v4 and v5 each lowered validation error, but neithe
 turned that into Elo. Past v3, the 704K-position game-result dataset is the
 limit, not the feature set. The next eval step is data: a few million positions
 from `tools/datagen.cpp` self-play (or a public resolved set), then retune v5 on that.
+
+## Search work on top of the Stockfish-labelled eval (2026-10-19)
+
+Same harness (8+0.08, UHO_4060_v4, Hash 16, 1 thread, colours reversed). Rule:
+a change is merged only when its 95% confidence interval lies above 0.
+
+| Candidate vs `main` | Games | Elo | 95% CI | Decision |
+|---|---|---|---|---|
+| Remove classic multi-cut pruning | 240 | **+45** | **[+14, +77]** | **merged (`b3cff56`)** |
+| Extra LMR ply when the TT move is a capture | 480 | +12 | [-10, +34] | not merged; retested in a combination |
+| Correction history that respects bound direction | 240 | +12 | [-18, +41] | not merged; retested in a combination |
+| Search parameters from 440 SPSA iterations | 240 | about 0 | | not merged |
+| TT move searched before move generation | 120 | -30 | | rejected |
+| King-safety additions (queen-ray exposure, minor defenders, shield table) | 120 | -12 | | rejected |
+| Mate-distance pruning | 120 | -23 | | rejected |
+| Other LMR variant | 120 | -15 | | rejected |
+| Null test (`main` vs itself) | 120 | +3 | | harness fair |
+
+Multi-cut searched up to 8 moves at depth - 4 at every non-PV node of depth 8 or
+more before the real move loop. Singular extension already supplies that cutoff,
+so the extra searches mostly cost time.
