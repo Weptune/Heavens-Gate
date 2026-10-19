@@ -590,44 +590,8 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
     }
 
-    // 3.9 Multi-Cut Pruning (MC) at high-depth non-PV nodes (depth >= 8)
     MoveList moves;
     bool moves_generated = false;
-
-    if (is_non_pv && depth >= 8 && !in_chk && !excluded_move && std::abs(beta) < ScoreMate - 1000) {
-        int mc_depth = depth - 1 - 3;
-        MoveGenerator::generate_legal_moves(board, moves);
-        moves_generated = true;
-        if (moves.size() >= 4) {
-            move_picker_.score_and_sort_moves(board, moves, ply, tt_move, prev_move, prev2_move, prev4_move, prev6_move, prev_piece, prev2_piece, prev4_piece, prev6_piece);
-            int cutoffs = 0;
-            int mc_count = 0;
-            for (const auto& mc_m : moves) {
-                if (mc_m == tt_move) continue;
-                if (++mc_count > 8) break; // Check up to 8 moves
-
-                if (ply < 256) {
-                    move_stack_[ply] = mc_m;
-                    piece_stack_[ply] = board.piece_at(mc_m.from());
-                }
-                board.make_move(mc_m);
-                int mc_score = -negamax_alphabeta(board, mc_depth, ply + 1, -beta, -beta + 1, use_move_ordering, use_tt, Move(), nullptr, static_eval);
-                board.unmake_move(mc_m);
-                if (ply < 256) {
-                    move_stack_[ply] = Move();
-                    piece_stack_[ply] = Piece::None;
-                }
-
-                if (mc_score >= beta) {
-                    cutoffs++;
-                    if (cutoffs >= 3) {
-                        metrics_tracker_.add_cut();
-                        return beta;
-                    }
-                }
-            }
-        }
-    }
 
     // 4. Move Generation & Ordering
     if (!moves_generated) {
