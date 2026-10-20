@@ -218,3 +218,25 @@ Second round, against `main` with multi-cut removed (`b3cff56`):
 
 Single changes of +10 to +16 Elo cannot be resolved in 240 games; stacking two
 well-founded ones and playing 800 games did resolve them.
+
+## Anchor rating of `main` at `467c422` (2026-10-20)
+
+Same setup as the eval-sf rating (noob_3moves openings with colours reversed, 1 thread,
+64 MB, books off; Blunder at 10+0.1, Stockfish UCI_Elo at 60+0.6), plus UCI_Elo 3190,
+the top of Stockfish's limiter range.
+
+| Anchor | eval-sf build | `main` `467c422` |
+|---|---|---|
+| Blunder 7.6 (2631), 100 games | 86.0% (2946) | 91.0% (3033) |
+| Stockfish 2800, 40 games | 73.8% (2979) | 83.8% (3085) |
+| Stockfish 3000, 40 games | 48.8% (2991) | 48.8% (2991) |
+| Stockfish 3190, 40 games | | 26.2% (3011) |
+| Pooled maximum likelihood | 2971 (2909-3035) | **3024 (2967-3084)** |
+
+No time forfeits in 220 games. About +53 over the eval-sf build, in line with the
+self-play gains merged since (+45 and +19). Same caveats as before: anchors measured
+here, not on CCRL.
+
+Retune of the eval on the same positions relabelled by Stockfish at 20000 nodes (was
+5000): validation error moved only from 0.02112 to 0.02107, and the build scored
++13 Elo over 240 games (95% CI [-15, +41]) against `467c422`; not merged.
