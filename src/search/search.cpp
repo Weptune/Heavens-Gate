@@ -486,7 +486,7 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
         }
 
         // Forward Futility Pruning flag (checked per-move in the loop below)
-        if (depth <= 4 && !excluded_move && eval + g_search_params.futility_margin * depth <= alpha) {
+        if (is_non_pv && depth <= 4 && !excluded_move && eval + g_search_params.futility_margin * depth <= alpha) {
             can_futility_prune = true;
         }
     }
