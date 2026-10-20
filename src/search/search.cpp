@@ -83,7 +83,7 @@ void SearchEngine::init_lmr_table(float divisor) {
 
 static struct LMRTableInit {
     LMRTableInit() {
-        SearchEngine::init_lmr_table(3.20f);
+        SearchEngine::init_lmr_table(2.95f);  // keep equal to SearchParams::lmr_divisor
     }
 } g_lmr_table_init;
 
