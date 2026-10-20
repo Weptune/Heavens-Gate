@@ -120,6 +120,13 @@ private:
     std::array<std::array<int, 4096>, 2> corr_history_{};
     std::array<std::array<int, 4096>, 2> non_pawn_corr_history_{};
     std::array<std::array<int, 4096>, 2> major_corr_history_{};
+    static constexpr int CorrGrain = 16;  // correction entries are in 1/16 cp
+    void update_correction(size_t c, size_t pawn, size_t non_pawn, size_t major, int error, int depth) noexcept {
+        const int target = std::clamp(error, -256, 256) * CorrGrain;
+        const int weight = std::min(depth + 1, 16);
+        for (int* entry : {&corr_history_[c][pawn], &non_pawn_corr_history_[c][non_pawn], &major_corr_history_[c][major]})
+            *entry = (*entry * (256 - weight) + target * weight) / 256;
+    }
     std::array<int, 256> eval_stack_{};
     std::array<Move, 256> move_stack_{};
     std::array<Piece, 256> piece_stack_{};
