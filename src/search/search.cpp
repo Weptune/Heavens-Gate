@@ -578,10 +578,6 @@ int SearchEngine::negamax_alphabeta(Board& board, int depth, int ply, int alpha,
 
         if (singular_score < singular_beta) {
             singular_extension = 1;
-            // Double extension on PV nodes if failed low by a substantial scaled margin
-            if (!is_non_pv && singular_score < singular_beta - std::max(50, 3 * singular_margin)) {
-                singular_extension = 2;
-            }
         } else if (singular_beta >= beta) {
             // Multi-cut: another move exceeded singular_beta >= beta -> immediate cutoff!
             return singular_beta;
