@@ -188,6 +188,7 @@ a change is merged only when its 95% confidence interval lies above 0.
 | Candidate vs `main` | Games | Elo | 95% CI | Decision |
 |---|---|---|---|---|
 | Remove classic multi-cut pruning | 240 | **+45** | **[+14, +77]** | **merged (`b3cff56`)** |
+| Null move only at eval >= beta, plus extra LMR ply when the TT move is a capture (stacked) | 800 | **+19** | **[+3, +36]** | **merged (`467c422`)** |
 | Extra LMR ply when the TT move is a capture | 480 | +12 | [-10, +34] | not merged; retested in a combination |
 | Correction history that respects bound direction | 240 | +12 | [-18, +41] | not merged; retested in a combination |
 | Search parameters from 440 SPSA iterations | 240 | about 0 | | not merged |
@@ -200,3 +201,20 @@ a change is merged only when its 95% confidence interval lies above 0.
 Multi-cut searched up to 8 moves at depth - 4 at every non-PV node of depth 8 or
 more before the real move loop. Singular extension already supplies that cutoff,
 so the extra searches mostly cost time.
+
+Second round, against `main` with multi-cut removed (`b3cff56`):
+
+| Candidate | Games | Elo | 95% CI | Decision |
+|---|---|---|---|---|
+| Null move only at eval >= beta (raw eval within 20*depth) | 240 | +16 | [-17, +49] | stacked, see below |
+| Stack: the above plus the capture-TT LMR ply | 800 | **+19** | **[+3, +36]** | **merged (`467c422`)** |
+| Correction history plus capture-TT LMR | 360 | +8 | [-18, +33] | stopped |
+| Cut-node tracking (extra LMR ply at expected cut nodes) | 360 | 0 | [-24, +24] | rejected |
+| TT probe in quiescence search | 240 | +4 | [-25, +34] | not merged |
+| No double singular extension at PV nodes | 240 | +12 | [-17, +40] | not merged |
+| ProbCut variant | 80 | -22 | [-70, +25] | stopped |
+| No null-move verification search | 80 | -35 | [-86, +15] | rejected |
+| SEE before gives_check in quiescence | | | | identical search, 0.06% fewer instructions; not worth a commit |
+
+Single changes of +10 to +16 Elo cannot be resolved in 240 games; stacking two
+well-founded ones and playing 800 games did resolve them.
