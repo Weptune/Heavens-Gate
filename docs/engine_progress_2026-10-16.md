@@ -240,3 +240,23 @@ here, not on CCRL.
 Retune of the eval on the same positions relabelled by Stockfish at 20000 nodes (was
 5000): validation error moved only from 0.02112 to 0.02107, and the build scored
 +13 Elo over 240 games (95% CI [-15, +41]) against `467c422`; not merged.
+
+## Third search round and SPSA (2026-10-20/21)
+
+| Candidate vs `467c422` | Games | Elo | 95% CI | Decision |
+|---|---|---|---|---|
+| **SPSA-tuned search margins (300 iterations)** | 240 | **+32** | **[+2, +63]** | **merged (`1e919d3`)** |
+| IIR at PV nodes | 160 | -9 | [-48, +30] | rejected |
+| Forward futility only at non-PV nodes | 80 | -44 | [-93, +4] | rejected |
+| One LMR ply less for killers and countermoves | 240 | +4 | [-26, +35] | neutral |
+| One LMR ply less for quiet checks | 80 | -39 | [-99, +18] | rejected |
+| No PV double extension plus correction history (stack) | 120 | 0 | [-40, +40] | stopped |
+
+SPSA: 6 parameters, 8 games per iteration at 5+0.05, starting from `467c422`. After 300
+iterations: LMR divisor 3.20 -> 2.95, RFP margin 163 -> 96, futility margin 180 -> 173,
+SEE bad-capture slope 124 -> 114, NMP eval margin 200 -> 185, aspiration delta unchanged.
+The static LMR table was initialised with a hard-coded 3.20 independent of the default;
+both now use 2.95.
+
+Long time control check: `467c422` vs `e2492e6` (before the two overnight merges) at 2+1,
+64 MB hash: +108 Elo, 40 games, 95% CI [+44, +180]. The fast-TC gains carry over to blitz.
