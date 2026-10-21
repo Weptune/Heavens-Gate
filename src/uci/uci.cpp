@@ -168,7 +168,7 @@ void UCI::loop(const std::string& first_line) {
             std::cout << "option name SEE_BadCaptureSlope type spin default 124 min 0 max 500\n";
             std::cout << "option name SEE_QuietSlope type spin default 15 min 0 max 500\n";
             std::cout << "option name NMP_EvalMargin type spin default " << g_search_params.nmp_eval_margin << " min 0 max 1000\n";
-            std::cout << "option name Singular_Margin type spin default 2 min 0 max 20\n";
+            std::cout << "option name Singular_Margin type spin default 3 min 0 max 20\n";
             std::cout << "option name Aspiration_Window_Delta type spin default " << g_search_params.aspiration_window_delta << " min 5 max 100\n";
             std::cout << "uciok" << std::endl;
         } else if (cmd == "isready") {
