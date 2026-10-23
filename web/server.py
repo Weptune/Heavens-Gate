@@ -65,6 +65,7 @@ ENGINE_THREADS = int(os.environ.get("HG_THREADS", str(max(1, min(6, (os.cpu_coun
 ENGINE_OWNBOOK = os.environ.get("HG_OWNBOOK", "true").lower() in ("1", "true", "yes")
 SEARCH_HARD_LIMIT_S = float(os.environ.get("HG_SEARCH_LIMIT_S", "35"))  # above the 30 s movetime cap
 QUEUE_TIMEOUT_S = 60.0
+KILL_GRACE_S = 5.0
 
 class EngineBridge:
     def __init__(self, engine_path):
@@ -72,6 +73,8 @@ class EngineBridge:
         self.process = None
         self.lock = threading.Lock()          # one search at a time
         self.write_lock = threading.Lock()    # the stop timer writes from another thread
+        self.search_id = 0
+        self.active_search = None
         self.start_engine()
 
     def start_engine(self):
@@ -124,16 +127,42 @@ class EngineBridge:
                 self.process.stdin.write(cmd + "\n")
                 self.process.stdin.flush()
 
+    def _stop_search(self, sid):
+        with self.write_lock:
+            if self.active_search == sid and self.process and self.process.stdin:
+                self.process.stdin.write("stop\n")
+                self.process.stdin.flush()
+
+    def _kill_search(self, sid):
+        if self.active_search == sid:
+            print("[ENGINE BRIDGE] Engine did not answer after stop; killing it")
+            proc = self.process
+            if proc:
+                proc.kill()
+
+    def _kill_process(self):
+        proc, self.process = self.process, None
+        if proc:
+            try:
+                proc.kill()
+                proc.wait(timeout=2.0)   # reap it, so no zombie is left behind
+            except Exception:
+                pass
+
     def stop_engine(self):
-        with self.lock:
+        # Do not wait for a long search on shutdown: quit after at most 2 seconds.
+        got_lock = self.lock.acquire(timeout=2.0)
+        try:
             if self.process:
                 try:
                     self._send_command("quit")
-                    self.process.terminate()
                     self.process.wait(timeout=1.0)
                 except Exception:
                     pass
-                self.process = None
+                self._kill_process()
+        finally:
+            if got_lock:
+                self.lock.release()
 
     def get_move(self, fen, depth=8, movetime=0, wtime=0, btime=0, winc=0, binc=0, moves=None):
         # Requests queue for the engine; give up rather than wait forever.
@@ -164,81 +193,99 @@ class EngineBridge:
         else:
             self._send_command(f"go depth {depth}")
 
-        # Hard cap on any one search: the engine is told to stop and still answers.
-        stopper = threading.Timer(SEARCH_HARD_LIMIT_S, self._send_command, args=("stop",))
-        stopper.daemon = True
-        stopper.start()
+        # Hard cap on any one search. At the limit the engine is told to stop; if it still
+        # has not answered after a grace period it is killed, so a hung engine can never
+        # hold the lock (and block every later request) forever. Each timer only acts on
+        # the search it was started for.
+        self.search_id += 1
+        sid = self.search_id
+        self.active_search = sid
+        stopper = threading.Timer(SEARCH_HARD_LIMIT_S, self._stop_search, args=(sid,))
+        killer = threading.Timer(SEARCH_HARD_LIMIT_S + KILL_GRACE_S, self._kill_search, args=(sid,))
+        for t in (stopper, killer):
+            t.daemon = True
+            t.start()
+        try:
+            best_move = None
+            eval_score = 0
+            is_mate = False
+            mate_in = 0
+            nodes = 0
+            nps = 0
+            pv = ""
+            completed_depth = depth
+            time_ms = 0
+            hashfull = 0
 
-        best_move = None
-        eval_score = 0
-        is_mate = False
-        mate_in = 0
-        nodes = 0
-        nps = 0
-        pv = ""
-        completed_depth = depth
-        time_ms = 0
-        hashfull = 0
-
-        while True:
-            line = self.process.stdout.readline()
-            if not line:
-                break
-            line = line.strip()
-            if line.startswith("info"):
-                tokens = line.split()
-                for i in range(len(tokens)):
-                    if tokens[i] == "depth" and i + 1 < len(tokens):
-                        try:
-                            completed_depth = int(tokens[i+1])
-                        except ValueError:
-                            pass
-                    elif tokens[i] == "score" and i + 2 < len(tokens):
-                        if tokens[i+1] == "cp":
-                            eval_score = int(tokens[i+2])
-                            is_mate = False
-                        elif tokens[i+1] == "mate":
-                            mate_in = int(tokens[i+2])
-                            is_mate = True
-                            eval_score = 29000 if mate_in > 0 else -29000
-                    elif tokens[i] == "nodes" and i + 1 < len(tokens):
-                        try:
-                            nodes = int(tokens[i+1])
-                        except ValueError:
-                            pass
-                    elif tokens[i] == "nps" and i + 1 < len(tokens):
-                        try:
-                            nps = int(tokens[i+1])
-                        except ValueError:
-                            pass
-                    elif tokens[i] == "time" and i + 1 < len(tokens):
-                        try:
-                            time_ms = int(tokens[i+1])
-                        except ValueError:
-                            pass
-                    elif tokens[i] == "hashfull" and i + 1 < len(tokens):
-                        try:
-                            hashfull = int(tokens[i+1])
-                        except ValueError:
-                            pass
-                    elif tokens[i] == "pv":
-                        # Keep only the moves: the engine appends "string Book move" to book replies.
-                        pv_moves = []
-                        for t in tokens[i+1:]:
-                            if not UCI_MOVE_RE.fullmatch(t):
-                                break
-                            pv_moves.append(t)
-                        pv = " ".join(pv_moves)
-            elif line.startswith("bestmove"):
-                parts = line.split()
-                if len(parts) >= 2:
-                    best_move = parts[1]
-                break
-        stopper.cancel()
+            while True:
+                line = self.process.stdout.readline()
+                if not line:
+                    break
+                line = line.strip()
+                if line.startswith("info"):
+                    tokens = line.split()
+                    for i in range(len(tokens)):
+                        if tokens[i] == "depth" and i + 1 < len(tokens):
+                            try:
+                                completed_depth = int(tokens[i+1])
+                            except ValueError:
+                                pass
+                        elif tokens[i] == "score" and i + 2 < len(tokens):
+                            if tokens[i+1] == "cp":
+                                eval_score = int(tokens[i+2])
+                                is_mate = False
+                            elif tokens[i+1] == "mate":
+                                mate_in = int(tokens[i+2])
+                                is_mate = True
+                                eval_score = 29000 if mate_in > 0 else -29000
+                        elif tokens[i] == "nodes" and i + 1 < len(tokens):
+                            try:
+                                nodes = int(tokens[i+1])
+                            except ValueError:
+                                pass
+                        elif tokens[i] == "nps" and i + 1 < len(tokens):
+                            try:
+                                nps = int(tokens[i+1])
+                            except ValueError:
+                                pass
+                        elif tokens[i] == "time" and i + 1 < len(tokens):
+                            try:
+                                time_ms = int(tokens[i+1])
+                            except ValueError:
+                                pass
+                        elif tokens[i] == "hashfull" and i + 1 < len(tokens):
+                            try:
+                                hashfull = int(tokens[i+1])
+                            except ValueError:
+                                pass
+                        elif tokens[i] == "pv":
+                            # Keep only the moves: the engine appends "string Book move" to book replies.
+                            pv_moves = []
+                            for t in tokens[i+1:]:
+                                if not UCI_MOVE_RE.fullmatch(t):
+                                    break
+                                pv_moves.append(t)
+                            pv = " ".join(pv_moves)
+                elif line.startswith("bestmove"):
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        best_move = parts[1]
+                    break
+        except Exception as e:
+            # Unparseable output: the protocol may be out of step, so restart the engine
+            # rather than let the next request read this search's leftovers.
+            print(f"[ENGINE BRIDGE] Search failed ({e}); restarting the engine")
+            self._kill_process()
+            return {"error": "Engine output could not be read"}
+        finally:
+            with self.write_lock:
+                self.active_search = None
+            stopper.cancel()
+            killer.cancel()
 
         if best_move is None:
-            # The engine died mid-search; the next request restarts it.
-            self.process = None
+            # The engine died (or was killed at the limit); the next request restarts it.
+            self._kill_process()
             return {"error": "Engine stopped unexpectedly"}
 
         fen_parts = fen.strip().split()
