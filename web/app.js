@@ -1114,6 +1114,13 @@ class ChessApp {
     }
 
     handleSquareClick(r, c) {
+        // After the automatic retries gave up, a click on the board asks the engine again.
+        if (this.activeTab === 'play' && this.gameState.isGameActive && !this.gameState.isGameOver &&
+            !this.gameState.isThinking && this.gameState.turn === this.engineColor() && !this.engineRetryTimer) {
+            this.engineRetries = 0;
+            this.triggerEngineMove();
+            return;
+        }
         if (this.activeTab === 'telemetry') {
             this.handleTelemetryClick(r, c);
             return;
@@ -1597,7 +1604,9 @@ class ChessApp {
             const data = await resp.json();
 
             if (!data.best_move && data.error) {
-                throw new Error(data.error);
+                const err = new Error(data.error);
+                err.clientError = resp.status >= 400 && resp.status < 500;   // a bad request: retrying will not help
+                throw err;
             }
             this.engineRetries = 0;
             if (data.best_move && this.gameState.isGameActive && (this.activeTab === 'play' || this.activeTab === 'telemetry')) {
@@ -1624,7 +1633,10 @@ class ChessApp {
             // 'busy', a restarted engine or a dropped connection: try again shortly (up to
             // 5 times) instead of telling the player it is their turn.
             this.engineRetries = (this.engineRetries || 0) + 1;
-            if (this.gameState.isGameActive && !this.gameState.isGameOver && this.engineRetries <= 5) {
+            if (e.clientError) {
+                retrying = true;
+                this.setStatus(`Engine request rejected: ${e.message}`, false);
+            } else if (this.gameState.isGameActive && !this.gameState.isGameOver && this.engineRetries <= 5) {
                 retrying = true;
                 this.setStatus(`Engine unavailable, retrying (${this.engineRetries}/5)`, true);
                 // The retry belongs to this game and this position only.
@@ -1634,7 +1646,7 @@ class ChessApp {
                     if (this.gameId === gameId && this.gameState.uciHistory.length === plies) this.triggerEngineMove();
                 }, 2000);
             } else if (this.engineRetries > 5) {
-                this.setStatus("Engine unavailable. Check the server window", false);
+                this.setStatus("Engine unavailable. Check the server window, then click the board to retry", false);
                 retrying = true;
             }
         } finally {
