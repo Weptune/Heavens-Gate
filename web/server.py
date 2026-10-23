@@ -141,11 +141,12 @@ class EngineBridge:
                 self.process.stdin.flush()
 
     def _kill_search(self, sid):
-        if self.active_search == sid:
-            print("[ENGINE BRIDGE] Engine did not answer after stop; killing it")
-            proc = self.process
-            if proc:
-                proc.kill()
+        # Under the write lock, like _stop_search: the search cannot finish and a new one
+        # start between the check and the kill.
+        with self.write_lock:
+            if self.active_search == sid and self.process:
+                print("[ENGINE BRIDGE] Engine did not answer after stop; killing it")
+                self.process.kill()
 
     def _kill_process(self):
         proc, self.process = self.process, None
