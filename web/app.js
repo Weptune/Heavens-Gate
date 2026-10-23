@@ -1570,6 +1570,11 @@ class ChessApp {
         this.clearEngineRetry();
         this.gameState.isThinking = true;
         let retrying = false;
+        // The game and position this request is for. A reply that arrives after a reset
+        // or after the position changed belongs to nothing on the board and is ignored.
+        const reqGameId = this.gameId, reqPlies = this.gameState.uciHistory.length;
+        const isStale = () => this.gameId !== reqGameId || this.gameState.uciHistory.length !== reqPlies;
+        let stale = false;   // decided when the reply arrives (applying it changes the ply count)
         this.setStatus("SOVEREIGN CALCULATING", true);
 
         const fen = this.getFEN();
@@ -1602,6 +1607,7 @@ class ChessApp {
                 })
             });
             const data = await resp.json();
+            if ((stale = isStale())) return;
 
             if (!data.best_move && data.error) {
                 const err = new Error(data.error);
@@ -1629,6 +1635,7 @@ class ChessApp {
                 this.updateOracle(scoreWhite, data.pv, engineColor);
             }
         } catch (e) {
+            if ((stale = isStale())) return;
             console.error("Engine API error:", e);
             // 'busy', a restarted engine or a dropped connection: try again shortly (up to
             // 5 times) instead of telling the player it is their turn.
@@ -1640,16 +1647,17 @@ class ChessApp {
                 retrying = true;
                 this.setStatus(`Engine unavailable, retrying (${this.engineRetries}/5)`, true);
                 // The retry belongs to this game and this position only.
-                const gameId = this.gameId, plies = this.gameState.uciHistory.length;
                 this.engineRetryTimer = setTimeout(() => {
                     this.engineRetryTimer = null;
-                    if (this.gameId === gameId && this.gameState.uciHistory.length === plies) this.triggerEngineMove();
+                    if (!isStale()) this.triggerEngineMove();
                 }, 2000);
             } else if (this.engineRetries > 5) {
                 this.setStatus("Engine unavailable. Check the server window, then click the board to retry", false);
                 retrying = true;
             }
         } finally {
+            // A stale reply must not touch the state of the request that replaced it.
+            if (stale) return;
             this.gameState.isThinking = false;
             if (!retrying && this.gameState.isGameActive && (this.activeTab === 'play' || this.activeTab === 'telemetry')) {
                 this.setStatus("YOUR TURN", false);
