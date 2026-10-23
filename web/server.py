@@ -11,6 +11,7 @@ Settings (environment variables):
   HG_THREADS           engine threads (core count minus one, at most 6)
   HG_OWNBOOK           use the engine's opening book (true)
   HG_SEARCH_LIMIT_S    hard limit for any one search in seconds (35)
+  HG_STARTUP_TIMEOUT_S time the engine gets to answer the UCI handshake (15)
 """
 import http.server
 import json
@@ -73,7 +74,7 @@ ENGINE_OWNBOOK = os.environ.get("HG_OWNBOOK", "true").lower() in ("1", "true", "
 SEARCH_HARD_LIMIT_S = float(os.environ.get("HG_SEARCH_LIMIT_S", "35"))  # above the 30 s movetime cap
 QUEUE_TIMEOUT_S = 60.0
 KILL_GRACE_S = 5.0
-STARTUP_TIMEOUT_S = 15.0
+STARTUP_TIMEOUT_S = float(os.environ.get("HG_STARTUP_TIMEOUT_S", "15"))
 
 class EngineBridge:
     def __init__(self, engine_path):
@@ -109,23 +110,11 @@ class EngineBridge:
             watchdog = threading.Timer(STARTUP_TIMEOUT_S, proc.kill)
             watchdog.daemon = True
             watchdog.start()
-            # Drain startup output and strictly synchronize UCI protocol
-            self._send_command("uci")
-            while True:
-                line = self.process.stdout.readline()
-                if not line or line.strip() == "uciok":
-                    break
-            # The engine's UCI defaults are Threads=1 and OwnBook=false (tester
-            # convention). Use the host's cores, leaving one for the web server.
-            self._send_command(f"setoption name Threads value {ENGINE_THREADS}")
-            self._send_command(f"setoption name OwnBook value {'true' if ENGINE_OWNBOOK else 'false'}")
-            self._send_command("isready")
-            while True:
-                line = self.process.stdout.readline()
-                if not line or line.strip() == "readyok":
-                    break
-            watchdog.cancel()
-            if proc.poll() is not None or not line:
+            try:
+                self._handshake()
+            finally:
+                watchdog.cancel()
+            if proc.poll() is not None or not self._handshake_ok:
                 print(f"[ERROR] Engine did not complete the UCI handshake within {STARTUP_TIMEOUT_S:.0f} s")
                 self._kill_process()
                 return
@@ -134,6 +123,25 @@ class EngineBridge:
             # Includes a broken pipe after the startup watchdog killed a hung engine.
             print(f"[ERROR] Failed to start engine process (no UCI handshake within {STARTUP_TIMEOUT_S:.0f} s?): {e}")
             self._kill_process()
+
+    def _handshake(self):
+        self._handshake_ok = False
+        # Drain startup output and strictly synchronize UCI protocol
+        self._send_command("uci")
+        while True:
+            line = self.process.stdout.readline()
+            if not line or line.strip() == "uciok":
+                break
+        # The engine's UCI defaults are Threads=1 and OwnBook=false (tester
+        # convention). Use the host's cores, leaving one for the web server.
+        self._send_command(f"setoption name Threads value {ENGINE_THREADS}")
+        self._send_command(f"setoption name OwnBook value {'true' if ENGINE_OWNBOOK else 'false'}")
+        self._send_command("isready")
+        while True:
+            line = self.process.stdout.readline()
+            if not line or line.strip() == "readyok":
+                break
+        self._handshake_ok = bool(line)
 
     @staticmethod
     def _drain_stderr(process):
