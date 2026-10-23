@@ -834,6 +834,8 @@ class ChessApp {
         this.gameState.uciHistory = [];
         this.gameState.lastMove = null;
         this.engineRetries = 0;
+        this.clearEngineRetry();
+        this.gameId = (this.gameId || 0) + 1;
         this.gameState.isGameActive = false;
         this.gameState.isGameOver = false;
         this.gameState.isThinking = false;
@@ -890,6 +892,13 @@ class ChessApp {
     getCurrentCastling() {
         if (this.activeTab === 'telemetry') return this.telemetryState.castlingRights;
         return this.gameState.castlingRights;
+    }
+
+    clearEngineRetry() {
+        if (this.engineRetryTimer) {
+            clearTimeout(this.engineRetryTimer);
+            this.engineRetryTimer = null;
+        }
     }
 
     engineColor() {
@@ -1549,6 +1558,9 @@ class ChessApp {
 
     async triggerEngineMove() {
         if (this.gameState.isThinking || this.gameState.isGameOver || !this.gameState.isGameActive || this.activeTab !== 'play') return;
+        // Never move for the human: the engine only moves on its own turn.
+        if (this.gameState.turn !== this.engineColor()) return;
+        this.clearEngineRetry();
         this.gameState.isThinking = true;
         let retrying = false;
         this.setStatus("SOVEREIGN CALCULATING", true);
@@ -1615,7 +1627,12 @@ class ChessApp {
             if (this.gameState.isGameActive && !this.gameState.isGameOver && this.engineRetries <= 5) {
                 retrying = true;
                 this.setStatus(`Engine unavailable, retrying (${this.engineRetries}/5)`, true);
-                setTimeout(() => this.triggerEngineMove(), 2000);
+                // The retry belongs to this game and this position only.
+                const gameId = this.gameId, plies = this.gameState.uciHistory.length;
+                this.engineRetryTimer = setTimeout(() => {
+                    this.engineRetryTimer = null;
+                    if (this.gameId === gameId && this.gameState.uciHistory.length === plies) this.triggerEngineMove();
+                }, 2000);
             } else if (this.engineRetries > 5) {
                 this.setStatus("Engine unavailable. Check the server window", false);
                 retrying = true;
