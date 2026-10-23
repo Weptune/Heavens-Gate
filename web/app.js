@@ -780,8 +780,8 @@ class ChessApp {
             if (this.gameState.timeControl !== 'fixed_depth' && !this.gameState.timeControl.startsWith('movetime_')) this.startClock();
             // An engine reply that arrived while another tab was open is discarded;
             // ask again so the game does not stall on the engine's turn.
-            const engineTurn = (this.gameState.playMode === 'human_white') ? 'b' : 'w';
-            if (!this.gameState.isGameOver && !this.gameState.isThinking && this.gameState.turn === engineTurn) {
+            const engineTurn = this.engineColor();
+            if (engineTurn && !this.gameState.isGameOver && !this.gameState.isThinking && this.gameState.turn === engineTurn) {
                 this.triggerEngineMove();
             }
         } else {
@@ -833,6 +833,7 @@ class ChessApp {
         this.gameState.moveHistory = [];
         this.gameState.uciHistory = [];
         this.gameState.lastMove = null;
+        this.engineRetries = 0;
         this.gameState.isGameActive = false;
         this.gameState.isGameOver = false;
         this.gameState.isThinking = false;
@@ -889,6 +890,12 @@ class ChessApp {
     getCurrentCastling() {
         if (this.activeTab === 'telemetry') return this.telemetryState.castlingRights;
         return this.gameState.castlingRights;
+    }
+
+    engineColor() {
+        if (this.gameState.playMode === 'human_white') return 'b';
+        if (this.gameState.playMode === 'human_black') return 'w';
+        return null;
     }
 
     getCurrentUciHistory() {
@@ -1543,6 +1550,7 @@ class ChessApp {
     async triggerEngineMove() {
         if (this.gameState.isThinking || this.gameState.isGameOver || !this.gameState.isGameActive || this.activeTab !== 'play') return;
         this.gameState.isThinking = true;
+        let retrying = false;
         this.setStatus("SOVEREIGN CALCULATING", true);
 
         const fen = this.getFEN();
@@ -1576,6 +1584,10 @@ class ChessApp {
             });
             const data = await resp.json();
 
+            if (!data.best_move && data.error) {
+                throw new Error(data.error);
+            }
+            this.engineRetries = 0;
             if (data.best_move && this.gameState.isGameActive && (this.activeTab === 'play' || this.activeTab === 'telemetry')) {
                 const src = data.best_move.substring(0, 2);
                 const dst = data.best_move.substring(2, 4);
@@ -1597,9 +1609,20 @@ class ChessApp {
             }
         } catch (e) {
             console.error("Engine API error:", e);
+            // 'busy', a restarted engine or a dropped connection: try again shortly (up to
+            // 5 times) instead of telling the player it is their turn.
+            this.engineRetries = (this.engineRetries || 0) + 1;
+            if (this.gameState.isGameActive && !this.gameState.isGameOver && this.engineRetries <= 5) {
+                retrying = true;
+                this.setStatus(`Engine unavailable, retrying (${this.engineRetries}/5)`, true);
+                setTimeout(() => this.triggerEngineMove(), 2000);
+            } else if (this.engineRetries > 5) {
+                this.setStatus("Engine unavailable. Check the server window", false);
+                retrying = true;
+            }
         } finally {
             this.gameState.isThinking = false;
-            if (this.gameState.isGameActive && (this.activeTab === 'play' || this.activeTab === 'telemetry')) {
+            if (!retrying && this.gameState.isGameActive && (this.activeTab === 'play' || this.activeTab === 'telemetry')) {
                 this.setStatus("YOUR TURN", false);
             }
         }
