@@ -89,6 +89,8 @@ class EngineBridge:
             print(f"[ERROR] Failed to start engine process: {e}")
 
     def _send_command(self, cmd):
+        if "\n" in cmd or "\r" in cmd:
+            raise ValueError("engine command must be a single line")
         if self.process and self.process.stdin:
             self.process.stdin.write(cmd + "\n")
             self.process.stdin.flush()
@@ -312,6 +314,84 @@ def parse_pgn_file(file_path):
         }
     }
 
+START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+MAX_BODY_BYTES = 64 * 1024
+MAX_MOVES = 1000
+UCI_MOVE_RE = re.compile(r"[a-h][1-8][a-h][1-8][qrbn]?")
+RANK_RE = re.compile(r"[pnbrqkPNBRQK1-8]{1,8}")
+
+
+class BadRequest(Exception):
+    """Client error with an HTTP status code."""
+    def __init__(self, message, status=400):
+        super().__init__(message)
+        self.status = status
+
+
+def validate_fen(fen):
+    """Return a normalised 6-field FEN or raise BadRequest. Only the characters a FEN
+    can contain get through, so nothing else can reach the engine's command line."""
+    if not isinstance(fen, str) or len(fen) > 100:
+        raise BadRequest("fen must be a string of at most 100 characters")
+    fields = fen.split()
+    if len(fields) == 4:
+        fields += ["0", "1"]
+    if len(fields) != 6:
+        raise BadRequest("fen must have 6 fields")
+    board, side, castling, ep, half, full = fields
+    ranks = board.split("/")
+    if len(ranks) != 8 or not all(RANK_RE.fullmatch(r) for r in ranks):
+        raise BadRequest("fen board is malformed")
+    for r in ranks:
+        if sum(int(ch) if ch.isdigit() else 1 for ch in r) != 8:
+            raise BadRequest("every fen rank must hold 8 squares")
+    if board.count("K") != 1 or board.count("k") != 1:
+        raise BadRequest("fen needs exactly one king per side")
+    if side not in ("w", "b"):
+        raise BadRequest("fen side to move must be w or b")
+    if not re.fullmatch(r"-|K?Q?k?q?", castling) or castling == "":
+        raise BadRequest("fen castling field is malformed")
+    if not re.fullmatch(r"-|[a-h][36]", ep):
+        raise BadRequest("fen en-passant field is malformed")
+    if not (half.isdigit() and full.isdigit() and int(half) <= 999 and 1 <= int(full) <= 9999):
+        raise BadRequest("fen move counters are out of range")
+    return " ".join([board, side, castling, ep, half, full])
+
+
+def validate_moves(moves):
+    if moves is None:
+        return []
+    if not isinstance(moves, list) or len(moves) > MAX_MOVES:
+        raise BadRequest(f"moves must be a list of at most {MAX_MOVES} UCI moves")
+    for m in moves:
+        if not isinstance(m, str) or not UCI_MOVE_RE.fullmatch(m):
+            raise BadRequest("every move must be in UCI form, e.g. e2e4 or e7e8q")
+    return moves
+
+
+def int_field(req, name, default, lo, hi):
+    """Integer field clamped to [lo, hi]; strings, floats and booleans are rejected."""
+    v = req.get(name, default)
+    if isinstance(v, bool) or not isinstance(v, int):
+        raise BadRequest(f"{name} must be an integer")
+    return max(lo, min(hi, v))
+
+
+def parse_engine_request(req, default_depth):
+    if not isinstance(req, dict):
+        raise BadRequest("request body must be a JSON object")
+    return {
+        "fen": validate_fen(req.get("fen", START_FEN)),
+        "moves": validate_moves(req.get("moves")),
+        "depth": int_field(req, "depth", default_depth, 1, 20),
+        "movetime": int_field(req, "movetime", 0, 0, 30_000),
+        "wtime": int_field(req, "wtime", 0, 0, 3 * 3600 * 1000),
+        "btime": int_field(req, "btime", 0, 0, 3 * 3600 * 1000),
+        "winc": int_field(req, "winc", 0, 0, 60_000),
+        "binc": int_field(req, "binc", 0, 0, 60_000),
+    }
+
+
 class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         web_dir = os.path.dirname(os.path.abspath(__file__))
@@ -323,44 +403,44 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Expires', '0')
         super().end_headers()
 
+    def send_json(self, status, obj):
+        body = json.dumps(obj).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def read_json_body(self):
+        length = self.headers.get("Content-Length")
+        if length is None or not length.strip().isdigit():
+            raise BadRequest("Content-Length header is required", 411)
+        length = int(length)
+        if length > MAX_BODY_BYTES:
+            raise BadRequest("request body is too large", 413)
+        try:
+            return json.loads(self.rfile.read(length).decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            raise BadRequest("request body is not valid JSON")
+
     def do_POST(self):
-        if self.path == "/api/move":
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            req = json.loads(post_data.decode('utf-8'))
-            
-            fen = req.get("fen", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-            depth = req.get("depth", 8)
-            movetime = req.get("movetime", 0)
-            wtime = req.get("wtime", 0)
-            btime = req.get("btime", 0)
-            winc = req.get("winc", 0)
-            binc = req.get("binc", 0)
-            
-            moves = req.get("moves") or []
-            res = bridge.get_move(fen, depth=depth, movetime=movetime, wtime=wtime, btime=btime, winc=winc, binc=binc, moves=moves)
-            
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            self.wfile.write(json.dumps(res).encode('utf-8'))
-        elif self.path == "/api/analyze":
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            req = json.loads(post_data.decode('utf-8'))
-            fen = req.get("fen", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-            depth = req.get("depth", 10)
-            movetime = req.get("movetime", 0)
-            moves = req.get("moves") or []
-            res = bridge.get_move(fen, depth=depth, movetime=movetime, moves=moves)
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            self.wfile.write(json.dumps(res).encode('utf-8'))
-        else:
+        if self.path not in ("/api/move", "/api/analyze"):
             self.send_error(404)
+            return
+        try:
+            req = self.read_json_body()
+            if self.path == "/api/move":
+                p = parse_engine_request(req, default_depth=8)
+                res = bridge.get_move(p["fen"], depth=p["depth"], movetime=p["movetime"], wtime=p["wtime"],
+                                      btime=p["btime"], winc=p["winc"], binc=p["binc"], moves=p["moves"])
+            else:
+                p = parse_engine_request(req, default_depth=10)
+                res = bridge.get_move(p["fen"], depth=p["depth"], movetime=p["movetime"], moves=p["moves"])
+        except BadRequest as e:
+            self.send_json(e.status, {"error": str(e)})
+            return
+        self.send_json(200 if "error" not in res else 503, res)
 
     def do_GET(self):
         from urllib.parse import urlparse, parse_qs
