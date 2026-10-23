@@ -10,7 +10,12 @@ import re
 import glob
 import time
 
-PORT = 8000
+PORT = int(os.environ.get("HG_WEB_PORT", "8000"))
+# Listen on this machine only. Set HG_WEB_HOST=0.0.0.0 to share the board on your
+# local network on purpose (and add the address you browse to HG_WEB_ALLOWED_HOSTS).
+HOST = os.environ.get("HG_WEB_HOST", "127.0.0.1")
+ALLOWED_HOSTS = {f"localhost:{PORT}", f"127.0.0.1:{PORT}", f"[::1]:{PORT}"} | {
+    h.strip() for h in os.environ.get("HG_WEB_ALLOWED_HOSTS", "").split(",") if h.strip()}
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -408,7 +413,6 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(body)
 
@@ -429,6 +433,7 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(404)
             return
         try:
+            self.check_origin()
             req = self.read_json_body()
             if self.path == "/api/move":
                 p = parse_engine_request(req, default_depth=8)
@@ -444,6 +449,11 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         from urllib.parse import urlparse, parse_qs
+        try:
+            self.check_origin()
+        except BadRequest as e:
+            self.send_json(e.status, {"error": str(e)})
+            return
         parsed_url = urlparse(self.path)
         path = parsed_url.path
         query = parse_qs(parsed_url.query)
@@ -478,7 +488,6 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(json.dumps(batches).encode('utf-8'))
 
@@ -496,7 +505,6 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(json.dumps(parsed).encode('utf-8'))
 
@@ -504,19 +512,30 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
+        # No cross-origin access: the page and the API share one origin.
+        self.send_error(405)
+
+    def check_origin(self):
+        """Block requests from other websites and DNS-rebinding hosts. A page on another
+        site can still send a 'simple' POST without a preflight, so the Host, Origin
+        and Content-Type are checked here rather than relying on CORS."""
+        host = self.headers.get("Host", "")
+        if host not in ALLOWED_HOSTS:
+            raise BadRequest("unknown Host header", 403)
+        origin = self.headers.get("Origin")
+        if origin is not None and origin != f"http://{host}":
+            raise BadRequest("cross-origin requests are not allowed", 403)
+        if self.command == "POST" and self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
+            raise BadRequest("Content-Type must be application/json", 415)
+
 
 if __name__ == "__main__":
     print(f"======================================================")
     print(f"  HEAVEN'S GATE CHESS ENGINE - WEB APPLICATION SERVER")
-    print(f"  Server URL: http://localhost:{PORT}")
+    print(f"  Server URL: http://localhost:{PORT}  (listening on {HOST})")
     print(f"======================================================")
     
-    with socketserver.TCPServer(("", PORT), ChessRequestHandler) as httpd:
+    with socketserver.TCPServer((HOST, PORT), ChessRequestHandler) as httpd:
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
