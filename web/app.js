@@ -1879,6 +1879,8 @@ class ChessApp {
 
     async requestHint() {
         if (this.gameState.isThinking || this.gameState.isGameOver) return;
+        // The tournament tab shows a replay, not a position you are playing.
+        if (this.activeTab === 'tournament') return;
         const fen = this.getFEN();
         const resp = await fetch('/api/analyze', {
             method: 'POST',
