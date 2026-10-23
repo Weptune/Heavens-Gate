@@ -778,6 +778,12 @@ class ChessApp {
             this.setStatus(this.gameState.isThinking ? 'Calculating' : 'Match Active', this.gameState.isThinking);
             this.oracleTextEl.textContent = `${this.gameState.turn === 'w' ? 'White' : 'Black'} to move.`;
             if (this.gameState.timeControl !== 'fixed_depth' && !this.gameState.timeControl.startsWith('movetime_')) this.startClock();
+            // An engine reply that arrived while another tab was open is discarded;
+            // ask again so the game does not stall on the engine's turn.
+            const engineTurn = (this.gameState.playMode === 'human_white') ? 'b' : 'w';
+            if (!this.gameState.isGameOver && !this.gameState.isThinking && this.gameState.turn === engineTurn) {
+                this.triggerEngineMove();
+            }
         } else {
             this.startBtn.textContent = 'Start Match';
             this.setStatus('Ready', false);
