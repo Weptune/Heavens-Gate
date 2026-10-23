@@ -454,7 +454,8 @@ def validate_fen(fen):
         raise BadRequest("fen castling field is malformed")
     if not re.fullmatch(r"-|[a-h][36]", ep):
         raise BadRequest("fen en-passant field is malformed")
-    if not (half.isdigit() and full.isdigit() and int(half) <= 999 and 1 <= int(full) <= 9999):
+    # ASCII digits only: str.isdigit() also accepts characters such as '٣' and '²'.
+    if not (re.fullmatch(r"[0-9]{1,3}", half) and re.fullmatch(r"[0-9]{1,4}", full) and int(full) >= 1):
         raise BadRequest("fen move counters are out of range")
     return " ".join([board, side, castling, ep, half, full])
 
@@ -514,7 +515,7 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def read_json_body(self):
         length = self.headers.get("Content-Length")
-        if length is None or not length.strip().isdigit():
+        if length is None or not re.fullmatch(r"[0-9]{1,9}", length.strip()):
             raise BadRequest("Content-Length header is required", 411)
         length = int(length)
         if length > MAX_BODY_BYTES:
@@ -591,7 +592,7 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
             batch_id = query.get('batch', ['8'])[0]
             # Digits only: the id becomes part of a file name. (On Windows ".." in a
             # path is resolved as text, so a crafted id could read other .pgn files.)
-            if not re.fullmatch(r"\d{1,6}", batch_id):
+            if not re.fullmatch(r"[0-9]{1,6}", batch_id):
                 self.send_json(400, {"error": "batch must be a number"})
                 return
             fname = f"tournament_results_batch{int(batch_id)}.pgn"
