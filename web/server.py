@@ -73,6 +73,7 @@ ENGINE_OWNBOOK = os.environ.get("HG_OWNBOOK", "true").lower() in ("1", "true", "
 SEARCH_HARD_LIMIT_S = float(os.environ.get("HG_SEARCH_LIMIT_S", "35"))  # above the 30 s movetime cap
 QUEUE_TIMEOUT_S = 60.0
 KILL_GRACE_S = 5.0
+STARTUP_TIMEOUT_S = 15.0
 
 class EngineBridge:
     def __init__(self, engine_path):
@@ -102,6 +103,12 @@ class EngineBridge:
                 cwd=engine_dir
             )
             threading.Thread(target=self._drain_stderr, args=(self.process,), daemon=True).start()
+            # An engine that never finishes the handshake is killed, so it cannot hold
+            # the lock forever; the reads below then end and the engine counts as failed.
+            proc = self.process
+            watchdog = threading.Timer(STARTUP_TIMEOUT_S, proc.kill)
+            watchdog.daemon = True
+            watchdog.start()
             # Drain startup output and strictly synchronize UCI protocol
             self._send_command("uci")
             while True:
@@ -117,9 +124,16 @@ class EngineBridge:
                 line = self.process.stdout.readline()
                 if not line or line.strip() == "readyok":
                     break
+            watchdog.cancel()
+            if proc.poll() is not None or not line:
+                print(f"[ERROR] Engine did not complete the UCI handshake within {STARTUP_TIMEOUT_S:.0f} s")
+                self._kill_process()
+                return
             print(f"[ENGINE BRIDGE] Successfully launched and synchronized Heaven's Gate UCI Process (PID {self.process.pid}) in {engine_dir}")
         except Exception as e:
-            print(f"[ERROR] Failed to start engine process: {e}")
+            # Includes a broken pipe after the startup watchdog killed a hung engine.
+            print(f"[ERROR] Failed to start engine process (no UCI handshake within {STARTUP_TIMEOUT_S:.0f} s?): {e}")
+            self._kill_process()
 
     @staticmethod
     def _drain_stderr(process):
@@ -190,16 +204,21 @@ class EngineBridge:
 
         # With the move list the engine sees the game history and can avoid (or aim
         # for) repetitions; both boards in the web app start from the initial position.
-        if moves:
-            self._send_command("position startpos moves " + " ".join(moves))
-        else:
-            self._send_command(f"position fen {fen}")
-        if movetime > 0:
-            self._send_command(f"go movetime {movetime}")
-        elif wtime > 0 and btime > 0:
-            self._send_command(f"go wtime {wtime} btime {btime} winc {winc} binc {binc}")
-        else:
-            self._send_command(f"go depth {depth}")
+        try:
+            if moves:
+                self._send_command("position startpos moves " + " ".join(moves))
+            else:
+                self._send_command(f"position fen {fen}")
+            if movetime > 0:
+                self._send_command(f"go movetime {movetime}")
+            elif wtime > 0 and btime > 0:
+                self._send_command(f"go wtime {wtime} btime {btime} winc {winc} binc {binc}")
+            else:
+                self._send_command(f"go depth {depth}")
+        except OSError:
+            # The engine died between requests (broken pipe); the next request restarts it.
+            self._kill_process()
+            return {"error": "Engine stopped unexpectedly"}
 
         # Hard cap on any one search. At the limit the engine is told to stop; if it still
         # has not answered after a grace period it is killed, so a hung engine can never
