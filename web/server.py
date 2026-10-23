@@ -8,10 +8,42 @@ import threading
 import math
 import re
 import glob
+import time
 
 PORT = 8000
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ENGINE_PATH = os.path.join(REPO_DIR, "heavensgate.exe")
+
+
+def find_engine():
+    """Pick the engine binary: HG_ENGINE if set, else the CMake build output, else the
+    repo-root copy. The repo-root heavensgate.exe is often a stale hand-copied build,
+    so the fresh build in build/ wins when both exist."""
+    env = os.environ.get("HG_ENGINE")
+    if env:
+        return os.path.abspath(env)
+    names = ["heavensgate.exe", "heavensgate"]
+    for d in (os.path.join(REPO_DIR, "build"), REPO_DIR):
+        for n in names:
+            p = os.path.join(d, n)
+            if os.path.isfile(p):
+                return p
+    return os.path.join(REPO_DIR, "build", "heavensgate.exe")
+
+
+def warn_if_stale(engine_path):
+    """Warn when any engine source file is newer than the binary being served."""
+    if not os.path.isfile(engine_path):
+        return
+    built = os.path.getmtime(engine_path)
+    newest = max((os.path.getmtime(f) for f in glob.glob(os.path.join(REPO_DIR, "src", "**", "*.*pp"), recursive=True)), default=0)
+    stamp = time.strftime("%Y-%m-%d %H:%M", time.localtime(built))
+    print(f"[ENGINE BRIDGE] Engine binary: {engine_path} (built {stamp})")
+    if newest > built:
+        print("[ENGINE BRIDGE] WARNING: engine sources are newer than this binary; rebuild with "
+              "'cmake --build build' so the site plays the current engine.")
+
+
+ENGINE_PATH = find_engine()
 
 class EngineBridge:
     def __init__(self, engine_path):
@@ -193,6 +225,7 @@ class EngineBridge:
             }
 
 import atexit
+warn_if_stale(ENGINE_PATH)
 bridge = EngineBridge(ENGINE_PATH)
 atexit.register(bridge.stop_engine)
 
