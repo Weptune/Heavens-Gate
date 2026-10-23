@@ -48,6 +48,11 @@ const INITIAL_BOARD = [
     ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
 ];
 
+// Text from PGN files (names, termination comments) must not be parsed as HTML.
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
 class SoundFX {
     constructor() { this.ctx = null; }
     init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
@@ -2381,14 +2386,14 @@ class ChessApp {
             else if (game.result === '0-1') resClass = !isMasterWhite ? 'result-win' : 'result-loss';
 
             const hgColor = isMasterWhite ? 'White' : 'Black';
-            const termShort = game.termination ? ` • ${game.termination}` : '';
+            const termShort = game.termination ? ` • ${escapeHtml(game.termination)}` : '';
 
             item.innerHTML = `
                 <div class="game-item-info">
-                    <span class="game-item-title">Game ${game.round}: HG (${hgColor}) vs Stockfish</span>
-                    <span class="game-item-sub">${game.move_count} plies${termShort}</span>
+                    <span class="game-item-title">Game ${escapeHtml(game.round)}: HG (${hgColor}) vs Stockfish</span>
+                    <span class="game-item-sub">${escapeHtml(game.move_count)} plies${termShort}</span>
                 </div>
-                <span class="game-result-badge ${resClass}">${resText}</span>
+                <span class="game-result-badge ${resClass}">${escapeHtml(resText)}</span>
             `;
             item.addEventListener('click', () => this.selectTourneyGame(idx));
             this.tourneyGamesList.appendChild(item);
