@@ -1,5 +1,4 @@
 import http.server
-import socketserver
 import json
 import subprocess
 import os
@@ -49,12 +48,17 @@ def warn_if_stale(engine_path):
 
 
 ENGINE_PATH = find_engine()
+ENGINE_THREADS = int(os.environ.get("HG_THREADS", str(max(1, min(6, (os.cpu_count() or 2) - 1)))))
+ENGINE_OWNBOOK = os.environ.get("HG_OWNBOOK", "true").lower() in ("1", "true", "yes")
+SEARCH_HARD_LIMIT_S = float(os.environ.get("HG_SEARCH_LIMIT_S", "35"))  # above the 30 s movetime cap
+QUEUE_TIMEOUT_S = 60.0
 
 class EngineBridge:
     def __init__(self, engine_path):
         self.engine_path = engine_path
         self.process = None
-        self.lock = threading.Lock()
+        self.lock = threading.Lock()          # one search at a time
+        self.write_lock = threading.Lock()    # the stop timer writes from another thread
         self.start_engine()
 
     def start_engine(self):
@@ -69,21 +73,22 @@ class EngineBridge:
                 [engine_abs_path, "uci"],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.PIPE,  # drained by a thread so the pipe can never fill and block the engine
                 text=True,
                 bufsize=1,
                 cwd=engine_dir
             )
+            threading.Thread(target=self._drain_stderr, args=(self.process,), daemon=True).start()
             # Drain startup output and strictly synchronize UCI protocol
             self._send_command("uci")
             while True:
                 line = self.process.stdout.readline()
                 if not line or line.strip() == "uciok":
                     break
-            # The engine's UCI defaults are now Threads=1 and OwnBook=false (tester
-            # convention). Pin the arena's previous settings explicitly.
-            self._send_command("setoption name Threads value 6")
-            self._send_command("setoption name OwnBook value true")
+            # The engine's UCI defaults are Threads=1 and OwnBook=false (tester
+            # convention). Use the host's cores, leaving one for the web server.
+            self._send_command(f"setoption name Threads value {ENGINE_THREADS}")
+            self._send_command(f"setoption name OwnBook value {'true' if ENGINE_OWNBOOK else 'false'}")
             self._send_command("isready")
             while True:
                 line = self.process.stdout.readline()
@@ -93,12 +98,18 @@ class EngineBridge:
         except Exception as e:
             print(f"[ERROR] Failed to start engine process: {e}")
 
+    @staticmethod
+    def _drain_stderr(process):
+        for line in process.stderr:
+            print(f"[ENGINE STDERR] {line.rstrip()}")
+
     def _send_command(self, cmd):
         if "\n" in cmd or "\r" in cmd:
             raise ValueError("engine command must be a single line")
-        if self.process and self.process.stdin:
-            self.process.stdin.write(cmd + "\n")
-            self.process.stdin.flush()
+        with self.write_lock:
+            if self.process and self.process.stdin:
+                self.process.stdin.write(cmd + "\n")
+                self.process.stdin.flush()
 
     def stop_engine(self):
         with self.lock:
@@ -112,124 +123,149 @@ class EngineBridge:
                 self.process = None
 
     def get_move(self, fen, depth=8, movetime=0, wtime=0, btime=0, winc=0, binc=0, moves=None):
-        with self.lock:
-            if not self.process or self.process.poll() is not None:
-                self.start_engine()
+        # Requests queue for the engine; give up rather than wait forever.
+        if not self.lock.acquire(timeout=QUEUE_TIMEOUT_S):
+            return {"error": "Engine is busy, try again"}
+        try:
+            return self._get_move_locked(fen, depth, movetime, wtime, btime, winc, binc, moves)
+        finally:
+            self.lock.release()
 
-            if not self.process:
-                return {"error": "Engine process not available"}
+    def _get_move_locked(self, fen, depth, movetime, wtime, btime, winc, binc, moves):
+        if not self.process or self.process.poll() is not None:
+            self.start_engine()
 
-            # With the move list the engine sees the game history and can avoid (or aim
-            # for) repetitions; both boards in the web app start from the initial position.
-            if moves:
-                self._send_command("position startpos moves " + " ".join(moves))
-            else:
-                self._send_command(f"position fen {fen}")
-            if movetime > 0:
-                self._send_command(f"go movetime {movetime}")
-            elif wtime > 0 and btime > 0:
-                self._send_command(f"go wtime {wtime} btime {btime} winc {winc} binc {binc}")
-            else:
-                self._send_command(f"go depth {depth}")
+        if not self.process:
+            return {"error": "Engine process not available"}
 
-            best_move = None
-            eval_score = 0
-            is_mate = False
-            mate_in = 0
-            nodes = 0
-            nps = 0
-            pv = ""
-            completed_depth = depth
-            time_ms = 0
-            hashfull = 0
+        # With the move list the engine sees the game history and can avoid (or aim
+        # for) repetitions; both boards in the web app start from the initial position.
+        if moves:
+            self._send_command("position startpos moves " + " ".join(moves))
+        else:
+            self._send_command(f"position fen {fen}")
+        if movetime > 0:
+            self._send_command(f"go movetime {movetime}")
+        elif wtime > 0 and btime > 0:
+            self._send_command(f"go wtime {wtime} btime {btime} winc {winc} binc {binc}")
+        else:
+            self._send_command(f"go depth {depth}")
 
-            while True:
-                line = self.process.stdout.readline()
-                if not line:
-                    break
-                line = line.strip()
-                if line.startswith("info"):
-                    tokens = line.split()
-                    for i in range(len(tokens)):
-                        if tokens[i] == "depth" and i + 1 < len(tokens):
-                            try:
-                                completed_depth = int(tokens[i+1])
-                            except ValueError:
-                                pass
-                        elif tokens[i] == "score" and i + 2 < len(tokens):
-                            if tokens[i+1] == "cp":
-                                eval_score = int(tokens[i+2])
-                                is_mate = False
-                            elif tokens[i+1] == "mate":
-                                mate_in = int(tokens[i+2])
-                                is_mate = True
-                                eval_score = 29000 if mate_in > 0 else -29000
-                        elif tokens[i] == "nodes" and i + 1 < len(tokens):
-                            try:
-                                nodes = int(tokens[i+1])
-                            except ValueError:
-                                pass
-                        elif tokens[i] == "nps" and i + 1 < len(tokens):
-                            try:
-                                nps = int(tokens[i+1])
-                            except ValueError:
-                                pass
-                        elif tokens[i] == "time" and i + 1 < len(tokens):
-                            try:
-                                time_ms = int(tokens[i+1])
-                            except ValueError:
-                                pass
-                        elif tokens[i] == "hashfull" and i + 1 < len(tokens):
-                            try:
-                                hashfull = int(tokens[i+1])
-                            except ValueError:
-                                pass
-                        elif tokens[i] == "pv":
-                            pv = " ".join(tokens[i+1:])
-                elif line.startswith("bestmove"):
-                    parts = line.split()
-                    if len(parts) >= 2:
-                        best_move = parts[1]
-                    break
+        # Hard cap on any one search: the engine is told to stop and still answers.
+        stopper = threading.Timer(SEARCH_HARD_LIMIT_S, self._send_command, args=("stop",))
+        stopper.daemon = True
+        stopper.start()
 
-            fen_parts = fen.strip().split()
-            side_to_move = fen_parts[1] if len(fen_parts) > 1 else 'w'
+        best_move = None
+        eval_score = 0
+        is_mate = False
+        mate_in = 0
+        nodes = 0
+        nps = 0
+        pv = ""
+        completed_depth = depth
+        time_ms = 0
+        hashfull = 0
 
-            # Standard Negamax inversion: UCI score is relative to side_to_move.
-            # Convert to White's perspective (+ = White advantage, - = Black advantage)
-            if side_to_move == 'b':
-                score_white = -eval_score
-                mate_in_white = -mate_in if is_mate else 0
-            else:
-                score_white = eval_score
-                mate_in_white = mate_in if is_mate else 0
+        while True:
+            line = self.process.stdout.readline()
+            if not line:
+                break
+            line = line.strip()
+            if line.startswith("info"):
+                tokens = line.split()
+                for i in range(len(tokens)):
+                    if tokens[i] == "depth" and i + 1 < len(tokens):
+                        try:
+                            completed_depth = int(tokens[i+1])
+                        except ValueError:
+                            pass
+                    elif tokens[i] == "score" and i + 2 < len(tokens):
+                        if tokens[i+1] == "cp":
+                            eval_score = int(tokens[i+2])
+                            is_mate = False
+                        elif tokens[i+1] == "mate":
+                            mate_in = int(tokens[i+2])
+                            is_mate = True
+                            eval_score = 29000 if mate_in > 0 else -29000
+                    elif tokens[i] == "nodes" and i + 1 < len(tokens):
+                        try:
+                            nodes = int(tokens[i+1])
+                        except ValueError:
+                            pass
+                    elif tokens[i] == "nps" and i + 1 < len(tokens):
+                        try:
+                            nps = int(tokens[i+1])
+                        except ValueError:
+                            pass
+                    elif tokens[i] == "time" and i + 1 < len(tokens):
+                        try:
+                            time_ms = int(tokens[i+1])
+                        except ValueError:
+                            pass
+                    elif tokens[i] == "hashfull" and i + 1 < len(tokens):
+                        try:
+                            hashfull = int(tokens[i+1])
+                        except ValueError:
+                            pass
+                    elif tokens[i] == "pv":
+                        # Keep only the moves: the engine appends "string Book move" to book replies.
+                        pv_moves = []
+                        for t in tokens[i+1:]:
+                            if not UCI_MOVE_RE.fullmatch(t):
+                                break
+                            pv_moves.append(t)
+                        pv = " ".join(pv_moves)
+            elif line.startswith("bestmove"):
+                parts = line.split()
+                if len(parts) >= 2:
+                    best_move = parts[1]
+                break
+        stopper.cancel()
 
-            # Standard logistic chess win probability formula relative to White
-            if is_mate:
-                win_chance_white = 100.0 if mate_in_white > 0 else 0.0
-            else:
-                win_chance_white = 50.0 + 50.0 * (2.0 / (1.0 + math.exp(-0.00368208 * score_white)) - 1.0)
-                win_chance_white = max(0.0, min(100.0, win_chance_white))
+        if best_move is None:
+            # The engine died mid-search; the next request restarts it.
+            self.process = None
+            return {"error": "Engine stopped unexpectedly"}
 
-            if not pv and best_move:
-                pv = best_move
+        fen_parts = fen.strip().split()
+        side_to_move = fen_parts[1] if len(fen_parts) > 1 else 'w'
 
-            return {
-                "best_move": best_move,
-                "score": eval_score,
-                "score_white": score_white,
-                "is_mate": is_mate,
-                "mate_in": mate_in,
-                "mate_in_white": mate_in_white,
-                "side_to_move": side_to_move,
-                "depth": completed_depth,
-                "nodes": nodes,
-                "nps": nps,
-                "time_ms": time_ms,
-                "hashfull": hashfull,
-                "win_chance": round(win_chance_white, 1),
-                "pv": pv
-            }
+        # Standard Negamax inversion: UCI score is relative to side_to_move.
+        # Convert to White's perspective (+ = White advantage, - = Black advantage)
+        if side_to_move == 'b':
+            score_white = -eval_score
+            mate_in_white = -mate_in if is_mate else 0
+        else:
+            score_white = eval_score
+            mate_in_white = mate_in if is_mate else 0
+
+        # Standard logistic chess win probability formula relative to White
+        if is_mate:
+            win_chance_white = 100.0 if mate_in_white > 0 else 0.0
+        else:
+            win_chance_white = 50.0 + 50.0 * (2.0 / (1.0 + math.exp(-0.00368208 * score_white)) - 1.0)
+            win_chance_white = max(0.0, min(100.0, win_chance_white))
+
+        if not pv and best_move:
+            pv = best_move
+
+        return {
+            "best_move": best_move,
+            "score": eval_score,
+            "score_white": score_white,
+            "is_mate": is_mate,
+            "mate_in": mate_in,
+            "mate_in_white": mate_in_white,
+            "side_to_move": side_to_move,
+            "depth": completed_depth,
+            "nodes": nodes,
+            "nps": nps,
+            "time_ms": time_ms,
+            "hashfull": hashfull,
+            "win_chance": round(win_chance_white, 1),
+            "pv": pv
+        }
 
 import atexit
 warn_if_stale(ENGINE_PATH)
@@ -535,7 +571,9 @@ if __name__ == "__main__":
     print(f"  Server URL: http://localhost:{PORT}  (listening on {HOST})")
     print(f"======================================================")
     
-    with socketserver.TCPServer((HOST, PORT), ChessRequestHandler) as httpd:
+    # Threaded, so the page and the tournament views stay responsive while the engine thinks.
+    http.server.ThreadingHTTPServer.daemon_threads = True
+    with http.server.ThreadingHTTPServer((HOST, PORT), ChessRequestHandler) as httpd:
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
