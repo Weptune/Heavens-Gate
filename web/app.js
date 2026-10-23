@@ -1579,7 +1579,9 @@ class ChessApp {
             if (data.best_move && this.gameState.isGameActive && (this.activeTab === 'play' || this.activeTab === 'telemetry')) {
                 const src = data.best_move.substring(0, 2);
                 const dst = data.best_move.substring(2, 4);
-                const promo = data.best_move.length > 4 ? data.best_move[4] : null;
+                // UCI promotion letters are lower case; the board uses upper case for White.
+                let promo = data.best_move.length > 4 ? data.best_move[4] : null;
+                if (promo) promo = (this.gameState.turn === 'w') ? promo.toUpperCase() : promo.toLowerCase();
                 const [srcR, srcC] = this.squareToCoords(src);
                 const [dstR, dstC] = this.squareToCoords(dst);
 
