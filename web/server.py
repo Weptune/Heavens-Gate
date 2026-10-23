@@ -3,9 +3,10 @@
 Run from the repo:  python web/server.py   then open http://localhost:8000
 
 Settings (environment variables):
-  HG_ENGINE            engine binary (default: build/heavensgate[.exe], else repo root)
+  HG_ENGINE            engine binary (default: build/ or build/Release/heavensgate[.exe],
+                       else the repo root)
   HG_WEB_PORT          port (8000)
-  HG_WEB_HOST          listen address (127.0.0.1; 0.0.0.0 shares it on your network)
+  HG_WEB_HOST          IPv4 listen address (127.0.0.1; 0.0.0.0 shares it on your network)
   HG_WEB_ALLOWED_HOSTS extra Host values to accept, comma separated (e.g. 192.168.1.5:8000)
   HG_THREADS           engine threads (core count minus one, at most 6)
   HG_OWNBOOK           use the engine's opening book (true)
@@ -26,8 +27,10 @@ PORT = int(os.environ.get("HG_WEB_PORT", "8000"))
 # Listen on this machine only. Set HG_WEB_HOST=0.0.0.0 to share the board on your
 # local network on purpose (and add the address you browse to HG_WEB_ALLOWED_HOSTS).
 HOST = os.environ.get("HG_WEB_HOST", "127.0.0.1")
-ALLOWED_HOSTS = {f"localhost:{PORT}", f"127.0.0.1:{PORT}", f"[::1]:{PORT}"} | {
+ALLOWED_HOSTS = {f"localhost:{PORT}", f"127.0.0.1:{PORT}"} | {
     h.strip() for h in os.environ.get("HG_WEB_ALLOWED_HOSTS", "").split(",") if h.strip()}
+if PORT == 80:  # browsers leave the default port out of the Host header
+    ALLOWED_HOSTS |= {"localhost", "127.0.0.1"}
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -39,7 +42,7 @@ def find_engine():
     if env:
         return os.path.abspath(env)
     names = ["heavensgate.exe", "heavensgate"]
-    for d in (os.path.join(REPO_DIR, "build"), REPO_DIR):
+    for d in (os.path.join(REPO_DIR, "build"), os.path.join(REPO_DIR, "build", "Release"), REPO_DIR):
         for n in names:
             p = os.path.join(d, n)
             if os.path.isfile(p):
