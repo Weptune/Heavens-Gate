@@ -529,7 +529,12 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         elif path == "/api/tournament":
             batch_id = query.get('batch', ['8'])[0]
-            fname = f"tournament_results_batch{batch_id}.pgn"
+            # Digits only: the id becomes part of a file name. (On Windows ".." in a
+            # path is resolved as text, so a crafted id could read other .pgn files.)
+            if not re.fullmatch(r"\d{1,6}", batch_id):
+                self.send_json(400, {"error": "batch must be a number"})
+                return
+            fname = f"tournament_results_batch{int(batch_id)}.pgn"
             fpath = os.path.join(REPO_DIR, fname)
             parsed = parse_pgn_file(fpath)
             if not parsed:
@@ -545,7 +550,32 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(parsed).encode('utf-8'))
 
         else:
+            if not self.is_public_file(path):
+                self.send_error(404)
+                return
             super().do_GET()
+
+    PUBLIC_EXTENSIONS = (".html", ".js", ".css", ".svg", ".png", ".ico", ".woff", ".woff2")
+
+    @classmethod
+    def is_public_file(cls, path):
+        """Serve the page and its assets only: no server source, caches or dot files."""
+        from urllib.parse import unquote
+        import posixpath
+        path = posixpath.normpath(unquote(path))
+        if path == "/":
+            return True
+        if "\x00" in path or "\\" in path:
+            return False
+        parts = [p for p in path.split("/") if p]
+        if any(p.startswith(".") or p == "__pycache__" for p in parts):
+            return False
+        return path.lower().endswith(cls.PUBLIC_EXTENSIONS)
+
+    def list_directory(self, path):
+        # No directory listings.
+        self.send_error(404)
+        return None
 
     def do_OPTIONS(self):
         # No cross-origin access: the page and the API share one origin.
