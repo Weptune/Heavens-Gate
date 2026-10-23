@@ -72,7 +72,7 @@ class EngineBridge:
                     pass
                 self.process = None
 
-    def get_move(self, fen, depth=8, movetime=0, wtime=0, btime=0, winc=0, binc=0):
+    def get_move(self, fen, depth=8, movetime=0, wtime=0, btime=0, winc=0, binc=0, moves=None):
         with self.lock:
             if not self.process or self.process.poll() is not None:
                 self.start_engine()
@@ -80,7 +80,12 @@ class EngineBridge:
             if not self.process:
                 return {"error": "Engine process not available"}
 
-            self._send_command(f"position fen {fen}")
+            # With the move list the engine sees the game history and can avoid (or aim
+            # for) repetitions; both boards in the web app start from the initial position.
+            if moves:
+                self._send_command("position startpos moves " + " ".join(moves))
+            else:
+                self._send_command(f"position fen {fen}")
             if movetime > 0:
                 self._send_command(f"go movetime {movetime}")
             elif wtime > 0 and btime > 0:
@@ -299,7 +304,8 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
             winc = req.get("winc", 0)
             binc = req.get("binc", 0)
             
-            res = bridge.get_move(fen, depth=depth, movetime=movetime, wtime=wtime, btime=btime, winc=winc, binc=binc)
+            moves = req.get("moves") or []
+            res = bridge.get_move(fen, depth=depth, movetime=movetime, wtime=wtime, btime=btime, winc=winc, binc=binc, moves=moves)
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -313,7 +319,8 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
             fen = req.get("fen", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             depth = req.get("depth", 10)
             movetime = req.get("movetime", 0)
-            res = bridge.get_move(fen, depth=depth, movetime=movetime)
+            moves = req.get("moves") or []
+            res = bridge.get_move(fen, depth=depth, movetime=movetime, moves=moves)
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')

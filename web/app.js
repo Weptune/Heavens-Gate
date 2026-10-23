@@ -874,6 +874,12 @@ class ChessApp {
         return this.gameState.castlingRights;
     }
 
+    getCurrentUciHistory() {
+        // Both the play board and the analysis board start from the initial position,
+        // so the full move list lets the engine see repetitions.
+        return (this.activeTab === 'telemetry') ? this.telemetryState.uciHistory : this.gameState.uciHistory;
+    }
+
     getCurrentEPTarget() {
         if (this.activeTab === 'telemetry') return this.telemetryState.enPassantTarget;
         return this.gameState.enPassantTarget;
@@ -1541,6 +1547,7 @@ class ChessApp {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     fen,
+                    moves: this.gameState.uciHistory,
                     depth,
                     movetime,
                     wtime: wtimeMs,
@@ -1609,7 +1616,7 @@ class ChessApp {
             const resp = await fetch('/api/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fen, depth: 12 })
+                body: JSON.stringify({ fen, moves: this.getCurrentUciHistory(), depth: 12 })
             });
             if (resp.ok) {
                 const data = await resp.json();
@@ -1813,7 +1820,7 @@ class ChessApp {
         const resp = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fen, depth: 9 })
+            body: JSON.stringify({ fen, moves: this.getCurrentUciHistory(), depth: 9 })
         });
         const data = await resp.json();
         if (data.best_move) {
