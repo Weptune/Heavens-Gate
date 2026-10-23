@@ -1507,6 +1507,9 @@ class ChessApp {
         if (castling.k) cStr += 'k';
         if (castling.q) cStr += 'q';
         fen += (cStr || '-') + ' ';
+        // En-passant target square: the fourth FEN field. Without it the engine reads the
+        // halfmove clock in its place and the move number as the 50-move counter.
+        fen += (ep ? String.fromCharCode(97 + ep[1]) + (8 - ep[0]) : '-') + ' ';
         const halfClock = this.activeTab === 'telemetry' ? 0 : this.gameState.halfMoveClock;
         const fullMove = this.activeTab === 'telemetry' ? this.telemetryState.fullMoveNumber : this.gameState.fullMoveNumber;
         fen += `${halfClock} ${fullMove}`;
