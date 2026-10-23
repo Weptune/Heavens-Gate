@@ -52,7 +52,11 @@ def warn_if_stale(engine_path):
     if not os.path.isfile(engine_path):
         return
     built = os.path.getmtime(engine_path)
-    newest = max((os.path.getmtime(f) for f in glob.glob(os.path.join(REPO_DIR, "src", "**", "*.*pp"), recursive=True)), default=0)
+    # Everything the build reads: sources, headers, the tuned .inc tables and CMakeLists.
+    sources = [f for ext in ("cpp", "hpp", "c", "h", "inc")
+               for f in glob.glob(os.path.join(REPO_DIR, "src", "**", f"*.{ext}"), recursive=True)]
+    sources.append(os.path.join(REPO_DIR, "CMakeLists.txt"))
+    newest = max((os.path.getmtime(f) for f in sources if os.path.isfile(f)), default=0)
     stamp = time.strftime("%Y-%m-%d %H:%M", time.localtime(built))
     print(f"[ENGINE BRIDGE] Engine binary: {engine_path} (built {stamp})")
     if newest > built:
