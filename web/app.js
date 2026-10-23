@@ -870,13 +870,19 @@ class ChessApp {
         }
     }
 
+    isReplayView() {
+        return this.activeTab === 'tournament' && !!this.replayState;
+    }
+
     getCurrentBoard() {
         if (this.activeTab === 'telemetry') return this.telemetryState.board;
+        if (this.isReplayView()) return this.replayState.board;
         return this.gameState.board;
     }
 
     getCurrentTurn() {
         if (this.activeTab === 'telemetry') return this.telemetryState.turn;
+        if (this.isReplayView()) return this.replayState.turn;
         return this.gameState.turn;
     }
 
@@ -898,6 +904,7 @@ class ChessApp {
 
     getCurrentLastMove() {
         if (this.activeTab === 'telemetry') return this.telemetryState.lastMove;
+        if (this.isReplayView()) return this.replayState.lastMove;
         return this.gameState.lastMove;
     }
 
@@ -2549,8 +2556,13 @@ class ChessApp {
         this.replayPlyIndex = target;
 
         const snap = this.replaySnapshots[target];
-        this.gameState.board = ChessRulesEngine.cloneBoard(snap.board);
-        this.gameState.lastMove = snap.lastMove;
+        // The replay has its own board: writing into gameState corrupted the live game.
+        this.replayState = {
+            board: ChessRulesEngine.cloneBoard(snap.board),
+            lastMove: snap.lastMove,
+            // snap.turn is the side that just moved (or the side to move at ply 0)
+            turn: snap.uci ? (snap.turn === 'w' ? 'b' : 'w') : (snap.turn || 'w')
+        };
         this.renderBoard();
 
         // Advantage gauge update
