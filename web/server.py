@@ -1,3 +1,16 @@
+"""Heaven's Gate web app: serves the board UI and bridges it to the engine over UCI.
+
+Run from the repo:  python web/server.py   then open http://localhost:8000
+
+Settings (environment variables):
+  HG_ENGINE            engine binary (default: build/heavensgate[.exe], else repo root)
+  HG_WEB_PORT          port (8000)
+  HG_WEB_HOST          listen address (127.0.0.1; 0.0.0.0 shares it on your network)
+  HG_WEB_ALLOWED_HOSTS extra Host values to accept, comma separated (e.g. 192.168.1.5:8000)
+  HG_THREADS           engine threads (core count minus one, at most 6)
+  HG_OWNBOOK           use the engine's opening book (true)
+  HG_SEARCH_LIMIT_S    hard limit for any one search in seconds (35)
+"""
 import http.server
 import json
 import subprocess
