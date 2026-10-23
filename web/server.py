@@ -178,6 +178,11 @@ class EngineBridge:
                 proc.wait(timeout=2.0)   # reap it, so no zombie is left behind
             except Exception:
                 pass
+            for pipe in (proc.stdin, proc.stdout):
+                try:
+                    pipe.close()         # closing here keeps a broken-pipe warning out of the log
+                except Exception:
+                    pass
 
     def stop_engine(self):
         # Do not wait for a long search on shutdown: quit after at most 2 seconds.

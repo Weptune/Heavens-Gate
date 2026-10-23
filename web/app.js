@@ -1575,6 +1575,7 @@ class ChessApp {
         const reqGameId = this.gameId, reqPlies = this.gameState.uciHistory.length;
         const isStale = () => this.gameId !== reqGameId || this.gameState.uciHistory.length !== reqPlies;
         let stale = false;   // decided when the reply arrives (applying it changes the ply count)
+        let applied = false; // this request's own move is on the board
         this.setStatus("SOVEREIGN CALCULATING", true);
 
         const fen = this.getFEN();
@@ -1625,6 +1626,7 @@ class ChessApp {
                 const [dstR, dstC] = this.squareToCoords(dst);
 
                 this.executeMove(srcR, srcC, dstR, dstC, data.best_move, promo);
+                applied = true;
 
                 const engineColor = (this.gameState.playMode === 'human_white') ? 'b' : 'w';
                 const scoreWhite = (data.score_white !== undefined)
@@ -1635,7 +1637,8 @@ class ChessApp {
                 this.updateOracle(scoreWhite, data.pv, engineColor);
             }
         } catch (e) {
-            if ((stale = isStale())) return;
+            // After our own move was applied the ply count has changed on purpose.
+            if (!applied && (stale = isStale())) return;
             console.error("Engine API error:", e);
             // 'busy', a restarted engine or a dropped connection: try again shortly (up to
             // 5 times) instead of telling the player it is their turn.
