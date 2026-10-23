@@ -1630,12 +1630,15 @@ class ChessApp {
     async runLiveAnalysis(movedBy = null) {
         if (this.gameState.isThinking || this.activeTab !== 'telemetry') return;
         const fen = this.getFEN();
+        // The server can finish queued requests out of order; only the newest one counts.
+        const seq = this.analysisSeq = (this.analysisSeq || 0) + 1;
         try {
             const resp = await fetch('/api/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ fen, moves: this.getCurrentUciHistory(), depth: 12 })
             });
+            if (seq !== this.analysisSeq || this.activeTab !== 'telemetry' || this.getFEN() !== fen) return;
             if (resp.ok) {
                 const data = await resp.json();
                 const scoreWhite = (data.score_white !== undefined)
@@ -1841,6 +1844,7 @@ class ChessApp {
             body: JSON.stringify({ fen, moves: this.getCurrentUciHistory(), depth: 9 })
         });
         const data = await resp.json();
+        if (this.getFEN() !== fen) return;   // the position changed while the hint was computed
         if (data.best_move) {
             this.oracleTextEl.textContent = `Recommended move: ${data.best_move.substring(0, 2)} -> ${data.best_move.substring(2, 4)}`;
         }
