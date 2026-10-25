@@ -260,3 +260,25 @@ both now use 2.95.
 
 Long time control check: `467c422` vs `e2492e6` (before the two overnight merges) at 2+1,
 64 MB hash: +108 Elo, 40 games, 95% CI [+44, +180]. The fast-TC gains carry over to blitz.
+
+## Eval retuned with positions from the engine's own games (2026-10-24/25)
+
+635,620 new positions from about 10,700 of the engine's test and rating games
+(every second ply from move 10, not in check, none already in the training set)
+were labelled by Stockfish at 20000 nodes. With the existing set this gave
+1,569,293 quiet positions (503,250 new, mostly middlegames). Retuning lowered
+validation error by 1.0% (the deeper-label retune moved it 0.2%).
+
+| Candidate vs `main` (`6887187`) | Games | Elo | 95% CI | Decision |
+|---|---|---|---|---|
+| Retuned eval alone | 240 | +13 | [-14, +40] | inconclusive |
+| **Retuned eval plus search margins re-tuned by SPSA for it (300 iterations)** | 800 | **+19** | **[+2, +35]** | **merged (`3d569ed`)** |
+
+Margins: RFP 96 -> 70, futility 173 -> 185, SEE bad-capture slope 114 -> 102,
+NMP eval margin 185 -> 184, aspiration delta 16 -> 19. A retuned eval changes its
+scale and the balance between terms, so margins tuned for the old eval no longer
+fit; re-tuning them is what turned a neutral retune into a measurable gain.
+
+A first test of the retuned eval was discarded: a forgotten background SPSA run
+shared the 2 cores and 31 of 120 games were lost on time. All results above, and
+every merged result before them, had no time losses.
