@@ -85,13 +85,34 @@ class EngineBridge:
         self.write_lock = threading.Lock()    # the stop timer writes from another thread
         self.search_id = 0
         self.active_search = None
+        self.last_error = None
         self.start_engine()
 
     def start_engine(self):
+        self.last_error = None
         if not os.path.exists(self.engine_path):
-            print(f"[ERROR] Engine binary not found at: {self.engine_path}")
+            print(f"[ENGINE BRIDGE] Binary {self.engine_path} missing; attempting build...")
+            try:
+                import shutil
+                cmake_bin = shutil.which("cmake") or "cmake"
+                subprocess.run([cmake_bin, "-B", "build", "-DCMAKE_BUILD_TYPE=Release", "-DHG_WARNINGS_AS_ERRORS=OFF"], cwd=REPO_DIR, check=True, capture_output=True, text=True)
+                subprocess.run([cmake_bin, "--build", "build", "--target", "heavensgate", "-j2"], cwd=REPO_DIR, check=True, capture_output=True, text=True)
+                self.engine_path = find_engine()
+                print(f"[ENGINE BRIDGE] Build succeeded, engine at: {self.engine_path}")
+            except Exception as e:
+                self.last_error = f"Auto-build failed: {e}"
+                print(f"[ERROR] {self.last_error}")
+
+        if not os.path.exists(self.engine_path):
+            self.last_error = f"Engine binary not found at: {self.engine_path}"
+            print(f"[ERROR] {self.last_error}")
             return
         
+        try:
+            os.chmod(self.engine_path, 0o755)
+        except Exception:
+            pass
+
         try:
             engine_abs_path = os.path.abspath(self.engine_path)
             engine_dir = os.path.dirname(engine_abs_path)
@@ -116,13 +137,15 @@ class EngineBridge:
             finally:
                 watchdog.cancel()
             if proc.poll() is not None or not self._handshake_ok:
-                print(f"[ERROR] Engine did not complete the UCI handshake within {STARTUP_TIMEOUT_S:.0f} s")
+                self.last_error = f"Engine did not complete the UCI handshake within {STARTUP_TIMEOUT_S:.0f} s"
+                print(f"[ERROR] {self.last_error}")
                 self._kill_process()
                 return
             print(f"[ENGINE BRIDGE] Successfully launched and synchronized Heaven's Gate UCI Process (PID {self.process.pid}) in {engine_dir}")
         except Exception as e:
             # Includes a broken pipe after the startup watchdog killed a hung engine.
-            print(f"[ERROR] Failed to start engine process (no UCI handshake within {STARTUP_TIMEOUT_S:.0f} s?): {e}")
+            self.last_error = f"Failed to start engine process: {e}"
+            print(f"[ERROR] {self.last_error}")
             self._kill_process()
 
     def _handshake(self):
@@ -214,7 +237,7 @@ class EngineBridge:
             self.start_engine()
 
         if not self.process:
-            return {"error": "Engine process not available"}
+            return {"error": "Engine process not available", "detail": self.last_error or "Unknown initialization error"}
 
         # With the move list the engine sees the game history and can avoid (or aim
         # for) repetitions; both boards in the web app start from the initial position.
@@ -629,6 +652,24 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
                 })
             
             self.send_json(200, batches)
+
+        elif path == "/api/status":
+            engine_path = bridge.engine_path if bridge else ENGINE_PATH
+            exists = os.path.exists(engine_path) if engine_path else False
+            is_exec = os.access(engine_path, os.X_OK) if exists else False
+            build_dir = os.path.join(REPO_DIR, "build")
+            build_files = os.listdir(build_dir) if os.path.exists(build_dir) else []
+            self.send_json(200, {
+                "status": "ok",
+                "engine_path": engine_path,
+                "engine_exists": exists,
+                "engine_executable": is_exec,
+                "engine_running": bool(bridge and bridge.process and bridge.process.poll() is None),
+                "last_error": bridge.last_error if bridge else None,
+                "build_files": build_files,
+                "cwd": os.getcwd(),
+                "repo_dir": REPO_DIR
+            })
 
         elif path == "/api/tournament":
             batch_id = query.get('batch', ['8'])[0]
