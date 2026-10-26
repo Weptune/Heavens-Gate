@@ -125,9 +125,13 @@ class EngineBridge:
                 bufsize=1,
                 cwd=engine_dir
             )
-            threading.Thread(target=self._drain_stderr, args=(self.process,), daemon=True).start()
-            # An engine that never finishes the handshake is killed, so it cannot hold
-            # the lock forever; the reads below then end and the engine counts as failed.
+            self.stderr_lines = []
+            def _drain():
+                for line in self.process.stderr:
+                    self.stderr_lines.append(line.rstrip())
+                    print(f"[ENGINE STDERR] {line.rstrip()}")
+            threading.Thread(target=_drain, daemon=True).start()
+
             proc = self.process
             watchdog = threading.Timer(STARTUP_TIMEOUT_S, proc.kill)
             watchdog.daemon = True
@@ -137,14 +141,17 @@ class EngineBridge:
             finally:
                 watchdog.cancel()
             if proc.poll() is not None or not self._handshake_ok:
-                self.last_error = f"Engine did not complete the UCI handshake within {STARTUP_TIMEOUT_S:.0f} s"
+                code = proc.poll()
+                errs = "\n".join(self.stderr_lines) if hasattr(self, 'stderr_lines') else ""
+                self.last_error = f"Engine failed handshake (exit code {code}). Stderr: {errs}"
                 print(f"[ERROR] {self.last_error}")
                 self._kill_process()
                 return
             print(f"[ENGINE BRIDGE] Successfully launched and synchronized Heaven's Gate UCI Process (PID {self.process.pid}) in {engine_dir}")
         except Exception as e:
-            # Includes a broken pipe after the startup watchdog killed a hung engine.
-            self.last_error = f"Failed to start engine process: {e}"
+            code = self.process.poll() if self.process else None
+            errs = "\n".join(self.stderr_lines) if hasattr(self, 'stderr_lines') else ""
+            self.last_error = f"Failed to start engine (exit code {code}): {e}. Stderr: {errs}"
             print(f"[ERROR] {self.last_error}")
             self._kill_process()
 
@@ -158,6 +165,7 @@ class EngineBridge:
                 break
         # The engine's UCI defaults are Threads=1 and OwnBook=false (tester
         # convention). Use the host's cores, leaving one for the web server.
+        self._send_command("setoption name Hash value 32")
         self._send_command(f"setoption name Threads value {ENGINE_THREADS}")
         self._send_command(f"setoption name OwnBook value {'true' if ENGINE_OWNBOOK else 'false'}")
         self._send_command("isready")
@@ -657,6 +665,25 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
             engine_path = bridge.engine_path if bridge else ENGINE_PATH
             exists = os.path.exists(engine_path) if engine_path else False
             is_exec = os.access(engine_path, os.X_OK) if exists else False
+            
+            test_run = {}
+            if exists and is_exec:
+                try:
+                    proc_test = subprocess.run(
+                        [engine_path, "uci"],
+                        input="quit\n",
+                        capture_output=True,
+                        text=True,
+                        timeout=3
+                    )
+                    test_run = {
+                        "returncode": proc_test.returncode,
+                        "stdout": proc_test.stdout[:500],
+                        "stderr": proc_test.stderr[:500]
+                    }
+                except Exception as ex:
+                    test_run = {"exception": str(ex)}
+
             build_dir = os.path.join(REPO_DIR, "build")
             build_files = os.listdir(build_dir) if os.path.exists(build_dir) else []
             self.send_json(200, {
@@ -666,6 +693,7 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
                 "engine_executable": is_exec,
                 "engine_running": bool(bridge and bridge.process and bridge.process.poll() is None),
                 "last_error": bridge.last_error if bridge else None,
+                "test_run": test_run,
                 "build_files": build_files,
                 "cwd": os.getcwd(),
                 "repo_dir": REPO_DIR

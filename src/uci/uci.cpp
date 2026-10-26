@@ -125,7 +125,7 @@ void UCI::loop(const std::string& first_line) {
     engine.set_uci_output(true);
 
     Evaluator::set_mode(EvalMode::MasterPositional);
-    engine.tt().resize(256);
+    engine.tt().resize(64);
 
     std::thread search_thread;
     std::atomic<bool> is_searching{false};
