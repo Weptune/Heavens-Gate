@@ -24,14 +24,15 @@ import re
 import glob
 import time
 
-PORT = int(os.environ.get("HG_WEB_PORT", "8000"))
-# Listen on this machine only. Set HG_WEB_HOST=0.0.0.0 to share the board on your
-# local network on purpose (and add the address you browse to HG_WEB_ALLOWED_HOSTS).
-HOST = os.environ.get("HG_WEB_HOST", "127.0.0.1")
-ALLOWED_HOSTS = {f"localhost:{PORT}", f"127.0.0.1:{PORT}"} | {
+PORT = int(os.environ.get("PORT", os.environ.get("HG_WEB_PORT", "8000")))
+# Listen on 0.0.0.0 in cloud environments (Render, Heroku, etc.) or when HG_WEB_HOST is set
+IS_CLOUD = bool(os.environ.get("RENDER") or os.environ.get("DYNO") or ("PORT" in os.environ and os.environ.get("PORT") != "8000"))
+HOST = os.environ.get("HG_WEB_HOST", "0.0.0.0" if IS_CLOUD else "127.0.0.1")
+ALLOWED_HOSTS = {f"localhost:{PORT}", f"127.0.0.1:{PORT}", "localhost", "127.0.0.1"} | {
     h.strip() for h in os.environ.get("HG_WEB_ALLOWED_HOSTS", "").split(",") if h.strip()}
-if PORT == 80:  # browsers leave the default port out of the Host header
+if PORT in (80, 443):  # browsers leave the default port out of the Host header
     ALLOWED_HOSTS |= {"localhost", "127.0.0.1"}
+ALLOW_ALL_HOSTS = IS_CLOUD or os.environ.get("HG_ALLOW_ALL_HOSTS", "").lower() in ("1", "true", "yes")
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -550,6 +551,10 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        origin = self.headers.get("Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", origin if origin else "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         self.end_headers()
         self.wfile.write(body)
 
@@ -623,10 +628,7 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
                     'stats': stats
                 })
             
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps(batches).encode('utf-8'))
+            self.send_json(200, batches)
 
         elif path == "/api/tournament":
             batch_id = query.get('batch', ['8'])[0]
@@ -639,16 +641,10 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
             fpath = os.path.join(REPO_DIR, fname)
             parsed = parse_pgn_file(fpath)
             if not parsed:
-                self.send_response(404)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'error': f'Batch {batch_id} not found'}).encode('utf-8'))
+                self.send_json(404, {'error': f'Batch {batch_id} not found'})
                 return
             
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps(parsed).encode('utf-8'))
+            self.send_json(200, parsed)
 
         else:
             if not self.is_public_file(path):
@@ -679,19 +675,28 @@ class ChessRequestHandler(http.server.SimpleHTTPRequestHandler):
         return None
 
     def do_OPTIONS(self):
-        # No cross-origin access: the page and the API share one origin.
-        self.send_error(405)
+        # Enable CORS for cross-origin deployments (e.g. Vercel frontend -> Render backend)
+        self.send_response(200)
+        origin = self.headers.get("Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", origin if origin else "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Access-Control-Max-Age", "86400")
+        self.end_headers()
 
     def check_origin(self):
-        """Block requests from other websites and DNS-rebinding hosts. A page on another
-        site can still send a 'simple' POST without a preflight, so the Host, Origin
-        and Content-Type are checked here rather than relying on CORS."""
+        """Block requests from other websites and DNS-rebinding hosts unless in cloud mode
+        or explicitly allowed."""
+        if ALLOW_ALL_HOSTS:
+            return
         host = self.headers.get("Host", "")
-        if host not in ALLOWED_HOSTS:
+        host_no_port = host.split(":")[0] if ":" in host else host
+        if host not in ALLOWED_HOSTS and host_no_port not in ALLOWED_HOSTS:
             raise BadRequest("unknown Host header", 403)
         origin = self.headers.get("Origin")
-        if origin is not None and origin != f"http://{host}":
-            raise BadRequest("cross-origin requests are not allowed", 403)
+        if origin is not None and origin != f"http://{host}" and origin != f"https://{host}":
+            if not (origin.endswith(".vercel.app") or "localhost" in origin or "127.0.0.1" in origin):
+                raise BadRequest("cross-origin requests are not allowed", 403)
         if self.command == "POST" and self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
             raise BadRequest("Content-Type must be application/json", 415)
 

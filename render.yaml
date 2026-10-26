@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: heavensgate
+    runtime: python
+    plan: free
+    buildCommand: "pip install cmake && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --target heavensgate -j2"
+    startCommand: "python web/server.py"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
