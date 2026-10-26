@@ -386,10 +386,13 @@ std::string Board::to_ascii() const {
             s += c;
             s += " |";
         }
-        s += " " + std::to_string(r + 1) + "\n+---+---+---+---+---+---+---+---+\n";
+        s += ' ';
+        s += static_cast<char>('1' + r);
+        s += "\n+---+---+---+---+---+---+---+---+\n";
     }
     s += "  a   b   c   d   e   f   g   h\n";
-    s += "Side to move: " + std::string(side_to_move_ == Color::White ? "White" : "Black") + "\n";
+    s += "Side to move: ";
+    s += (side_to_move_ == Color::White ? "White\n" : "Black\n");
     return s;
 }
 
