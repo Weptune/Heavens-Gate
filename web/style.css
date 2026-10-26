@@ -1547,3 +1547,162 @@ select {
 .hidden { display: none !important; }
 
 
+
+/* =========================================================================
+   UI REFRESH: calmer palette, softer surfaces, clearer hierarchy
+   ========================================================================= */
+:root {
+    --bg-page: #0b0d12;
+    --bg-panel: #12151c;
+    --bg-subpanel: #0e1117;
+    --bg-active: #1b2030;
+    --border: #232a38;
+    --border-subtle: #1a1f2b;
+    --text-bright: #f3f5f9;
+    --text-main: #c7cdd9;
+    --text-dim: #7d8697;
+    --accent: #6d8cff;
+    --accent-hover: #8aa2ff;
+    --square-light: #e9edf2;
+    --square-dark: #7a93ac;
+    --square-selected: #b7c9f5;
+    --square-last-move: #c9d8a4;
+    --radius: 14px;
+    --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 10px 30px rgba(0,0,0,0.35);
+}
+html, body {
+    background:
+        radial-gradient(1200px 600px at 15% -10%, rgba(109,140,255,0.10), transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, rgba(167,139,250,0.07), transparent 55%),
+        var(--bg-page);
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: 0.005em;
+}
+.navbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(11,13,18,0.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border-bottom: 1px solid var(--border-subtle);
+}
+.brand-title { letter-spacing: 0.02em; font-weight: 800; }
+.nav-tabs {
+    background: var(--bg-subpanel);
+    border: 1px solid var(--border-subtle);
+    border-radius: 999px; padding: 4px; gap: 2px;
+}
+.nav-tab {
+    border-radius: 999px; padding: 7px 16px; border: none;
+    transition: background 160ms ease, color 160ms ease;
+}
+.nav-tab.active {
+    background: var(--bg-active); color: var(--text-bright);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 0 0 1px var(--border) inset;
+}
+.app-layout { gap: 28px; }
+.sidebar-card, .player-strip {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 40%), var(--bg-panel);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+.player-strip { padding: 10px 14px; }
+.card-header { border-bottom: 1px solid var(--border-subtle); }
+.card-header-title { letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.74rem; color: var(--text-dim); }
+.board-container {
+    border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 24px 60px rgba(0,0,0,0.55), 0 0 80px rgba(109,140,255,0.08);
+}
+.square { transition: background-color 120ms ease; }
+.square.last-move { box-shadow: inset 0 0 0 9999px rgba(205,210,106,0.28); }
+.target-dot { opacity: 0.55; }
+.eval-gauge { border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px var(--border-subtle); }
+.clock-display {
+    border-radius: 10px; font-variant-numeric: tabular-nums;
+    border: 1px solid var(--border-subtle);
+}
+.clock-display.active { box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgba(109,140,255,0.25); }
+button { border-radius: 10px; transition: transform 80ms ease, background 160ms ease, border-color 160ms ease; }
+button:active { transform: translateY(1px); }
+select { border-radius: 10px; }
+.history-list::-webkit-scrollbar, .tourney-games-list::-webkit-scrollbar { width: 8px; }
+.history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ---- UI refresh, part 2: default theme, responsive board, layout ---- */
+body.theme-celestial {
+    --bg-page: #0b0d12;
+    --bg-panel: #12151c;
+    --bg-subpanel: #0e1117;
+    --bg-active: #1b2030;
+    --border: #262d3c;
+    --border-subtle: #1a1f2b;
+    --text-bright: #f3f5f9;
+    --text-main: #c7cdd9;
+    --text-dim: #7d8697;
+    --accent: #7c93ff;
+    --accent-hover: #97a9ff;
+    --square-light: #e6ebf1;
+    --square-dark: #7f97b2;
+    --square-selected: #a9c1f2;
+    --square-last-move: #c8d6a0;
+}
+:root { --board: clamp(340px, min(calc(100vh - 300px), 54vw), 680px); }
+.app-layout {
+    max-width: 1320px;
+    height: auto;
+    min-height: calc(100vh - 56px);
+    padding: 28px 24px 40px;
+    gap: 32px;
+    align-items: flex-start;
+}
+.board-column { width: calc(var(--board) + 32px); gap: 10px; }
+.board-container { width: var(--board); height: var(--board); border: none; }
+.player-strip { width: 100%; box-sizing: border-box; }
+.sidebar-column {
+    flex: 1 1 380px; max-width: 440px;
+    display: flex; flex-direction: column; gap: 16px;
+    align-self: stretch;
+}
+.sidebar-card { overflow: hidden; }
+.sidebar-card > .card-header { padding: 14px 16px; }
+.btn {
+    font-weight: 600; letter-spacing: 0.01em;
+    padding: 11px 16px; border-radius: 12px;
+}
+.btn-primary {
+    background: linear-gradient(180deg, var(--accent-hover), var(--accent));
+    color: #0b0d12; border: none;
+    box-shadow: 0 6px 18px rgba(124,147,255,0.28);
+}
+.btn-primary:hover { filter: brightness(1.06); }
+.btn-secondary { background: var(--bg-active); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--accent); }
+.btn-danger { color: #ff8a8a; }
+.btn-subtle {
+    border-radius: 8px; padding: 4px 10px;
+    background: var(--bg-active); border: 1px solid var(--border-subtle);
+}
+.btn-subtle:hover { border-color: var(--accent); color: var(--text-bright); }
+.player-name { font-weight: 700; color: var(--text-bright); }
+.avatar { border-radius: 10px; }
+.clock-display { font-size: 1.15rem; padding: 6px 12px; background: var(--bg-subpanel); }
+.history-list { font-variant-numeric: tabular-nums; }
+.history-list > * { border-radius: 6px; }
+.empty-notice { color: var(--text-dim); font-style: normal; opacity: 0.8; }
+.nav-status {
+    padding: 5px 12px; border-radius: 999px;
+    background: var(--bg-subpanel); border: 1px solid var(--border-subtle);
+}
+.coord { font-weight: 700; font-size: 0.68rem; }
+.target-capture { box-shadow: inset 0 0 0 4px rgba(20,24,34,0.35); }
+.square.selected { box-shadow: inset 0 0 0 3px rgba(124,147,255,0.6); }
+.sidebar-card, .player-strip, .board-container, .nav-tab, button { will-change: auto; }
+@media (max-width: 900px) {
+    :root { --board: min(92vw, 560px); }
+    .app-layout { flex-direction: column; align-items: center; padding: 16px 12px 32px; }
+    .sidebar-column { max-width: none; width: calc(var(--board) + 32px); }
+    .nav-tabs { display: none; }
+}
+.eval-gauge { height: var(--board); align-self: center; }
+.board-wrapper { align-items: center; }
